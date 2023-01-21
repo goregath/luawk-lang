@@ -1,3 +1,5 @@
+doc/
+
 # Compiled Lua sources
 luac.out
 
