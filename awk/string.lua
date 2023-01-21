@@ -2,24 +2,41 @@
 -- @alias export
 -- @module string
 
-local var = require "awk.variable"
+-- luacheck: globals FS
+
+-- TODO print
+--      match
+--      printf
+--      sprintf
+
 local export = {}
+
+--- Format the expressions according to the printf format given by fmt and
+--  return the resulting string.
+--  @param fmt
+--  @param ...
+function export.sprintf(fmt, ...)
+    error("not implemented")
+end
 
 --- Split the string s into array elements a[1], a[2], ..., a[n], and return n.
 --
 --  All elements of the array shall be deleted before the split is performed.
---  The separation shall be done with the ERE fs or with the field separator FS
---  if fs is not given. Each array element shall have a string value when
+--  The separation shall be done with the ERE fs or with the field separator
+--  FS if fs is not given. Each array element shall have a string value when
 --  created and, if appropriate, the array element shall be considered a
---  numeric string (see Expressions in awk). The effect of a null string as the
---  value of fs is unspecified.
+--  numeric string (see Expressions in awk). The effect of a null string as
+--  the value of fs is unspecified.
 --
---  This implementation defines the null string to split string to characters.
+--  The _null string_ pattern (`""`, `nil`) causes the characters of `s` to be
+--  split each into `a`.
 --
---  * `nil`, `""`: (_empty_) split into characters
---  * `" "`:   (_space_) matches any number of characters of class whitespace
---  * `","`:   (_literal_) matches literal
---  * `",+"`:  (_pattern_) matches lua pattern
+--  The _literal space_ pattern (`" "`) matches any number of characters
+--  of _space_(space, tab and newline), leading and trailing spaces are
+--  trimmed from input. Any other single character (e.g. `","`) is treated as
+--  a _literal_ pattern.
+--
+--  Any other pattern is considered as regex pattern in the domain of lua.
 --
 --  @tparam string s  input string
 --  @tparam table  a  split into array
@@ -27,8 +44,9 @@ local export = {}
 --  @treturn number number of fields
 function export.split(s, a, fs)
     s = s and tostring(s) or ""
-    if fs == '\x20' then fs = "%s+"
-    else fs = fs and tostring(fs) or var.FS end
+    fs = fs and tostring(fs) or FS or '\x20'
+    if fs == '\x20' then fs = "%s+" end
+    -- TODO if fs is "\x20" trim leading/trailing space
     assert(type(a) == "table", "split: second argument is not an array")
     -- clear array
     for i in ipairs(a) do
