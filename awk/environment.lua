@@ -5,14 +5,11 @@
 --- Exported functions
 local export = {}
 
---- Holds special variables
-local _special = {}
-
 --- AWK environment
-local _environ = {}
+local special = {}
 
 --- The number of elements in the ARGV array.
-_environ.ARGC = 0
+special.ARGC = 0
 
 --- An array of command line arguments, excluding options and the program
 --  argument, numbered from zero to ARGC-1. The arguments in ARGV can be
@@ -23,11 +20,11 @@ _environ.ARGC = 0
 --  file. The name '-' indicates the standard input. If an argument matches the
 --  format of an assignment operand, this argument shall be treated as an
 --  assignment rather than a file argument.
-_environ.ARGV = {}
+special.ARGV = {}
 
 --- The printf format for converting numbers to strings (except for output
 --  statements, where OFMT is used); "%.6g" by default.
-_environ.CONVFMT = "%.6g"
+special.CONVFMT = "%.6g"
 
 --- An array representing the value of the environment, as described in the exec
 --  functions defined in the System Interfaces volume of POSIX.1-2017. The
@@ -42,47 +39,51 @@ _environ.CONVFMT = "%.6g"
 --  statement, or the getline function), the environment used shall be the
 --  environment at the time awk began executing; it is implementation-defined
 --  whether any modification of ENVIRON affects this environment.
-_special.ENVIRON = {}
+special.ENVIRON = setmetatable({}, {
+	__index = function(_, k) return os.getenv(k) end,
+	-- TODO fake setenv
+	__newindex = error
+})
 
 --- A pathname of the current input file. Inside a BEGIN action the value is
 --  undefined. Inside an END action the value shall be the name of the last
 --  input file processed.
-_environ.FILENAME = 0
+special.FILENAME = 0
 
 --- The ordinal number of the current record in the current file. Inside a BEGIN
 --  action the value shall be zero. Inside an END action the value shall be the
 --  number of the last record processed in the last file processed.
-_environ.FNR = 0
+special.FNR = 0
 
 --- Input field separator regular expression; a _space_ by default.
-_environ.FS = '\x20'
+special.FS = '\x20'
 
 --- The number of fields in the current record. Inside a BEGIN action, the use
 --  of NF is undefined unless a getline function without a var argument is
 --  executed previously. Inside an END action, NF shall retain the value it had
 --  for the last record read, unless a subsequent, redirected, getline function
 --  without a var argument is performed prior to entering the END action.
-_special.NF = 0
+special.NF = 0
 
 --- The ordinal number of the current record from the start of input. Inside a
 --  BEGIN action the value shall be zero. Inside an END action the value shall
 --  be the number of the last record processed.
-_environ.NR = 0
+special.NR = 0
 
 --- The printf format for converting numbers to strings in output statements
 --  (see Output Statements); "%.6g" by default. The result of the conversion is
 --  unspecified if the value of OFMT is not a floating-point format
 --  specification.
-_environ.OFMT = "%.6g"
+special.OFMT = "%.6g"
 
 --- The print statement output field separator; <space> by default.
-_environ.OFS = '\x20'
+special.OFS = '\x20'
 
 --- The print statement output record separator; a <newline> by default.
-_environ.ORS = '\n'
+special.ORS = '\n'
 
 --- The length of the string matched by the match function.
-_environ.RLENGTH = 0
+special.RLENGTH = 0
 
 --- The first character of the string value of RS shall be the input record
 --  separator; a <newline> by default. If RS contains more than one character,
@@ -91,16 +92,16 @@ _environ.RLENGTH = 0
 --  or trailing blank lines shall not result in empty records at the beginning
 --  or end of the input, and a <newline> shall always be a field separator, no
 --  matter what the value of FS is.
-_environ.RS = '\n'
+special.RS = '\n'
 
 --- The starting position of the string matched by the match function, numbering
 --  from 1. This shall always be equivalent to the return value of the match
 --  function.
-_environ.RSTART = 0
+special.RSTART = 0
 
 --- Create a new environment
 function export.new()
-	error("not imlemented")
+	return setmetatable({}, {})
 end
 
 return export
