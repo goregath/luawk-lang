@@ -17,6 +17,19 @@ local function trim(s)
     return string.sub(s, i + 1, j - 1)
 end
 
+--- Return the position, in characters, numbering from 1, in string `s` where
+--  the extended regular expression `p` occurs, or zero if it does not occur
+--  at all. @{env.RSTART|RSTART} shall be set to the starting position
+--  (which is the same as the returned value), zero if no match is found;
+--  @{env.RLENGTH|RLENGTH} shall be set to the length of the matched
+--  string, -1 if no match is found.
+--  @tparam  string s input string
+--  @tparam  table  p pattern
+--  @treturn number   position of first match, or zero
+function export.match(s, p)
+    error("not implemented")
+end
+
 --- Format the expressions according to the printf format given by fmt and
 --  return the resulting string.
 --  @param fmt
@@ -28,10 +41,10 @@ end
 --
 --  All elements of the array shall be deleted before the split is performed.
 --  The separation shall be done with the ERE fs or with the field separator
---  FS if fs is not given. Each array element shall have a string value when
---  created and, if appropriate, the array element shall be considered a
---  numeric string (see Expressions in awk). The effect of a null string as
---  the value of fs is unspecified.
+--  @{env.FS|FS} if fs is not given. Each array element shall have a string value
+--  when created and, if appropriate, the array element shall be considered
+--  a numeric string (see Expressions in awk). The effect of a null string
+--  as the value of fs is unspecified.
 --
 --  The _null string_ pattern (`""`, `nil`) causes the characters of `s` to be
 --  enumerated into `a`.
@@ -46,7 +59,7 @@ end
 --  @tparam         string s  input string
 --  @tparam         table  a  split into array
 --  @tparam[opt=FS] string fs field separator
---  @treturn number number of fields
+--  @treturn        number    number of fields
 function export.split(s, a, fs)
     assert(type(a) == "table", "split: second argument is not an array")
     s = s ~= nil and tostring(s) or ""
