@@ -23,17 +23,24 @@ end
 --  (which is the same as the returned value), zero if no match is found;
 --  @{env.RLENGTH|RLENGTH} shall be set to the length of the matched
 --  string, -1 if no match is found.
---  @tparam  string s input string
---  @tparam  table  p pattern
---  @treturn number   position of first match, or zero
+--  @param[type=string]  s input string
+--  @param[type=string]  p pattern
+--  @return[type=number]   position of first match, or zero
 function export.match(s, p)
     error("not implemented")
 end
 
---- Format the expressions according to the printf format given by fmt and
---  return the resulting string.
---  @param fmt
-function export.sprintf(fmt, ...)
+--- print
+-- @param[type=string,opt] ... arguments
+function export.print()
+    error("not implemented")
+end
+
+--- TODO
+--  @param[type=string]     fmt format string
+--  @param[type=string,opt] ... arguments
+--  @return[type=string]
+function export.printf(fmt, ...)
     error("not implemented")
 end
 
@@ -56,10 +63,10 @@ end
 --
 --  Any other pattern is considered as regex pattern in the domain of lua.
 --
---  @tparam         string s  input string
---  @tparam         table  a  split into array
---  @tparam[opt=FS] string fs field separator
---  @treturn        number    number of fields
+--  @param[type=string]        s  input string
+--  @param[type=table]         a  split into array
+--  @param[type=string,opt=FS] fs field separator
+--  @return[type=number]          number of fields
 function export.split(s, a, fs)
     assert(type(a) == "table", "split: second argument is not an array")
     s = s ~= nil and tostring(s) or ""
@@ -95,6 +102,15 @@ function export.split(s, a, fs)
         rawset(a, i, string.sub(s, j))
         return #a
     end
+end
+
+--- Format the expressions according to the @{printf} format given by fmt and
+--  return the resulting string.
+--  @param[type=string]     fmt format string
+--  @param[type=string,opt] ... arguments
+--  @return[type=string]
+function export.sprintf(fmt, ...)
+    error("not implemented")
 end
 
 return export
