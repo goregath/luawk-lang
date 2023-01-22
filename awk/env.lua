@@ -1,12 +1,22 @@
 --- AWK environment.
+-- @classmod env
 -- @alias _env
--- @module env
 
---- Exported functions
-local export = {}
+local function makero(...)
+    local ro = {}
+    for _, v in ipairs {...} do
+        ro[v] = 1
+    end
+    return ro
+end
 
---- AWK environment
+--- default environment
 local _env = {}
+--- environment metatable
+local _envmt = {}
+--- set of readonly names
+local _envro = makero("ARGV", "ENVIRON")
+
 
 --- The number of elements in the @{ARGV} array.
 _env.ARGC = 0
@@ -40,9 +50,9 @@ _env.CONVFMT = "%.6g"
 --  environment at the time awk began executing; it is implementation-defined
 --  whether any modification of @{ENVIRON} affects this environment.
 _env.ENVIRON = setmetatable({}, {
-	__index = function(_, k) return os.getenv(k) end,
-	-- TODO fake setenv
-	__newindex = error
+    __index = function(_, k) return os.getenv(k) end,
+    -- TODO fake setenv
+    __newindex = error
 })
 
 --- A pathname of the current input file. Inside a _BEGIN_ action the value is
@@ -99,9 +109,35 @@ _env.RS = '\n'
 --  function.
 _env.RSTART = 0
 
---- Create a new environment
-function export.new()
-	return setmetatable({}, {})
+_envmt.__index = _env
+_envmt.__newindex = function(t,k,v)
+    if _envro[k] then
+        error("attempt to modify a read-only variable")
+    end
+    if type(k) == "number" then
+        if k == 0 then
+            -- record
+        else
+            -- field
+        end
+        t[k] = v
+    end
 end
 
-return export
+--- Create a new environment
+local function new(env)
+    local envobj = setmetatable({}, _envmt)
+    local obj = setmetatable(env or {}, {
+        __index = envobj,
+        __newindex = function(t,k,v)
+            if envobj[k] then envobj[k] = v
+            else t[k] = v end
+        end
+    })
+    return obj
+end
+
+--- @export
+return {
+    new = new
+}
