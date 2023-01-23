@@ -84,7 +84,7 @@ function export.split(s, a, fs)
         -- special null string mode
         -- empty field separator, split to characters
         local i = 1
-        for c in string.gmatch(s, utf8.charpattern) do
+        for c in string.gmatch(s, "[%z\1-\x7F\xC2-\xFD][\x80-\xBF]*") do
             rawset(a, i, c)
             i = i + 1
         end

@@ -2,6 +2,13 @@
 -- @classmod env
 -- @alias _env
 
+-- local awktypes = require "awk.types"
+local awkstring = require "awk.string"
+
+local function atoi(e) return
+    tonumber(e) or 0
+end
+
 local function makero(...)
     local ro = {}
     for _, v in ipairs {...} do
@@ -10,12 +17,31 @@ local function makero(...)
     return ro
 end
 
+--- @table defaults
+-- @field ARGC
+--  The number of elements in the @{ARGV} array.
+-- @field FILENAME
+--  A pathname of the current input file. Inside a _BEGIN_ action the value is
+--  undefined. Inside an _END_ action the value shall be the name of the last
+--  input file processed.
+-- @field FNR
+--  The ordinal number of the current record in the current file. Inside a _BEGIN_
+--  action the value shall be zero. Inside an _END_ action the value shall be the
+--  number of the last record processed in the last file processed.
+
+
 --- default environment
 local _env = {}
 --- environment metatable
 local _envmt = {}
 --- set of readonly names
 local _envro = makero("ARGV", "ENVIRON")
+local _setopt = {
+    NF = function(t,k,v)
+        -- resize $(n) to NF
+
+    end
+}
 
 
 --- The number of elements in the @{ARGV} array.
@@ -109,32 +135,53 @@ _env.RS = '\n'
 --  function.
 _env.RSTART = 0
 
-_envmt.__index = _env
-_envmt.__newindex = function(t,k,v)
+-- function _envmt.__pairs(t)
+
+-- end
+
+function _envmt.__len(t)
+    -- print(t.NF)
+    return tonumber(t.NF or 0) or 0
+end
+
+function _envmt.__index(t,k)
+    local idx = tonumber(k) or 0
+    if idx then
+        k = math.modf(idx)
+    end
+    return rawget(t,k) or rawget(_env,k)
+end
+
+function _envmt.__newindex(t,k,v)
+    if v == nil then v = "" end
     if _envro[k] then
         error("attempt to modify a read-only variable")
     end
-    if type(k) == "number" then
-        if k == 0 then
-            -- record
-        else
-            -- field
+    local idx = tonumber(k)
+    if idx then
+        idx = math.modf(idx)
+        if idx > 0 then
+            -- set field $(k)
+            rawset(t,idx,v)
+            -- recompute $0
+            rawset(t,0,nil)
+        elseif idx == 0 then
+            -- set record $0
+            rawset(t,0,v)
+            -- compute fields $1..$NF
+            local nf = awkstring.split(v,t)
+            rawset(t,"NF",nf)
         end
+    else
         t[k] = v
     end
 end
 
 --- Create a new environment
-local function new(env)
-    local envobj = setmetatable({}, _envmt)
-    local obj = setmetatable(env or {}, {
-        __index = envobj,
-        __newindex = function(t,k,v)
-            if envobj[k] then envobj[k] = v
-            else t[k] = v end
-        end
-    })
-    return obj
+local function new(global)
+    local wrap = setmetatable(global or {}, { __index = global })
+    local envobj = setmetatable(wrap, _envmt)
+    return envobj
 end
 
 --- @export
