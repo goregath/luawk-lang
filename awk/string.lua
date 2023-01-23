@@ -27,6 +27,7 @@ end
 --  @param[type=string]  p pattern
 --  @return[type=number]   position of first match, or zero
 function export.match(s, p)
+    -- TODO set RSTART and RLENGTH
     error("not implemented")
 end
 
@@ -84,6 +85,8 @@ function export.split(s, a, fs)
         -- special null string mode
         -- empty field separator, split to characters
         local i = 1
+        -- FIXME %z is deprecated (matches literal 'z' instead of \0 ?)
+        --       utf-8 pattern: [\0-\x7F\xC2-\xFD][\x80-\xBF]*
         for c in string.gmatch(s, "[%z\1-\x7F\xC2-\xFD][\x80-\xBF]*") do
             rawset(a, i, c)
             i = i + 1

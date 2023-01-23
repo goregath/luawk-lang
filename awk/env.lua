@@ -2,12 +2,7 @@
 -- @classmod env
 -- @alias _env
 
--- local awktypes = require "awk.types"
 local awkstring = require "awk.string"
-
-local function atoi(e) return
-    tonumber(e) or 0
-end
 
 local function makero(...)
     local ro = {}
@@ -145,7 +140,7 @@ function _envmt.__len(t)
 end
 
 function _envmt.__index(t,k)
-    local idx = tonumber(k) or 0
+    local idx = tonumber(k)
     if idx then
         k = math.modf(idx)
     end
