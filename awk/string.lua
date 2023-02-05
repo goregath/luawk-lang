@@ -1,5 +1,5 @@
 --- AWK string functions.
--- @alias export
+-- @alias M
 -- @module string
 
 -- luacheck: globals FS
@@ -9,11 +9,22 @@
 --      printf
 --      sprintf
 
-local export = {}
+local lua_version = _VERSION:sub(-3)
+
+local utf8_charpattern
+if lua_version == "5.1" then
+    utf8_charpattern = "[%z\1-\127\194-\244][\128-\191]*"
+elseif lua_version == "5.2" then
+    utf8_charpattern = "[\0-\127\194-\244][\128-\191]*"
+else
+    utf8_charpattern = utf8.charpattern
+end
+
+local M = {}
 
 local function trim(s)
-    local _, i = string.find(s, '^[\x20\t\n]*')
-    local j = string.find(s, '[\x20\t\n]*$')
+    local _, i = string.find(s, '^[\32\t\n]*')
+    local j = string.find(s, '[\32\t\n]*$')
     return string.sub(s, i + 1, j - 1)
 end
 
@@ -26,22 +37,8 @@ end
 --  @param[type=string]  s input string
 --  @param[type=string]  p pattern
 --  @return[type=number]   position of first match, or zero
-function export.match(s, p)
+function M.match(s, p)
     -- TODO set RSTART and RLENGTH
-    error("not implemented")
-end
-
---- print
--- @param[type=string,opt] ... arguments
-function export.print()
-    error("not implemented")
-end
-
---- TODO
---  @param[type=string]     fmt format string
---  @param[type=string,opt] ... arguments
---  @return[type=string]
-function export.printf(fmt, ...)
     error("not implemented")
 end
 
@@ -58,7 +55,7 @@ end
 --  enumerated into `a`.
 --
 --  The _literal space_ pattern (`" "`) matches any number of characters
---  of _space_(space, tab and newline), leading and trailing spaces are
+--  of _space_ (space, tab and newline), leading and trailing spaces are
 --  trimmed from input. Any other single character (e.g. `","`) is treated as
 --  a _literal_ pattern.
 --
@@ -68,14 +65,14 @@ end
 --  @param[type=table]         a  split into array
 --  @param[type=string,opt=FS] fs field separator
 --  @return[type=number]          number of fields
-function export.split(s, a, fs)
+function M.split(s, a, fs)
     assert(type(a) == "table", "split: second argument is not an array")
     s = s ~= nil and tostring(s) or ""
-    fs = fs ~= nil and tostring(fs) or (FS or '\x20')
+    fs = fs ~= nil and tostring(fs) or (FS or '\32')
     -- special mode
-    if fs == '\x20' then
+    if fs == '\32' then
         s = trim(s)
-        fs = '[\x20\t\n]+'
+        fs = '[\32\t\n]+'
     end
     -- clear array
     for i in ipairs(a) do
@@ -85,9 +82,7 @@ function export.split(s, a, fs)
         -- special null string mode
         -- empty field separator, split to characters
         local i = 1
-        -- FIXME %z is deprecated (matches literal 'z' instead of \0 ?)
-        --       utf-8 pattern: [\0-\x7F\xC2-\xFD][\x80-\xBF]*
-        for c in string.gmatch(s, "[%z\1-\x7F\xC2-\xFD][\x80-\xBF]*") do
+        for c in string.gmatch(s, utf8_charpattern) do
             rawset(a, i, c)
             i = i + 1
         end
@@ -112,8 +107,8 @@ end
 --  @param[type=string]     fmt format string
 --  @param[type=string,opt] ... arguments
 --  @return[type=string]
-function export.sprintf(fmt, ...)
+function M.sprintf(fmt, ...)
     error("not implemented")
 end
 
-return export
+return M
