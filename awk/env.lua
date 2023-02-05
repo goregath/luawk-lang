@@ -1,6 +1,6 @@
 --- AWK environment.
 -- @classmod env
--- @alias _env
+-- @alias env
 
 local awkstring = require "awk.string"
 
@@ -24,23 +24,17 @@ end
 --  action the value shall be zero. Inside an _END_ action the value shall be the
 --  number of the last record processed in the last file processed.
 
-
+local recordvar = "F"
 --- default environment
-local _env = {}
+local env = {}
+local virtenv = {}
 --- environment metatable
-local _envmt = {}
+local env_mt = {}
 --- set of readonly names
-local _envro = makero("ARGV", "ENVIRON")
-local _setopt = {
-    NF = function(t,k,v)
-        -- resize $(n) to NF
-
-    end
-}
-
+local envro = makero( "ENVIRON", recordvar )
 
 --- The number of elements in the @{ARGV} array.
-_env.ARGC = 0
+env.ARGC = 0
 
 --- An array of command line arguments, excluding options and the program
 --  argument, numbered from zero to @{ARGC}-1. The arguments in @{ARGV} can be
@@ -51,11 +45,11 @@ _env.ARGC = 0
 --  file. The name `'-'` indicates the standard input. If an argument matches the
 --  format of an assignment operand, this argument shall be treated as an
 --  assignment rather than a file argument.
-_env.ARGV = {}
+env.ARGV = {}
 
 --- The printf format for converting numbers to strings (except for output
 --  statements, where @{OFMT} is used); `"%.6g"` by default.
-_env.CONVFMT = "%.6g"
+env.CONVFMT = "%.6g"
 
 --- An array representing the value of the environment, as described in the exec
 --  functions defined in the System Interfaces volume of POSIX.1-2017. The
@@ -70,7 +64,7 @@ _env.CONVFMT = "%.6g"
 --  statement, or the getline function), the environment used shall be the
 --  environment at the time awk began executing; it is implementation-defined
 --  whether any modification of @{ENVIRON} affects this environment.
-_env.ENVIRON = setmetatable({}, {
+env.ENVIRON = setmetatable({}, {
     __index = function(_, k) return os.getenv(k) end,
     -- TODO fake setenv
     __newindex = error
@@ -79,42 +73,42 @@ _env.ENVIRON = setmetatable({}, {
 --- A pathname of the current input file. Inside a _BEGIN_ action the value is
 --  undefined. Inside an _END_ action the value shall be the name of the last
 --  input file processed.
-_env.FILENAME = 0
+env.FILENAME = 0
 
 --- The ordinal number of the current record in the current file. Inside a _BEGIN_
 --  action the value shall be zero. Inside an _END_ action the value shall be the
 --  number of the last record processed in the last file processed.
-_env.FNR = 0
+env.FNR = 0
 
 --- Input field separator regular expression; a _space_ by default.
-_env.FS = '\x20'
+env.FS = '\32'
 
 --- The number of fields in the current record. Inside a _BEGIN_ action, the use
 --  of @{NF} is undefined unless a getline function without a var argument is
 --  executed previously. Inside an _END_ action, @{NF} shall retain the value it had
 --  for the last record read, unless a subsequent, redirected, getline function
 --  without a var argument is performed prior to entering the _END_ action.
-_env.NF = 0
+env.NF = 0
 
 --- The ordinal number of the current record from the start of input. Inside a
 --  _BEGIN_ action the value shall be zero. Inside an _END_ action the value shall
 --  be the number of the last record processed.
-_env.NR = 0
+env.NR = 0
 
 --- The printf format for converting numbers to strings in output statements
 --  (see Output Statements); `"%.6g"` by default. The result of the conversion is
 --  unspecified if the value of @{OFMT} is not a floating-point format
 --  specification.
-_env.OFMT = "%.6g"
+env.OFMT = "%.6g"
 
 --- The print statement output field separator; _space_ by default.
-_env.OFS = '\x20'
+env.OFS = '\32'
 
 --- The print statement output record separator; a _newline_ by default.
-_env.ORS = '\n'
+env.ORS = '\n'
 
 --- The length of the string matched by the match function.
-_env.RLENGTH = 0
+env.RLENGTH = 0
 
 --- The first character of the string value of @{RS} shall be the input record
 --  separator; a _newline_ by default. If @{RS} contains more than one character,
@@ -123,59 +117,107 @@ _env.RLENGTH = 0
 --  or trailing blank lines shall not result in empty records at the beginning
 --  or end of the input, and a _newline_ shall always be a field separator, no
 --  matter what the value of @{FS} is.
-_env.RS = '\n'
+env.RS = '\n'
 
 --- The starting position of the string matched by the match function, numbering
 --  from 1. This shall always be equivalent to the return value of the match
 --  function.
-_env.RSTART = 0
+env.RSTART = 0
 
--- function _envmt.__pairs(t)
+-- local f_mt = {}
+-- env.F = setmetatable({}, f_mt)
 
+-- function f_mt.__len(t)
+--     -- print(t.NF)
+--     return tonumber(t.NF or 0) or 0
 -- end
 
-function _envmt.__len(t)
-    -- print(t.NF)
-    return tonumber(t.NF or 0) or 0
-end
+-- function env_mt.__index(t,k)
+--     -- if v == nil then v = "" end
+--     if envro[k] then
+--         error("attempt to modify a read-only variable")
+--     end
+--     if k == "NF" then
+--         return
+--     return env[k]
+-- end
 
-function _envmt.__index(t,k)
-    local idx = tonumber(k)
-    if idx then
-        k = math.modf(idx)
-    end
-    return rawget(t,k) or rawget(_env,k)
-end
+-- function env_mt.__newindex(t,k,v)
+--     if v == nil then v = "" end
+--     if not envro[k] then
+--         t[k] = v
+--     end
+-- end
 
-function _envmt.__newindex(t,k,v)
-    if v == nil then v = "" end
-    if _envro[k] then
-        error("attempt to modify a read-only variable")
-    end
-    local idx = tonumber(k)
-    if idx then
-        idx = math.modf(idx)
-        if idx > 0 then
-            -- set field $(k)
-            rawset(t,idx,v)
-            -- recompute $0
-            rawset(t,0,nil)
-        elseif idx == 0 then
-            -- set record $0
-            rawset(t,0,v)
-            -- compute fields $1..$NF
-            local nf = awkstring.split(v,t)
-            rawset(t,"NF",nf)
-        end
-    else
-        t[k] = v
-    end
-end
+-- TODO NF: error("NF set to negative value")
+-- TODO recompute $1..$NF before accessing NF
 
 --- Create a new environment
-local function new(global)
-    local wrap = setmetatable(global or {}, { __index = global })
-    local envobj = setmetatable(wrap, _envmt)
+local function new(G)
+    local global = G and setmetatable({}, { __index = G }) or {}
+    local record = { nf = 0 }
+    local recobj = {}
+    local envobj = setmetatable(global, {
+        __index = function(_,k)
+            if k == "NF" then
+                return record.nf
+            end
+            return env[k]
+        end,
+        __newindex = function(t,k,v)
+            if envro[k] then
+                error("attempt to modify a read-only variable")
+            end
+            if k == "NF" then
+                record.nf = math.modf(tonumber(v) or 0)
+                if record.nf < 0 then
+                    error("NF set to negative value")
+                end
+                -- clear fields after NF
+                for i=record.nf+1,#record do
+                    record[i] = nil
+                end
+                -- immediately recompute $0
+                record[0] = nil
+                local _ = recobj[0]
+            elseif not envro[k] then
+                rawset(t, k, v)
+            end
+        end
+    })
+    setmetatable(recobj, {
+        __len = function()
+            return record.nf
+        end,
+        __index = function(_,k)
+            local idx = math.modf(tonumber(k) or 0)
+            local ofs = envobj.OFS ~= nil and tostring(envobj.OFS) or env.OFS
+            if idx < 0 then error("access to negative field") end
+            if idx > record.nf then return nil end
+            if idx == 0 and record[0] == nil then
+                -- recompute $0
+                record[0] = table.concat(recobj, ofs, 1, record.nf)
+            end
+            return record[idx] or ""
+        end,
+        __newindex = function(_,k,v)
+            local idx = math.modf(tonumber(k) or 0)
+            if idx < 0 then error("access to negative field") end
+            if idx > 0 then
+                -- set field $(idx)
+                record[idx] = v ~= nil and tostring(v) or ""
+                -- recompute $0
+                record[0] = nil
+                if idx > record.nf then record.nf = idx end
+            elseif idx == 0 then
+                -- set record $0
+                record[0] = v and tostring(v) or ""
+                -- compute fields $1..$NF
+                record.nf = awkstring.split(v, record, envobj.FS ~= nil and tostring(envobj.FS) or env.FS)
+            end
+        end
+    })
+    rawset(envobj, recordvar, recobj)
     return envobj
 end
 
