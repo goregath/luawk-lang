@@ -56,13 +56,14 @@ end
 -- @author Patrick Donnelly (https://github.com/batrick)
 local lawk = P {
   -- TODO pattern: support re-pattern /.../, `exp` ~ /.../ and `exp` !~ /.../
-  -- TODO support autoinit of variables
-  -- TODO support expr expr (string concatenation)
+  -- TODO support ! expr
   -- TODO support expr in array
   -- TODO support (index) in array
   -- TODO support expr1 ? expr2 : expr3
+  -- TODO support expr expr (string concatenation)
   -- TODO support for-loop
   -- TODO support lvalue++, ++lvalue
+  -- TODO support autoinit of variables
   -- TODO support field access $`Number` and $(`exp`)
   -- TODO support builtin functions w/o parenthesis
   -- TODO unary_expr: unary_expr '?' expr ':' expr
@@ -84,92 +85,120 @@ local lawk = P {
 
   -- AWK grammar
 
-  shebang^-1 *
-    ((V'⌴' * (V'awkenv' + V'awkrule') * (V'⌴' * P';')^-1)^1) * -1;
+  shebang^-1 * ((V'⌴' * (V'awkenv' + V'awkrule') * (V'⌴' * P';')^-1)^1) * -1;
 
   -- AWK language extensions
 
   awkrule =
-    (Cg(V'awkpatternlist') * V'⌴' * Cg(V'awkaction')) / add_rule +
-    (Cg(V'awkpatternlist') * Cc(defaultaction)) / add_rule +
-    (Cc(true) * Cg(V'awkaction')) / add_rule +
-    (Cg(P'BEGIN' + P'END') * V'⌴' * Cg(V'awkaction')) / add_hook;
-
+      (Cg(V'awkpatternlist') * V'⌴' * Cg(V'awkaction')) / add_rule
+    + (Cg(V'awkpatternlist') * Cc(defaultaction)) / add_rule
+    + (Cc(true) * Cg(V'awkaction')) / add_rule
+    + (Cg(P'BEGIN' + P'END') * V'⌴' * Cg(V'awkaction')) / add_hook
+    ;
   awkpatternlist =
-    -P'{' * Cs(V'awkpattern' * (V'⌴' * P',' * V'⌴' * V'awkpattern')^-1);
-
+      -P'{' * Cs(V'awkpattern' * (V'⌴' * P',' * V'⌴' * V'awkpattern')^-1)
+    ;
   awkpattern =
-    Cs(V'awkregex' / 'match(F[0],%1)') * #(V'⌴' * S',{') +
-    Cs((-(P'BEGIN' + P'END') * V'exp'));
-
+      -- Cs(V'awkregex' / 'match(F[0],%1)') * #(V'⌴' * S',{')
+      Cs((-(P'BEGIN' + P'END') * V'exp'))
+    ;
   awkaction =
-    P'{' * V'⌴' * Cs(V'chunk') * V'⌴' * P'}';
-
+      P'{' * V'⌴' * Cs(V'chunk') * V'⌴' * P'}'
+    ;
   awkenv =
-    (V'awkfunction') / add_global;
-
+      (V'awkfunction') / add_global
+    ;
   awkfunction =
     Cg(K'local'^-1 * V'⌴' * K'function' * V'⌴' * V'Name' * V'⌴' *
       P"(" * V'⌴' * (V'parlist' * V'⌴')^-1 * P")" * V'⌴') * Cg(
         (P'{' * V'⌴' * Cs(V'block') * V'⌴' * P'}') / '%1 end' +
         ((V'block') * V'⌴' * K'end')
     ) / '%1%2';
-
   awkrecord =
-    ((P'$' * V'⌴' * Cs(V'Number' + V'var')) +
-    (P'$' * V'⌴' * P'(' * V'⌴' * Cs(V'explist') * V'⌴' * P')')) / 'F[%1]';
-
+      (P'$' * V'⌴' * Cs(V'Number' + V'var')) / 'F[%1]'
+    + (P'$' * V'⌴' * Cs(V'exp')) / 'F[%1]'
+    ;
   awkregex =
-    P'/' * Cg((P"\\" * P(1) + (1 - P"/"))^0) * P'/' / quote;
-
+      P'/' * Cg((P"\\" * P(1) + (1 - P"/"))^0) * P'/' / quote
+    ;
   awkmatchexp =
-    Cf(Cs(V'value') * (V'⌴' * Ct(Cg(P'!~' + P'~') * V'⌴' * Cg(V'value')))^1, function(a,c)
-      return string.format("%smatch(%s,%s)", c[1]=='!~' and 'not ' or '', a, c[2])
-    end);
+      Cf(Cs(V'value') * (V'⌴' * Ct(Cg(P'!~' + P'~') * V'⌴' * Cg(V'awkregex' + V'value')))^1, function(a,c)
+        return string.format("%smatch(%s,%s)", c[1]=='!~' and 'not ' or '', a, c[2])
+      end)
+    ;
 
   -- keywords
 
-  keywords = K'and' + K'break' + K'do' + K'else' + K'elseif' +
-   K'end' + K'false' + K'for' + K'function' + K'if' +
-   K'in' + K'local' + K'nil' + K'not' + K'or' + K'repeat' +
-   K'return' + K'then' + K'true' + K'until' + K'while';
+  keywords =
+      K'and'
+    + K'break'
+    + K'do'
+    + K'else'
+    + K'elseif'
+    + K'end'
+    + K'false'
+    + K'for'
+    + K'function'
+    + K'if'
+    + K'in'
+    + K'local'
+    + K'nil'
+    + K'not'
+    + K'or'
+    + K'repeat'
+    + K'return'
+    + K'then'
+    + K'true'
+    + K'until'
+    + K'while'
+    ;
 
   -- longstrings
 
   longstring = C(P{ -- from Roberto Ierusalimschy's lpeg examples
-    V'open' * C((P(1) - V'closeeq')^0) *
-    V'close' / function (o, s) return s end;
-    open = "[" * Cg((P"=")^0, "init") * P"[" * (P"\n")^-1;
-    close = "]" * C((P"=")^0) * "]";
-    closeeq = Cmt(V'close' * Cb "init", function (s, i, a, b) return a == b end)
+    V'open' * C((P(1) - V'closeeq')^0) * V'close' / function (o, s) return s end;
+    open =
+        "[" * Cg((P"=")^0, "init") * P"[" * (P"\n")^-1
+      ;
+    close =
+        "]" * C((P"=")^0) * "]"
+      ;
+    closeeq =
+        Cmt(V'close' * Cb "init", function (s, i, a, b) return a == b end)
   });
 
   -- comments & whitespace
 
-  comment = P"--" * V'longstring' +
-  P"--" * (P(1) - P"\n")^0 * (P"\n" + -P(1));
-
-  ["⌴"] = (locale.space + V'comment')^0;
+  comment =
+      P"--" * V'longstring'
+    + P"--" * (P(1) - P"\n")^0 * (P"\n" + -P(1))
+    ;
+  ["⌴"] =
+      (locale.space + V'comment')^0
+    ;
 
   -- Types and Comments
 
-  Name = (locale.alpha + P'_') * (locale.alnum + P'_')^0 - V'keywords' + V'awkrecord';
-  Number = (P"-")^-1 * V'⌴' * P'0x' * locale.xdigit^1 *
-    -(locale.alnum + P'_') +
-    (P"-")^-1 * V'⌴' * locale.digit^1 *
-    (P"." * locale.digit^1)^-1 * (S "eE" * (P"-")^-1 *
-       locale.digit^1)^-1 * -(locale.alnum + P'_') +
-    (P"-")^-1 * V'⌴' * P"." * locale.digit^1 *
-    (S'eE' * (P'-')^-1 * locale.digit^1)^-1 *
-    -(locale.alnum + P'_');
-    String = P"\"" * (P"\\" * P(1) + (1 - P"\""))^0 * P"\"" +
-    P"'" * (P"\\" * P(1) + (1 - P"'"))^0 * P"'" +
-    V'longstring';
+  Name =
+      (locale.alpha + P'_') * (locale.alnum + P'_')^0 - V'keywords'
+    + V'awkrecord'
+    ;
+  Number =
+      (P"-")^-1 * V'⌴' * P'0x' * locale.xdigit^1 * -(locale.alnum + P'_')
+    + (P"-")^-1 * V'⌴' * locale.digit^1 * (P"." * locale.digit^1)^-1 * (S "eE" * (P"-")^-1 * locale.digit^1)^-1 * -(locale.alnum + P'_')
+    + (P"-")^-1 * V'⌴' * P"." * locale.digit^1 * (S'eE' * (P'-')^-1 * locale.digit^1)^-1 * -(locale.alnum + P'_')
+    ;
+  String =
+      P"\"" * (P"\\" * P(1) + (1 - P"\""))^0 * P"\""
+    + P"'" * (P"\\" * P(1) + (1 - P"'"))^0 * P"'"
+    + V'longstring'
+    ;
 
   -- Lua Complete Syntax
 
-  chunk = (V'⌴' * V'stat' * (V'⌴' * P";")^-1)^0 *
-    (V'⌴' * V'laststat' * (V'⌴' * P";")^-1)^-1;
+  chunk =
+      (V'⌴' * V'stat' * (V'⌴' * P";")^-1)^0 * (V'⌴' * V'laststat' * (V'⌴' * P";")^-1)^-1
+    ;
 
   block = V'chunk';
 
@@ -177,8 +206,6 @@ local lawk = P {
       K'do' * V'⌴' * V'block' * V'⌴' * K'end'
     + K'while' * V'⌴' * V'exp' * V'⌴' * K'do' * V'⌴' * V'block' * V'⌴' * K'end'
     + K'repeat' * V'⌴' * V'block' * V'⌴' * K'until' * V'⌴' * V'exp'
-    -- K'if' * V'⌴' * V'exp' * V'⌴' * (V'stat' + V'laststat') * V'⌴' *
-    --    (K'else' * V'⌴' * (V'stat' + V'laststat') * V'⌴')^-1
     + K'if' * V'⌴' * V'exp' * V'⌴' * K'then' * V'⌴' * V'block' * V'⌴' *
       (K'elseif' * V'⌴' * V'exp' * V'⌴' * K'then' * V'⌴' * V'block' * V'⌴')^0 *
       (K'else' * V'⌴' * V'block' * V'⌴')^-1 * K'end'
@@ -250,7 +277,7 @@ local lawk = P {
     + V'Number'
     + V'String'
     + P"..."
-    + V'awkregex'
+    + Cs(V'awkregex') / 'match(F[0],%1)'
     + V'function'
     + V'tableconstructor'
     + V'functioncall'
@@ -260,7 +287,7 @@ local lawk = P {
   -- An expression operates on values to produce a new value or is a value
   exp =
       V'unop' * V'⌴' * V'exp'
-    + V'awkmatchexp'
+    + V'awkmatchexp' * (V'⌴' * V'binop' * V'⌴' * V'exp')^-1
     + V'value' * (V'⌴' * V'binop' * V'⌴' * V'exp')^-1
     ;
   -- Index and Call
@@ -342,6 +369,7 @@ local lawk = P {
   unop =
       P"-"
     + P"#"
+    + P'!' / 'not '
     + K'not'
     ;
 };
