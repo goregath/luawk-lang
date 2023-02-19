@@ -287,9 +287,9 @@ local lawk = P {
   -- An expression operates on values to produce a new value or is a value
   exp =
       V'unop' * V'⌴' * V'exp'
-    -- + Ct(Cs(V'value') * (V'⌴' * Cs(V'exp'))^1) * Cc('..') / table.concat
     + V'awkmatchexp' * (V'⌴' * V'binop' * V'⌴' * V'exp')^-1
     + V'value' * (V'⌴' * V'binop' * V'⌴' * V'exp')^-1
+    + Ct(Cs(V'value') * (V'⌴' * Cs(V'exp'))^1) * Cc('..') / table.concat
     ;
   -- Index and Call
   index =
