@@ -122,7 +122,7 @@ local lawk = P {
       P'/' * Cg((P"\\" * P(1) + (1 - P"/"))^0) * P'/' / quote
     ;
   awkmatchexp =
-      Cf(Cs(V'value') * (V'⌴' * Ct(Cg(P'!~' + P'~') * V'⌴' * Cg(V'awkregex' + V'value')))^1, function(a,c)
+      Cf(Cs(V'value') * (V'⌴' * Ct(Cg(P'!~' + P'~') * V'⌴' * Cs(V'awkregex' + V'value')))^1, function(a,c)
         return string.format("%smatch(%s,%s)", c[1]=='!~' and 'not ' or '', a, c[2])
       end)
     ;
@@ -287,6 +287,7 @@ local lawk = P {
   -- An expression operates on values to produce a new value or is a value
   exp =
       V'unop' * V'⌴' * V'exp'
+    -- + Ct(Cs(V'value') * (V'⌴' * Cs(V'exp'))^1) * Cc('..') / table.concat
     + V'awkmatchexp' * (V'⌴' * V'binop' * V'⌴' * V'exp')^-1
     + V'value' * (V'⌴' * V'binop' * V'⌴' * V'exp')^-1
     ;
