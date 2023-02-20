@@ -2,8 +2,6 @@
 -- @classmod env
 -- @alias env
 
-local awkstring = require "awk.string"
-
 local function makero(...)
     local ro = {}
     for _, v in ipairs {...} do
@@ -27,9 +25,6 @@ end
 local recordvar = "F"
 --- default environment
 local env = {}
-local virtenv = {}
---- environment metatable
-local env_mt = {}
 --- set of readonly names
 local envro = makero( "ENVIRON", recordvar )
 
@@ -124,45 +119,19 @@ env.RS = '\n'
 --  function.
 env.RSTART = 0
 
--- local f_mt = {}
--- env.F = setmetatable({}, f_mt)
-
--- function f_mt.__len(t)
---     -- print(t.NF)
---     return tonumber(t.NF or 0) or 0
--- end
-
--- function env_mt.__index(t,k)
---     -- if v == nil then v = "" end
---     if envro[k] then
---         error("attempt to modify a read-only variable")
---     end
---     if k == "NF" then
---         return
---     return env[k]
--- end
-
--- function env_mt.__newindex(t,k,v)
---     if v == nil then v = "" end
---     if not envro[k] then
---         t[k] = v
---     end
--- end
-
--- TODO NF: error("NF set to negative value")
--- TODO recompute $1..$NF before accessing NF
-
 --- Create a new environment
 local function new(G)
-    local global = G and setmetatable({}, { __index = G }) or {}
+    local awkstr = require "awk.string"
+    local global = G or {}
     local record = { nf = 0 }
     local recobj = {}
-    local envobj = setmetatable(global, {
+    local envobj = {}
+    setmetatable(envobj, {
         __index = function(_,k)
             if k == "NF" then
                 return record.nf
             end
-            return env[k]
+            return global[k] or env[k]
         end,
         __newindex = function(t,k,v)
             if envro[k] then
@@ -180,7 +149,7 @@ local function new(G)
                 -- immediately recompute $0
                 record[0] = nil
                 local _ = recobj[0]
-            elseif not envro[k] then
+            else
                 rawset(t, k, v)
             end
         end
@@ -196,8 +165,10 @@ local function new(G)
             if idx > record.nf then return nil end
             if idx == 0 and record[0] == nil then
                 -- recompute $0
+                -- use concat on `recobj` instead of `record`, simple but slow
                 record[0] = table.concat(recobj, ofs, 1, record.nf)
             end
+            -- ensure that fields 1..NF are not nil
             return record[idx] or ""
         end,
         __newindex = function(_,k,v)
@@ -208,17 +179,17 @@ local function new(G)
                 record[idx] = v ~= nil and tostring(v) or ""
                 -- recompute $0
                 record[0] = nil
+                -- update NF
                 if idx > record.nf then record.nf = idx end
             elseif idx == 0 then
                 -- set record $0
                 record[0] = v and tostring(v) or ""
                 -- compute fields $1..$NF
-                record.nf = awkstring.split(v, record, envobj.FS ~= nil and tostring(envobj.FS) or env.FS)
+                record.nf = awkstr.split(v, record, envobj.FS ~= nil and tostring(envobj.FS) or env.FS)
             end
         end
     })
-    rawset(envobj, recordvar, recobj)
-    return envobj
+    return envobj, recobj
 end
 
 --- @export
