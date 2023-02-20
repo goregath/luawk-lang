@@ -1,3 +1,5 @@
+#!/usr/bin/env lua
+
 local utils = require "pl.utils"
 
 local inspect = require "inspect";
@@ -37,7 +39,7 @@ local function add_global(k, v)
 end
 
 local function add_hook(...)
-  print((...), inspect({...}))
+  print("hook", inspect({...}))
   -- return ...
 end
 
@@ -90,17 +92,16 @@ local lawk = P {
   -- AWK language extensions
 
   awkrule =
-      (Cg(V'awkpatternlist') * V'⌴' * Cg(V'awkaction')) / add_rule
-    + (Cg(V'awkpatternlist') * Cc(defaultaction)) / add_rule
-    + (Cc(true) * Cg(V'awkaction')) / add_rule
+      (Ct(V'awkpatternlist') * V'⌴' * Cg(V'awkaction')) / add_rule
+    + (Ct(V'awkpatternlist') * Cc(defaultaction)) / add_rule
+    + (Ct(Cc(true)) * Cg(V'awkaction')) / add_rule
     + (Cg(P'BEGIN' + P'END') * V'⌴' * Cg(V'awkaction')) / add_hook
     ;
   awkpatternlist =
-      -P'{' * Cs(V'awkpattern' * (V'⌴' * P',' * V'⌴' * V'awkpattern')^-1)
+      -P'{' * Cg(Cs(V'awkpattern') * (V'⌴' * P',' * V'⌴' * Cs(V'awkpattern'))^-1)
     ;
   awkpattern =
-      -- Cs(V'awkregex' / 'match(F[0],%1)') * #(V'⌴' * S',{')
-      Cs((-(P'BEGIN' + P'END') * V'exp'))
+      -(P'BEGIN' + P'END') * V'exp'
     ;
   awkaction =
       P'{' * V'⌴' * Cs(V'chunk') * V'⌴' * P'}'
@@ -224,25 +225,15 @@ local lawk = P {
     + V'functioncall'
     + V'awktoken'
     + V'awknext'
-    + V'awkcontinue';
-
-    -- ["do"] = K'do' + P'{' / 'do';
-    -- ["then"] = K'then' + P'{' / 'then';
-    -- ["else"] = K'else' + (P'}' * V'⌴' * K'else' * V'⌴' * P'{') / 'else';
-    -- ["end"] = K'end' + P'}' / 'end';
-
-    -- TODO must be yieldable from user functions
-  awknext =
-      K'next' / 'goto next'
     ;
-  awkcontinue =
-      K'continue' / 'goto continue'
+  awknext =
+      (K'next' + K'nextfile') / 'coroutine.yield("%0")'
     ;
   awktoken =
       Cs(V'awkkeywords' * Cc('(') * (V'⌴' * V'explist')^-1 * Cc(')'))
     ;
   awkkeywords =
-      K'print' + K'getline'
+      K'print' + K'getline' + K'exit'
     ;
   laststat =
       K'return' * (V'⌴' * V'explist')^-1 + K'break'
@@ -289,7 +280,6 @@ local lawk = P {
       V'unop' * V'⌴' * V'exp'
     + V'awkmatchexp' * (V'⌴' * V'binop' * V'⌴' * V'exp')^-1
     + V'value' * (V'⌴' * V'binop' * V'⌴' * V'exp')^-1
-    + Ct(Cs(V'value') * (V'⌴' * Cs(V'exp'))^1) * Cc('..') / table.concat
     ;
   -- Index and Call
   index =
