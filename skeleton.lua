@@ -1,7 +1,7 @@
 -- @Author: Oliver Zimmer
 -- @Date:   2023-02-20 11:22:41
 -- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-02-20 15:36:11
+-- @Last Modified time: 2023-02-20 15:48:03
 
 function doexit(s)
 	coroutine.yield("exit", s or 0)
@@ -55,7 +55,6 @@ for _, file in ipairs(files) do
 	local body = coroutine.wrap(program)
 	while true do
 		stat, yield, data = pcall(body, handle)
-		-- io.stderr:write(string.format("%s: %s,%s,%s\n",file,stat,yield,data))
 		if (not stat) then
 			error(yield, 2)
 		end
@@ -66,7 +65,7 @@ for _, file in ipairs(files) do
 		elseif yield == "exit" then
 			break
 		else
-			warn(string.format("unknown yield value: %q", yield))
+			warn(string.format("unknown yield value: %s", yield))
 		end
 	end
 	pcall(io.close, handle)
