@@ -1,7 +1,7 @@
 -- @Author: goregath
 -- @Date:   2023-01-21 01:18:34
 -- @Last Modified by:   goregath
--- @Last Modified time: 2023-02-05 20:48:14
+-- @Last Modified time: 2023-02-20 23:52:11
 
 local function assert_equal(test, expected)
 	if test ~= expected then
@@ -43,6 +43,22 @@ do -- setting record updates NF
 	assert_equal(#R, 3)
 end
 
+do -- table.insert on record updates NF
+	local E, R = require("awk.env"):new()
+	R[0] = " a b   c "
+	table.insert(R, 2, "x")
+	assert_equal(E.NF, 4)
+	assert_equal(#R, 4)
+end
+
+do -- table.remove on record retains NF
+	local E, R = require("awk.env"):new()
+	R[0] = " a b   c "
+	table.remove(R, 1)
+	assert_equal(E.NF, 3)
+	assert_equal(#R, 3)
+end
+
 do -- setting record splits to fields by FS
 	local E, R = require("awk.env"):new()
 	R[0] = " a b   c "
@@ -72,6 +88,7 @@ do -- touch NF forces record to recompute
 	local E, R = require("awk.env"):new()
 	R[0] = " a b   c "
 	E.OFS = ","
+	assert_equal(R[0], " a b   c ")
 	E.NF = E.NF
 	assert_equal(R[0], "a,b,c")
 end
@@ -97,6 +114,21 @@ do -- replace last field
 	R[0] = " a b   c "
 	R[E.NF] = "x"
 	assert_equal(R[0], "a b x")
+end
+
+do -- table.insert appends field
+	local _, R = require("awk.env"):new()
+	R[0] = " a b   c "
+	table.insert(R, "x")
+	assert_equal(R[0], "a b c x")
+end
+
+do -- table.remove clears field
+	local E, R = require("awk.env"):new()
+	E.OFS = ","
+	R[0] = " a b   c "
+	table.remove(R, 2)
+	assert_equal(R[0], "a,c,")
 end
 
 do -- decrement NF
