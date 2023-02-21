@@ -3,9 +3,7 @@
 local M = {}
 
 local inspect = require "inspect";
-
 local lpeg = require "lpeg";
-
 local locale = lpeg.locale();
 
 local P, S, V = lpeg.P, lpeg.S, lpeg.V;
@@ -15,40 +13,19 @@ lpeg.C, lpeg.Cb, lpeg.Cc, lpeg.Cf, lpeg.Cg, lpeg.Cp, lpeg.Cs, lpeg.Ct, lpeg.Cmt;
 
 local shebang = P"#" * (P(1) - P"\n")^0 * P"\n";
 
-local function K (k) -- keyword
-return P(k) * -(locale.alnum + P'_');
+local function K(k) -- keyword
+	return P(k) * -(locale.alnum + P'_');
 end
-
-local awkglobal = {}
 
 local function quote(s)
-		return string.format("%q", s)
-end
-
-local function add_global(k, v)
-	print("global", inspect{k, v})
-	awkglobal[k] = v
-end
-
-local function add_hook(...)
-	print("hook", inspect({...}))
-	-- return ...
-end
-
-local function add_rule(...)
-	print("rule", inspect({...}))
-	-- return ...
-end
-
-local function run(...)
-	print("run", inspect({...}))
+	return string.format("%q", s)
 end
 
 --- Lua AWK grammar and parser.
 -- Based on Patrick Donnelly LPeg recipe:
 -- http://lua-users.org/wiki/LpegRecipes
 -- @author Patrick Donnelly (https://github.com/batrick)
-local grammar = P {
+local grammar = {
 	-- TODO pattern: support re-pattern /.../, `exp` ~ /.../ and `exp` !~ /.../
 	-- TODO support ! expr
 	-- TODO support expr in array
@@ -79,27 +56,37 @@ local grammar = P {
 
 	-- AWK grammar
 
-	shebang^-1 * ((V'⌴' * (V'awkenv' + V'awkrule') * (V'⌴' * P';')^-1)^1) * -1;
+	newobj = Cg(Cc({
+		BEGIN = {},
+		END = {},
+		BEGINFILE = {},
+		ENDFILE = {},
+	}), 'program');
+
+	shebang^-1 * V'newobj' * ((V'⌴' * (V'awkenv' + V'awkrule') * (V'⌴' * P';')^-1)^1) * -1;
 
 	-- AWK language extensions
 
+	awkenv =
+		  Cb('program') * Cc('BEGIN') / rawget * V'awkfunction' / table.insert
+		;
 	awkrule =
-		  (Ct(V'awkpatternlist') * V'⌴' * Cg(V'awkaction')) / add_rule
-		+ (Ct(V'awkpatternlist') * Cc('print()')) / add_rule
-		+ (Ct(Cc(true)) * Cg(V'awkaction')) / add_rule
-		+ (Cg(P'BEGIN' + P'END') * V'⌴' * Cg(V'awkaction')) / add_hook
+		  Cb('program') * Ct(V'awkpatternlist' * V'⌴' * V'awkaction') / table.insert
+		+ Cb('program') * Ct(V'awkpatternlist' * Cc('print()')) / table.insert
+		+ Cb('program') * Ct(Cc(true) * V'awkaction') / table.insert
+		+ (Cb('program') * C(V'awkspecialpattern')) / rawget * V'⌴' * V'awkaction' / table.insert
 		;
 	awkpatternlist =
 		  -P'{' * Cg(Cs(V'awkpattern') * (V'⌴' * P',' * V'⌴' * Cs(V'awkpattern'))^-1)
 		;
+	awkspecialpattern =
+		  P'BEGINFILE' + P'ENDFILE' + P'BEGIN' + P'END'
+		;
 	awkpattern =
-		  -(P'BEGIN' + P'END') * V'exp'
+		  -(V'awkspecialpattern') * V'exp'
 		;
 	awkaction =
 		  P'{' * V'⌴' * Cs(V'chunk') * V'⌴' * P'}'
-		;
-	awkenv =
-		  (V'awkfunction') / add_global
 		;
 	awkfunction =
 		Cg(K'local'^-1 * V'⌴' * K'function' * V'⌴' * V'Name' * V'⌴' *
@@ -357,16 +344,17 @@ local grammar = P {
 		;
 };
 
-function M.compile(source, env)
-	grammar:match(source)
+function M.parse(source)
+	local lang = Ct(P(grammar))
+	return lang:match(source)
 end
 
 if (...) ~= "awk.grammar" then
-	local ins = require('inspect')
+	local ins = require 'inspect'
 	for _,chunk in ipairs(arg) do
-		local program = grammar:match(chunk)
+		local program = M.parse(chunk)
 		print(chunk)
-		print(('-'):rep(#chunk))
+		print(('-'):rep(#chunk < 8 and 8 or #chunk))
 		print(ins(program))
 		print()
 	end
