@@ -3,7 +3,7 @@
 -- @Author: Oliver Zimmer
 -- @Date:   2023-02-20 11:22:41
 -- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-02-21 12:15:47
+-- @Last Modified time: 2023-02-21 12:25:25
 
 local awkenv = require "awk.env"
 local awkstr = require "awk.string"
@@ -45,7 +45,6 @@ end
 --    Shall return true for successful input,
 --    false for end-of-file and raise an error otherwise.
 local function awkgetline(var)
-	-- TODO add return values
 	local info = _env.ARGV[_env.FILENAME]
 	if info == nil then
 		local handle, msg = io.open(_env.FILENAME)
@@ -58,6 +57,7 @@ local function awkgetline(var)
 		}
 		_env.ARGV[_env.FILENAME] = info
 	end
+	-- TODO read record delimited by RS
 	local record = info.handle:read()
 	if record == nil then
 		_env.ARGV[_env.FILENAME] = nil
