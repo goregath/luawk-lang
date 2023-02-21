@@ -2,14 +2,15 @@
 
 -- @Author: Oliver Zimmer
 -- @Date:   2023-02-20 11:22:41
--- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-02-21 15:54:35
+-- @Last Modified by:   goregath
+-- @Last Modified time: 2023-02-21 18:09:57
 
 
 local getopt = require 'posix.unistd'.getopt
 local basename = require 'posix.libgen'.basename
 local awkenv = require 'awk.env'
 local awkstr = require 'awk.string'
+local awkmath = require 'awk.math'
 
 local program = {}
 local name = basename(arg[0])
@@ -124,7 +125,6 @@ end
 -- COMMAND LINE INTERFACE
 -----------------------------------------------------------
 
-
 do
 	local function usage(handle)
 		handle:write(table.concat {
@@ -227,6 +227,10 @@ _env.table = _G.table
 _env.ARGC = #_env.ARGV
 
 for n,f in pairs(awkstr) do
+	_env[n] = f
+end
+
+for n,f in pairs(awkmath) do
 	_env[n] = f
 end
 
