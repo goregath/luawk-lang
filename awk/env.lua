@@ -2,6 +2,8 @@
 -- @classmod env
 -- @alias env
 
+-- TODO proper ARGV/ARGC handling
+
 local function makero(...)
     local ro = {}
     for _, v in ipairs {...} do
