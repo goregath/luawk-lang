@@ -61,6 +61,7 @@ local grammar = {
 		END = {},
 		BEGINFILE = {},
 		ENDFILE = {},
+		actions = {}
 	}), 'program');
 
 	shebang^-1 * V'newobj' * ((V'⌴' * (V'awkenv' + V'awkrule') * (V'⌴' * P';')^-1)^1) * -1;
@@ -71,10 +72,10 @@ local grammar = {
 		  Cb('program') * Cc('BEGIN') / rawget * V'awkfunction' / table.insert
 		;
 	awkrule =
-		  Cb('program') * Ct(V'awkpatternlist' * V'⌴' * V'awkaction') / table.insert
-		+ Cb('program') * Ct(V'awkpatternlist' * Cc('print()')) / table.insert
-		+ Cb('program') * Ct(Cc(true) * V'awkaction') / table.insert
-		+ (Cb('program') * C(V'awkspecialpattern')) / rawget * V'⌴' * V'awkaction' / table.insert
+		  Cb('program') * Cc('actions') / rawget * Ct(V'awkpatternlist' * V'⌴' * V'awkaction') / table.insert
+		+ Cb('program') * Cc('actions') / rawget * Ct(V'awkpatternlist' * Cc('print()')) / table.insert
+		+ Cb('program') * Cc('actions') / rawget * Ct(Cc(true) * V'awkaction') / table.insert
+		+ Cb('program') * C(V'awkspecialpattern') / rawget * V'⌴' * V'awkaction' / table.insert
 		;
 	awkpatternlist =
 		  -P'{' * Cg(Cs(V'awkpattern') * (V'⌴' * P',' * V'⌴' * Cs(V'awkpattern'))^-1)
@@ -346,7 +347,12 @@ local grammar = {
 
 function M.parse(source)
 	local lang = Ct(P(grammar))
-	return lang:match(source)
+	local parsed = lang:match(source)
+	if parsed then
+		return parsed
+	else
+		return nil, "syntax error"
+	end
 end
 
 if (...) ~= "awk.grammar" then
