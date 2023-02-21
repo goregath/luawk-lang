@@ -3,11 +3,12 @@
 -- @Author: Oliver Zimmer
 -- @Date:   2023-02-20 11:22:41
 -- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-02-21 12:25:25
+-- @Last Modified time: 2023-02-21 13:26:36
 
 local awkenv = require "awk.env"
 local awkstr = require "awk.string"
 
+local fileinfo = {}
 local actions = {}
 local _env, _record = awkenv:new()
 
@@ -45,8 +46,9 @@ end
 --    Shall return true for successful input,
 --    false for end-of-file and raise an error otherwise.
 local function awkgetline(var)
-	local info = _env.ARGV[_env.FILENAME]
+	local info = fileinfo[_env.FILENAME]
 	if info == nil then
+		-- TODO check for file type
 		local handle, msg = io.open(_env.FILENAME)
 		if handle == nil then
 			error(msg, -1)
@@ -55,12 +57,12 @@ local function awkgetline(var)
 			handle = handle,
 			nr = 0
 		}
-		_env.ARGV[_env.FILENAME] = info
+		fileinfo[_env.FILENAME] = info
 	end
 	-- TODO read record delimited by RS
 	local record = info.handle:read()
 	if record == nil then
-		_env.ARGV[_env.FILENAME] = nil
+		fileinfo[_env.FILENAME] = nil
 		local s, msg = pcall(io.close,info.handle)
 		if not s then
 			error(msg, -1)
@@ -82,7 +84,7 @@ local function awkprint(...)
 		-- FIXME implementation far from optimal
 		local args = {...}
 		local stab = setmetatable({}, {
-			__index = function(_,k) return args[k] and tostring(args[k]) end,
+			__index = function(_,k) return tostring(args[k]) end,
 			__len = function() return #args end
 		})
 		io.stdout:write(table.concat(stab, _env.OFS), _env.ORS)
@@ -142,6 +144,7 @@ _env.require = _G.require
 _env.string = _G.string
 _env.system = awksystem
 _env.table = _G.table
+_env.ARGC = #_env.ARGV
 
 for n,f in pairs(awkstr) do
 	_env[n] = f
@@ -164,28 +167,29 @@ end
 -----------------------------------------------------------
 -- MAIN LOOP
 -----------------------------------------------------------
-
 local stat, yield, data
-for _, filename in ipairs(_env.ARGV) do
-	local body = coroutine.wrap(getlineloop)
-	_env.FILENAME = filename
-	while true do
-		stat, yield, data = pcall(body)
-		if (not stat) then
-			error(yield, -1)
+for i=1,_env.ARGC do
+	_env.FILENAME = _env.ARGV[i]
+	if _env.FILENAME and _env.FILENAME ~= "" then
+		local body = coroutine.wrap(getlineloop)
+		while true do
+			stat, yield, data = pcall(body)
+			if (not stat) then
+				error(yield, -1)
+			end
+			if yield == "next" then
+				body = coroutine.wrap(getlineloop)
+			elseif yield == "nextfile" then
+				break
+			elseif yield == "exit" then
+				break
+			else
+				warn(string.format("unknown yield value: %s", yield))
+			end
 		end
-		if yield == "next" then
-			body = coroutine.wrap(getlineloop)
-		elseif yield == "nextfile" then
+		if yield == "exit" then
 			break
-		elseif yield == "exit" then
-			break
-		else
-			warn(string.format("unknown yield value: %s", yield))
 		end
-	end
-	if yield == "exit" then
-		break
 	end
 end
 os.exit(data or 0)
