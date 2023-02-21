@@ -3,7 +3,7 @@
 -- @Author: Oliver Zimmer
 -- @Date:   2023-02-20 11:22:41
 -- @Last Modified by:   goregath
--- @Last Modified time: 2023-02-21 18:09:57
+-- @Last Modified time: 2023-02-21 20:54:27
 
 
 local getopt = require 'posix.unistd'.getopt
@@ -11,6 +11,7 @@ local basename = require 'posix.libgen'.basename
 local awkenv = require 'awk.env'
 local awkstr = require 'awk.string'
 local awkmath = require 'awk.math'
+local awkgrammar = require 'awk.grammar'
 
 local program = {}
 local name = basename(arg[0])

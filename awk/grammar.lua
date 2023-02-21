@@ -361,7 +361,7 @@ function M.compile(source, env)
 	grammar:match(source)
 end
 
-if arg[-1] then
+if (...) ~= "awk.grammar" then
 	local ins = require('inspect')
 	for _,chunk in ipairs(arg) do
 		local program = grammar:match(chunk)
