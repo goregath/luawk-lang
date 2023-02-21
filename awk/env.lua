@@ -2,6 +2,8 @@
 -- @classmod env
 -- @alias env
 
+-- TODO proper ARGV/ARGC handling
+
 local function makero(...)
     local ro = {}
     for _, v in ipairs {...} do
@@ -67,7 +69,7 @@ env.ENVIRON = setmetatable({}, {
 --- A pathname of the current input file. Inside a _BEGIN_ action the value is
 --  undefined. Inside an _END_ action the value shall be the name of the last
 --  input file processed.
-env.FILENAME = 0
+env.FILENAME = ""
 
 --- The ordinal number of the current record in the current file. Inside a _BEGIN_
 --  action the value shall be zero. Inside an _END_ action the value shall be the
@@ -186,7 +188,9 @@ local function new(G)
                 -- compute fields $1..$NF
                 record.nf = awkstr.split(v, record, envobj.FS ~= nil and tostring(envobj.FS) or env.FS)
             end
-        end
+        end,
+        __metatable = false,
+        __tostring = function() return recobj[0] end
     })
     return envobj, recobj
 end
