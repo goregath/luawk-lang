@@ -3,7 +3,7 @@
 -- @Author: Oliver Zimmer
 -- @Date:   2023-02-20 11:22:41
 -- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-02-21 15:41:14
+-- @Last Modified time: 2023-02-21 15:44:39
 
 
 local getopt = require 'posix.unistd'.getopt
@@ -15,6 +15,7 @@ local program = {}
 local name = basename(arg[0])
 local fileinfo = {}
 local _env, _record = awkenv:new()
+
 -----------------------------------------------------------
 -- UTILITIES
 -----------------------------------------------------------
@@ -22,14 +23,14 @@ local _env, _record = awkenv:new()
 --- Compatibility layer setfenv() for Lua 5.2+.
 --  Taken from Penlight Lua Libraries (lunarmodules/Penlight).
 local setfenv = _G.setfenv or function(f, t)
-	local name
+	local var
 	local up = 0
 	repeat
 		up = up + 1
-		name = debug.getupvalue(f, up)
-	until name == '_ENV' or name == nil
-	if name then
-		debug.upvaluejoin(f, up, function() return name end, 1) -- use unique upvalue
+		var = debug.getupvalue(f, up)
+	until var == '_ENV' or var == nil
+	if var then
+		debug.upvaluejoin(f, up, function() return var end, 1) -- use unique upvalue
 		debug.setupvalue(f, up, t)
 	end
 	if f ~= 0 then return f end
