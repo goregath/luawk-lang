@@ -39,7 +39,7 @@ end
 --  @return[type=number]   position of first match, or zero
 function M.match(s, p)
     -- TODO set RSTART and RLENGTH
-    error("not implemented")
+    error("match: not implemented", -1)
 end
 
 --- Split the string s into array elements a[1], a[2], ..., a[n], and return n.
@@ -108,7 +108,7 @@ end
 --  @param[type=string,opt] ... arguments
 --  @return[type=string]
 function M.sprintf(fmt, ...)
-    error("not implemented")
+    error("sprintf: not implemented", -1)
 end
 
 return M
