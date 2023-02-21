@@ -3,15 +3,18 @@
 -- @Author: Oliver Zimmer
 -- @Date:   2023-02-20 11:22:41
 -- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-02-21 13:26:36
+-- @Last Modified time: 2023-02-21 15:41:14
 
-local awkenv = require "awk.env"
-local awkstr = require "awk.string"
 
+local getopt = require 'posix.unistd'.getopt
+local basename = require 'posix.libgen'.basename
+local awkenv = require 'awk.env'
+local awkstr = require 'awk.string'
+
+local program = {}
+local name = basename(arg[0])
 local fileinfo = {}
-local actions = {}
 local _env, _record = awkenv:new()
-
 -----------------------------------------------------------
 -- UTILITIES
 -----------------------------------------------------------
@@ -109,8 +112,8 @@ end
 
 local function getlineloop()
 	while awkgetline() do
-		for _,action in ipairs(actions) do
-			action()
+		for _,prog in ipairs(program) do
+			prog()
 		end
 	end
 	return 'nextfile'
@@ -120,14 +123,91 @@ end
 -- COMMAND LINE INTERFACE
 -----------------------------------------------------------
 
+
 do
-	local tbl = actions
-	for _,v in ipairs(arg) do
-		if v == "--" then
-			tbl = _env.ARGV
-		else
-			table.insert(tbl, v)
+	local function usage(handle)
+		handle:write(table.concat {
+			"Usage: ", name, " [-F value] [-v var=value] [--] 'program' [file ...]\n",
+			"       ", name, " [-F value] [-v var=value] [-f file] [--] [file ...]\n",
+			"\n",
+		})
+	end
+	local function help(handle)
+		usage(handle)
+		handle:write(table.concat {
+			"	-f file        Program text is read from file instead of from the command line.\n",
+			"	-F value       Sets the field separator, FS, to value.\n",
+			"	-v var=value   Assigns value to program variable var.\n",
+			"	               Multiple -f options are allowed.\n",
+			"\n",
+		})
+	end
+	local function error(...)
+		io.stderr:write(string.format(...))
+		os.exit(1)
+	end
+	local function compile(src, srcname)
+		local loadstring = _G.loadstring or _G.load
+		if io.type(src) == "file" then
+			src = src:read("*a")
 		end
+		-- TODO use parser to compile chunks
+		local chunk, msg = loadstring(src, srcname)
+		if not chunk then
+			error('%s: %s: %s\n', name, srcname, msg)
+		end
+		setfenv(chunk, _env)
+		return chunk
+	end
+	local last_index = 1
+	for r, optarg, optind in getopt(arg, 'hf:F:v:') do
+		if r == '?' then
+			usage(io.stderr)
+			error('%s: invalid option: %s\n', name, arg[optind-1])
+		end
+		last_index = optind
+		if r == 'h' then
+			help(io.stdout)
+			os.exit(0)
+		elseif r == 'F' then
+			_env.FS = optarg
+		elseif r == 'v' then
+			local k,v = string.match(optarg, "^(%w+)=(.*)$")
+			if k and v then
+				_env[k] = v
+			else
+				error('%s: invalid argument: %s\n', name, optarg)
+			end
+		elseif r == 'f' then
+			local stat, handle, msg
+			handle, msg = io.open(optarg)
+			if handle == nil then
+				error('%s: %s\n', name, msg)
+			end
+			local chunk = compile(handle, optarg)
+			stat, msg = pcall(io.close, handle)
+			if not stat then
+				error('%s: %s\n', name, msg)
+			end
+			table.insert(program, chunk)
+		end
+	end
+	if arg[last_index] == '--' then
+		last_index = last_index + 1
+	end
+	if #program == 0 then
+		-- first argument is the program
+		local src = arg[last_index]
+		if not src then
+			usage(io.stderr)
+			error('%s: program expected\n', name)
+		end
+		local chunk = compile(src, name)
+		table.insert(program, chunk)
+		last_index = last_index + 1
+	end
+	for i = last_index, #arg do
+		table.insert(_env.ARGV, arg[i])
 	end
 end
 
@@ -155,13 +235,6 @@ if warn == nil then
 	warn = function(...) io.stderr:write("warning: ", ..., "\n") end
 else
 	warn("@on")
-end
-
--- compile actions
-for i=1,#actions do
-	local action = assert(load(actions[i]))
-	setfenv(action, _env)
-	actions[i] = action
 end
 
 -----------------------------------------------------------
