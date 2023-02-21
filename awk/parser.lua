@@ -357,10 +357,19 @@ local grammar = P {
 		;
 };
 
--- print(inspect(assert(grammar:match((...)))))
-
 function M.compile(source, env)
 	grammar:match(source)
+end
+
+if arg[-1] then
+	local ins = require('inspect')
+	for _,chunk in ipairs(arg) do
+		local program = grammar:match(chunk)
+		print(chunk)
+		print(('-'):rep(#chunk))
+		print(ins(program))
+		print()
+	end
 end
 
 return M
