@@ -186,7 +186,9 @@ local function new(G)
                 -- compute fields $1..$NF
                 record.nf = awkstr.split(v, record, envobj.FS ~= nil and tostring(envobj.FS) or env.FS)
             end
-        end
+        end,
+        __metatable = false,
+        __tostring = function() return recobj[0] end
     })
     return envobj, recobj
 end
