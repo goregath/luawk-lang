@@ -3,7 +3,7 @@
 -- @Author: Oliver Zimmer
 -- @Date:   2023-02-20 11:22:41
 -- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-02-21 11:55:31
+-- @Last Modified time: 2023-02-21 12:15:47
 
 local awkenv = require "awk.env"
 local awkstr = require "awk.string"
@@ -96,6 +96,11 @@ local function awkclose(...)
 	error("close: not implemented", -1)
 end
 
+local function awksystem(...)
+	-- TODO implement
+	error("system: not implemented", -1)
+end
+
 -----------------------------------------------------------
 -- AWK INTERNALS
 -----------------------------------------------------------
@@ -135,6 +140,7 @@ _env.math = _G.math
 _env.print = awkprint
 _env.require = _G.require
 _env.string = _G.string
+_env.system = awksystem
 _env.table = _G.table
 
 for n,f in pairs(awkstr) do
