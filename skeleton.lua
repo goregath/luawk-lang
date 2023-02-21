@@ -3,7 +3,7 @@
 -- @Author: Oliver Zimmer
 -- @Date:   2023-02-20 11:22:41
 -- @Last Modified by:   goregath
--- @Last Modified time: 2023-02-21 23:09:14
+-- @Last Modified time: 2023-02-22 00:30:07
 
 
 local getopt = require 'posix.unistd'.getopt
@@ -13,10 +13,18 @@ local awkstr = require 'awk.string'
 local awkmath = require 'awk.math'
 local awkgrammar = require 'awk.grammar'
 
-local program = {}
 local name = basename(arg[0])
 local fileinfo = {}
 local _env, _record = awkenv:new()
+local program = {}
+local program_mt = {
+	__call = function(tab,tag)
+		local list = tag and tab[tag] or tab.actions
+		for _,fn in ipairs(list) do
+			fn()
+		end
+	end
+}
 
 -----------------------------------------------------------
 -- UTILITIES
@@ -36,6 +44,11 @@ local setfenv = _G.setfenv or function(f, t)
 		debug.setupvalue(f, up, t)
 	end
 	if f ~= 0 then return f end
+end
+
+local function abort(...)
+	io.stderr:write(string.format(...))
+	os.exit(1)
 end
 
 -----------------------------------------------------------
@@ -113,11 +126,13 @@ end
 -- AWK INTERNALS
 -----------------------------------------------------------
 
+local function runsection(section)
+	program(section)
+end
+
 local function getlineloop()
 	while awkgetline() do
-		for _,prog in ipairs(program) do
-			prog()
-		end
+		runsection('actions')
 	end
 	return 'nextfile'
 end
@@ -127,6 +142,8 @@ end
 -----------------------------------------------------------
 
 do
+	local sources = {}
+	local loadstring = _G.loadstring or _G.load
 	local function usage(handle)
 		handle:write(table.concat {
 			"Usage: ", name, " [-F value] [-v var=value] [--] 'program' [file ...]\n",
@@ -143,19 +160,10 @@ do
 			"\n",
 		})
 	end
-	local function error(...)
-		io.stderr:write(string.format(...))
-		os.exit(1)
-	end
 	local function compile(src, srcname)
-		local loadstring = _G.loadstring or _G.load
-		if io.type(src) == "file" then
-			src = src:read("*a")
-		end
-		-- TODO use parser to compile chunks
 		local chunk, msg = loadstring(src, srcname)
 		if not chunk then
-			error('%s: %s: %s\n', name, srcname, msg)
+			abort('%s: %s: %s\n', name, srcname, msg)
 		end
 		setfenv(chunk, _env)
 		return chunk
@@ -164,7 +172,7 @@ do
 	for r, optarg, optind in getopt(arg, 'hf:F:v:') do
 		if r == '?' then
 			usage(io.stderr)
-			error('%s: invalid option: %s\n', name, arg[optind-1])
+			abort('%s: invalid option: %s\n', name, arg[optind-1])
 		end
 		last_index = optind
 		if r == 'h' then
@@ -179,39 +187,55 @@ do
 			if k and v then
 				_env[k] = v
 			else
-				error('%s: invalid argument: %s\n', name, optarg)
+				abort('%s: invalid argument: %s\n', name, optarg)
 			end
 		elseif r == 'f' then
 			local stat, handle, msg
 			handle, msg = io.open(optarg)
 			if handle == nil then
-				error('%s: %s\n', name, msg)
+				abort('%s: %s\n', name, msg)
 			end
-			local chunk = compile(handle, optarg)
+			local src = handle:read("*a")
+			table.insert(sources, src)
 			stat, msg = pcall(io.close, handle)
 			if not stat then
-				error('%s: %s\n', name, msg)
+				abort('%s: %s\n', name, msg)
 			end
-			table.insert(program, chunk)
 		end
 	end
 	if arg[last_index] == '--' then
 		last_index = last_index + 1
 	end
-	if #program == 0 then
+	if #sources == 0 then
 		-- first argument is the program
 		local src = arg[last_index]
 		if not src then
 			usage(io.stderr)
-			error('%s: program expected\n', name)
+			abort('%s: program expected\n', name)
 		end
-		local chunk = compile(src, name)
-		table.insert(program, chunk)
+		table.insert(sources, src)
 		last_index = last_index + 1
 	end
 	for i = last_index, #arg do
 		table.insert(_env.ARGV, arg[i])
 	end
+	local source = table.concat(sources, '\n')
+	local parsed, msg = awkgrammar.parse(source)
+	if not parsed then
+		abort('%s: %s\n', name, msg)
+	end
+	for _,list in pairs(parsed.program) do
+		for at,src in ipairs(list) do
+			if type(src) == 'table' then
+				-- TODO implement action compilation
+				abort('not implemented')
+			else
+				list[at] = compile(src)
+			end
+		end
+	end
+	print(require('inspect')(parsed))
+	program = setmetatable(parsed.program, program_mt)
 end
 
 -----------------------------------------------------------
@@ -248,6 +272,7 @@ end
 -- MAIN LOOP
 -----------------------------------------------------------
 local stat, yield, data
+coroutine.wrap(runsection)('BEGIN')
 for i=1,_env.ARGC do
 	_env.FILENAME = _env.ARGV[i]
 	-- If the value of a particular element of ARGV is empty (""), awk skips over it.
