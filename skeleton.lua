@@ -2,8 +2,8 @@
 
 -- @Author: Oliver Zimmer
 -- @Date:   2023-02-20 11:22:41
--- @Last Modified by:   goregath
--- @Last Modified time: 2023-02-21 01:12:09
+-- @Last Modified by:   Oliver.Zimmer@e3dc.com
+-- @Last Modified time: 2023-02-21 09:32:15
 
 local awkenv = require "awk.env"
 local awkstr = require "awk.string"
@@ -82,7 +82,13 @@ end
 
 local function awkprint(...)
 	if (...) then
-		io.stdout:write(table.concat({...}, _env.OFS), _env.ORS)
+		-- FIXME replace lazy implemenation
+		local args = {...}
+		local stab = setmetatable({}, {
+			__index = function(_,k) return args[k] and tostring(args[k]) end,
+			__len = function() return #args end
+		})
+		io.stdout:write(table.concat(stab, _env.OFS), _env.ORS)
 	else
 		io.stdout:write(_record[0], _env.ORS)
 	end
@@ -106,6 +112,7 @@ _env.F = _record
 _env.table = _G.table
 _env.string = _G.string
 _env.math = _G.math
+_env.require = _G.require
 _env.coroutine = _G.coroutine
 _env.print = awkprint
 for n,f in pairs(awkstr) do
