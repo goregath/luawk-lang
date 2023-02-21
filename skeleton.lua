@@ -3,7 +3,7 @@
 -- @Author: Oliver Zimmer
 -- @Date:   2023-02-20 11:22:41
 -- @Last Modified by:   goregath
--- @Last Modified time: 2023-02-21 20:54:27
+-- @Last Modified time: 2023-02-21 23:09:14
 
 
 local getopt = require 'posix.unistd'.getopt
@@ -171,8 +171,10 @@ do
 			help(io.stdout)
 			os.exit(0)
 		elseif r == 'F' then
+			-- TODO apply after any BEGIN rule(s) have been run
 			_env.FS = optarg
 		elseif r == 'v' then
+			-- TODO apply after any BEGIN rule(s) have been run
 			local k,v = string.match(optarg, "^(%w+)=(.*)$")
 			if k and v then
 				_env[k] = v
@@ -248,6 +250,7 @@ end
 local stat, yield, data
 for i=1,_env.ARGC do
 	_env.FILENAME = _env.ARGV[i]
+	-- If the value of a particular element of ARGV is empty (""), awk skips over it.
 	if _env.FILENAME and _env.FILENAME ~= "" then
 		local body = coroutine.wrap(getlineloop)
 		while true do
