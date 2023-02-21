@@ -22,11 +22,10 @@ end
 --  action the value shall be zero. Inside an _END_ action the value shall be the
 --  number of the last record processed in the last file processed.
 
-local recordvar = "F"
 --- default environment
 local env = {}
 --- set of readonly names
-local envro = makero( "ENVIRON", recordvar )
+local envro = makero("ENVIRON")
 
 --- The number of elements in the @{ARGV} array.
 env.ARGC = 0
