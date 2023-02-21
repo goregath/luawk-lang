@@ -4,10 +4,28 @@
 
 -- luacheck: globals FS
 
--- TODO print
---      match
---      printf
---      sprintf
+--[[
+The string functions in the following list shall be supported.
+Although the grammar (see Grammar ) permits built-in functions
+to appear with no arguments or parentheses, unless the argument
+or parentheses are indicated as optional in the following list
+(by displaying them within the "[]" brackets), such use is undefined.
+
+    gsub(ere, repl[, in])
+    index(s, t)
+    length[([s])]
+    match(s, ere)
+    split(s, a[, fs  ])
+    sprintf(fmt, expr, expr, ...)
+    sub(ere, repl[, in  ])
+    substr(s, m[, n  ])
+    tolower(s)
+    toupper(s)
+
+All of the preceding functions that take ERE as a parameter expect
+a pattern or a string valued expression that is a regular
+expression as defined in Regular Expressions.
+]]--
 
 local lua_version = _VERSION:sub(-3)
 
