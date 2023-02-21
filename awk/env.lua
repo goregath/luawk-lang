@@ -69,7 +69,7 @@ env.ENVIRON = setmetatable({}, {
 --- A pathname of the current input file. Inside a _BEGIN_ action the value is
 --  undefined. Inside an _END_ action the value shall be the name of the last
 --  input file processed.
-env.FILENAME = 0
+env.FILENAME = ""
 
 --- The ordinal number of the current record in the current file. Inside a _BEGIN_
 --  action the value shall be zero. Inside an _END_ action the value shall be the
