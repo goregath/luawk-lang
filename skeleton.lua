@@ -3,7 +3,7 @@
 -- @Author: Oliver Zimmer
 -- @Date:   2023-02-20 11:22:41
 -- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-02-21 15:44:39
+-- @Last Modified time: 2023-02-21 15:54:35
 
 
 local getopt = require 'posix.unistd'.getopt
@@ -139,7 +139,6 @@ do
 			"	-f file        Program text is read from file instead of from the command line.\n",
 			"	-F value       Sets the field separator, FS, to value.\n",
 			"	-v var=value   Assigns value to program variable var.\n",
-			"	               Multiple -f options are allowed.\n",
 			"\n",
 		})
 	end
