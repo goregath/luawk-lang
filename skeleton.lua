@@ -1,5 +1,6 @@
 #!/usr/bin/env lua
 
+
 local getopt = require 'posix.unistd'.getopt
 local basename = require 'posix.libgen'.basename
 local awkenv = require 'awk.env'
@@ -13,7 +14,7 @@ local _env, _record = awkenv:new()
 local program = {}
 local program_mt = {
 	__call = function(tab,tag)
-		local list = tag and tab[tag] or tab.actions
+		local list = tag and tab[tag] or tab.main
 		for _,fn in ipairs(list) do
 			fn()
 		end
@@ -59,10 +60,14 @@ end
 --    Shall return true for successful input,
 --    false for end-of-file and raise an error otherwise.
 local function awkgetline(var)
-	local info = fileinfo[_env.FILENAME]
+	local filename = _env.FILENAME
+	local info = fileinfo[filename]
+	if filename == "-" then
+		filename = "/dev/stdin"
+	end
 	if info == nil then
 		-- TODO check for file type
-		local handle, msg = io.open(_env.FILENAME)
+		local handle, msg = io.open(filename)
 		if handle == nil then
 			error(msg, -1)
 		end
@@ -75,8 +80,8 @@ local function awkgetline(var)
 	-- TODO read record delimited by RS
 	local record = info.handle:read()
 	if record == nil then
-		fileinfo[_env.FILENAME] = nil
-		local s, msg = pcall(io.close,info.handle)
+		fileinfo[filename] = nil
+		local s, msg = pcall(io.close, info.handle)
 		if not s then
 			error(msg, -1)
 		end
@@ -206,13 +211,18 @@ do
 	for _,list in pairs(parsed.program) do
 		for at,src in ipairs(list) do
 			if type(src) == 'table' then
-				-- TODO implement action compilation
 				if #src == 2 then
-					list[at] = compile(string.format(
-						'if not (%s) then return end %s',
-						table.unpack(src)
-					))
+					-- pattern, action
+					if type(src[1]) == "boolean" and src[1] then
+						list[at] = compile(src[2])
+					else
+						list[at] = compile(string.format(
+							'if (%s) then %s end',
+							table.unpack(src)
+						))
+					end
 				elseif #src == 3 then
+					-- pattern, pattern, action
 					abort('not implemented')
 				else
 					abort('%s: invalid pattern or action\n', name)
@@ -229,6 +239,8 @@ end
 -- SETUP
 -----------------------------------------------------------
 
+_env.ARGC = #_env.ARGV+1
+_env.ARGV[0] = arg[0]
 _env.close = awkclose
 _env.coroutine = _G.coroutine
 _env.F = _record
@@ -238,7 +250,6 @@ _env.require = _G.require
 _env.string = _G.string
 _env.system = awksystem
 _env.table = _G.table
-_env.ARGC = #_env.ARGV+1
 
 for n,f in pairs(awkstr) do
 	_env[n] = f
@@ -269,10 +280,10 @@ local function singlerun(section)
 end
 
 local function loop()
-	while true do
-		program('actions')
-		coroutine.yield("next")
+	while awkgetline() do
+		program('main')
 	end
+	coroutine.yield("nextfile")
 end
 
 local function specialaction(action)
@@ -299,17 +310,14 @@ end
 for i=1,_env.ARGC-1 do
 	_env.FILENAME = _env.ARGV[i]
 	-- If the value of a particular element of ARGV is empty (""), awk skips over it.
-	-- TODO handle FILENAME "-" (stdin)
 	if _env.FILENAME and _env.FILENAME ~= "" then
 		local runner = coroutine.create(loop)
-		while awkgetline() do
+		repeat
 			local stat, yield, data = coroutine.resume(runner)
 			if (not stat) then
 				abort("%s: error: %s\n", name, yield)
 			end
 			if yield == "next" then
-				-- coroutine.close(runner)
-				-- FIXME this could be expensive, maybe getlineloop as coroutine would be better
 				runner = coroutine.create(loop)
 				goto NEXT
 			elseif yield == "nextfile" then
@@ -321,7 +329,7 @@ for i=1,_env.ARGC-1 do
 				warn(string.format("unknown yield value: %s", yield))
 			end
 			::NEXT::
-		end
+		until coroutine.status(runner) == "dead"
 	end
 	::NEXTFILE::
 	-- TODO refactor
