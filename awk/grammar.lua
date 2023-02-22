@@ -61,7 +61,7 @@ local grammar = {
 		END = {},
 		BEGINFILE = {},
 		ENDFILE = {},
-		actions = {}
+		main = {}
 	}), 'program');
 
 	shebang^-1 * V'newobj' * ((V'⌴' * (V'awkenv' + V'awkrule') * (V'⌴' * P';')^-1)^1) * V'⌴' * -1;
@@ -72,9 +72,9 @@ local grammar = {
 		  Cb('program') * Cc('BEGIN') / rawget * V'awkfunction' / table.insert
 		;
 	awkrule =
-		  Cb('program') * Cc('actions') / rawget * Ct(V'awkpatternlist' * V'⌴' * V'awkaction') / table.insert
-		+ Cb('program') * Cc('actions') / rawget * Ct(V'awkpatternlist' * Cc('print()')) / table.insert
-		+ Cb('program') * Cc('actions') / rawget * Ct(Cc(true) * V'awkaction') / table.insert
+		  Cb('program') * Cc('main') / rawget * Ct(V'awkpatternlist' * V'⌴' * V'awkaction') / table.insert
+		+ Cb('program') * Cc('main') / rawget * Ct(V'awkpatternlist' * Cc('print()')) / table.insert
+		+ Cb('program') * Cc('main') / rawget * Ct(Cc(true) * V'awkaction') / table.insert
 		+ Cb('program') * C(V'awkspecialpattern') / rawget * V'⌴' * V'awkaction' / table.insert
 		;
 	awkpatternlist =
