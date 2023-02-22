@@ -64,7 +64,7 @@ local grammar = {
 		actions = {}
 	}), 'program');
 
-	shebang^-1 * V'newobj' * ((V'⌴' * (V'awkenv' + V'awkrule') * (V'⌴' * P';')^-1)^1) * -1;
+	shebang^-1 * V'newobj' * ((V'⌴' * (V'awkenv' + V'awkrule') * (V'⌴' * P';')^-1)^1) * V'⌴' * -1;
 
 	-- AWK language extensions
 
