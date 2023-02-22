@@ -308,6 +308,9 @@ for i=1,_env.ARGC-1 do
 				abort("%s: error: %s\n", name, yield)
 			end
 			if yield == "next" then
+				-- coroutine.close(runner)
+				-- FIXME this could be expensive, maybe getlineloop as coroutine would be better
+				runner = coroutine.create(loop)
 				goto NEXT
 			elseif yield == "nextfile" then
 				goto NEXTFILE
@@ -321,6 +324,9 @@ for i=1,_env.ARGC-1 do
 		end
 	end
 	::NEXTFILE::
+	-- TODO refactor
+	-- FNR==2 { nextfile } 1' /etc/passwd /etc/passwd -> should print two lines
+	fileinfo[_env.FILENAME] = nil
 end
 ::END::
 
