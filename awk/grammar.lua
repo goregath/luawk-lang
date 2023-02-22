@@ -203,17 +203,21 @@ local grammar = {
 		-- var [+-*/%^]= exp
 		+ (Cs(V'var') * V'⌴' * Cs(S'+-*/%^') * P"=" * V'⌴' * Cs(V'exp')) / '%1=%1%2(%3)'
 		+ V'functioncall'
+		+ V'awkexit'
 		+ V'awktoken'
 		+ V'awknext'
 		;
 	awknext =
 		  (K'next' + K'nextfile') / 'coroutine.yield("%0")'
 		;
+	awkexit =
+		  Cs((K'exit') / '"%0"' * (V'⌴' * Cc',' * V'exp')^-1) / 'coroutine.yield(%1)'
+		;
 	awktoken =
 		  Cs(V'awkkeywords' * Cc('(') * (V'⌴' * V'explist')^-1 * Cc(')'))
 		;
 	awkkeywords =
-		  K'print' + K'getline' + K'exit'
+		  K'print' + K'getline'
 		;
 	laststat =
 		  K'return' * (V'⌴' * V'explist')^-1 + K'break'
