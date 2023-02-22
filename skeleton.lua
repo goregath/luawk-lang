@@ -264,12 +264,19 @@ end
 
 local exitcode = 0
 
-local function runsection(section)
+local function singlerun(section)
 	program(section)
 end
 
+local function loop()
+	while true do
+		program('actions')
+		coroutine.yield("next")
+	end
+end
+
 local function specialaction(action)
-	local runner = coroutine.create(runsection)
+	local runner = coroutine.create(singlerun)
 	repeat
 		local stat, yield, data = coroutine.resume(runner, action)
 		if (not stat) then
@@ -294,9 +301,9 @@ for i=1,_env.ARGC-1 do
 	-- If the value of a particular element of ARGV is empty (""), awk skips over it.
 	-- TODO handle FILENAME "-" (stdin)
 	if _env.FILENAME and _env.FILENAME ~= "" then
-		local runner = coroutine.wrap(runsection)
+		local runner = coroutine.create(loop)
 		while awkgetline() do
-			local stat, yield, data = pcall(runner, 'actions')
+			local stat, yield, data = coroutine.resume(runner)
 			if (not stat) then
 				abort("%s: error: %s\n", name, yield)
 			end
