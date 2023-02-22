@@ -3,7 +3,7 @@
 -- @Author: Oliver Zimmer
 -- @Date:   2023-02-20 11:22:41
 -- @Last Modified by:   goregath
--- @Last Modified time: 2023-02-22 00:30:07
+-- @Last Modified time: 2023-02-22 00:52:50
 
 
 local getopt = require 'posix.unistd'.getopt
@@ -228,7 +228,16 @@ do
 		for at,src in ipairs(list) do
 			if type(src) == 'table' then
 				-- TODO implement action compilation
-				abort('not implemented')
+				if #src == 2 then
+					list[at] = compile(string.format(
+						'if not (%s) then return end %s',
+						table.unpack(src)
+					))
+				elseif #src == 3 then
+					abort('not implemented')
+				else
+					abort('%s: invalid pattern or action\n', name)
+				end
 			else
 				list[at] = compile(src)
 			end
@@ -251,7 +260,7 @@ _env.require = _G.require
 _env.string = _G.string
 _env.system = awksystem
 _env.table = _G.table
-_env.ARGC = #_env.ARGV
+_env.ARGC = #_env.ARGV+1
 
 for n,f in pairs(awkstr) do
 	_env[n] = f
@@ -273,10 +282,11 @@ end
 -----------------------------------------------------------
 local stat, yield, data
 coroutine.wrap(runsection)('BEGIN')
-for i=1,_env.ARGC do
+for i=1,_env.ARGC-1 do
 	_env.FILENAME = _env.ARGV[i]
 	-- If the value of a particular element of ARGV is empty (""), awk skips over it.
 	if _env.FILENAME and _env.FILENAME ~= "" then
+		coroutine.wrap(runsection)('BEGINFILE')
 		local body = coroutine.wrap(getlineloop)
 		while true do
 			stat, yield, data = pcall(body)
@@ -293,9 +303,11 @@ for i=1,_env.ARGC do
 				warn(string.format("unknown yield value: %s", yield))
 			end
 		end
+		coroutine.wrap(runsection)('ENDFILE')
 		if yield == "exit" then
 			break
 		end
 	end
 end
+coroutine.wrap(runsection)('END')
 os.exit(data or 0)
