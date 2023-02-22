@@ -1,11 +1,5 @@
 #!/usr/bin/env lua
 
--- @Author: Oliver Zimmer
--- @Date:   2023-02-20 11:22:41
--- @Last Modified by:   goregath
--- @Last Modified time: 2023-02-22 00:52:50
-
-
 local getopt = require 'posix.unistd'.getopt
 local basename = require 'posix.libgen'.basename
 local awkenv = require 'awk.env'
@@ -123,21 +117,6 @@ local function awksystem(...)
 end
 
 -----------------------------------------------------------
--- AWK INTERNALS
------------------------------------------------------------
-
-local function runsection(section)
-	program(section)
-end
-
-local function getlineloop()
-	while awkgetline() do
-		runsection('actions')
-	end
-	return 'nextfile'
-end
-
------------------------------------------------------------
 -- COMMAND LINE INTERFACE
 -----------------------------------------------------------
 
@@ -243,7 +222,6 @@ do
 			end
 		end
 	end
-	print(require('inspect')(parsed))
 	program = setmetatable(parsed.program, program_mt)
 end
 
@@ -272,7 +250,10 @@ end
 
 if warn == nil then
 	-- luacheck:ignore 121
-	warn = function(...) io.stderr:write("warning: ", ..., "\n") end
+	warn = function(...)
+		io.stderr:write("warning: ", ...)
+		io.stderr:write("\n")
+	end
 else
 	warn("@on")
 end
@@ -280,34 +261,61 @@ end
 -----------------------------------------------------------
 -- MAIN LOOP
 -----------------------------------------------------------
-local stat, yield, data
-coroutine.wrap(runsection)('BEGIN')
+
+local exitcode = 0
+
+local function runsection(section)
+	program(section)
+end
+
+local function specialaction(action)
+	local runner = coroutine.create(runsection)
+	repeat
+		local stat, yield, data = coroutine.resume(runner, action)
+		if (not stat) then
+			abort("%s: error: %s\n", name, yield)
+		end
+		if yield == "next" or yield == "nextfile" then
+			abort("%s: error: '%s' used in BEGIN action\n", name, yield)
+		elseif yield == "exit" then
+			exitcode = data or exitcode
+			return false
+		end
+	until coroutine.status(runner) == "dead"
+	return true
+end
+
+if not specialaction('BEGIN') then
+	goto END
+end
+
 for i=1,_env.ARGC-1 do
 	_env.FILENAME = _env.ARGV[i]
 	-- If the value of a particular element of ARGV is empty (""), awk skips over it.
+	-- TODO handle FILENAME "-" (stdin)
 	if _env.FILENAME and _env.FILENAME ~= "" then
-		coroutine.wrap(runsection)('BEGINFILE')
-		local body = coroutine.wrap(getlineloop)
-		while true do
-			stat, yield, data = pcall(body)
+		local runner = coroutine.wrap(runsection)
+		while awkgetline() do
+			local stat, yield, data = pcall(runner, 'actions')
 			if (not stat) then
-				error(yield, -1)
+				abort("%s: error: %s\n", name, yield)
 			end
 			if yield == "next" then
-				body = coroutine.wrap(getlineloop)
+				goto NEXT
 			elseif yield == "nextfile" then
-				break
+				goto NEXTFILE
 			elseif yield == "exit" then
-				break
+				exitcode = data or exitcode
+				goto END
 			else
 				warn(string.format("unknown yield value: %s", yield))
 			end
-		end
-		coroutine.wrap(runsection)('ENDFILE')
-		if yield == "exit" then
-			break
+			::NEXT::
 		end
 	end
+	::NEXTFILE::
 end
-coroutine.wrap(runsection)('END')
-os.exit(data or 0)
+::END::
+
+specialaction('END')
+os.exit(tonumber(exitcode) or 1)
