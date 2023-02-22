@@ -1,5 +1,11 @@
 #!/usr/bin/env lua
 
+--- Luawk interpreter.
+--
+--    Usage: luawk [-F value] [-v var=value] [--] 'program' [file ...]
+--           luawk [-F value] [-v var=value] [-f file] [--] [file ...]
+--
+-- @script luawk
 
 local getopt = require 'posix.unistd'.getopt
 local basename = require 'posix.libgen'.basename
@@ -111,14 +117,18 @@ local function awkprint(...)
 	end
 end
 
+local function awkprintf(...)
+	io.write(string.format(...))
+end
+
 local function awkclose(...)
 	-- TODO add proper file handling
-	error("close: not implemented", -1)
+	abort("close: not implemented\n")
 end
 
 local function awksystem(...)
 	-- TODO implement
-	error("system: not implemented", -1)
+	abort("system: not implemented\n")
 end
 
 -----------------------------------------------------------
@@ -223,7 +233,7 @@ do
 					end
 				elseif #src == 3 then
 					-- pattern, pattern, action
-					abort('not implemented')
+					abort('error: ranger pattern not implemented\n')
 				else
 					abort('%s: invalid pattern or action\n', name)
 				end
@@ -244,8 +254,11 @@ _env.ARGV[0] = arg[0]
 _env.close = awkclose
 _env.coroutine = _G.coroutine
 _env.F = _record
+_env.ipairs = _G.ipairs
 _env.math = _G.math
+_env.pairs = _G.pairs
 _env.print = awkprint
+_env.printf = awkprintf
 _env.require = _G.require
 _env.string = _G.string
 _env.system = awksystem
