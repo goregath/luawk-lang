@@ -1,8 +1,9 @@
 --- AWK environment.
--- @classmod env
+-- @module env
 -- @alias env
 
--- TODO proper ARGV/ARGC handling
+local setenv = require 'posix.stdlib'.setenv
+local getenv = require 'posix.stdlib'.getenv
 
 local function makero(...)
     local ro = {}
@@ -11,18 +12,6 @@ local function makero(...)
     end
     return ro
 end
-
---- @table defaults
--- @field ARGC
---  The number of elements in the @{ARGV} array.
--- @field FILENAME
---  A pathname of the current input file. Inside a _BEGIN_ action the value is
---  undefined. Inside an _END_ action the value shall be the name of the last
---  input file processed.
--- @field FNR
---  The ordinal number of the current record in the current file. Inside a _BEGIN_
---  action the value shall be zero. Inside an _END_ action the value shall be the
---  number of the last record processed in the last file processed.
 
 --- default environment
 local env = {}
@@ -62,8 +51,8 @@ env.CONVFMT = "%.6g"
 --  whether any modification of @{ENVIRON} affects this environment.
 env.ENVIRON = setmetatable({}, {
     __index = function(_, k) return os.getenv(k) end,
-    -- TODO fake setenv
-    __newindex = error
+    __newindex = function(_,k,v) setenv(k,v) end,
+    __pairs = function() return pairs(getenv()) end,
 })
 
 --- A pathname of the current input file. Inside a _BEGIN_ action the value is
