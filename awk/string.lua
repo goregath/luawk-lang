@@ -2,7 +2,7 @@
 -- @alias M
 -- @module string
 
--- luacheck: globals FS
+-- luacheck: globals FS RSTART RLENGTH
 
 --[[
 The string functions in the following list shall be supported.
@@ -56,8 +56,17 @@ end
 --  @param[type=string]  p pattern
 --  @return[type=number]   position of first match, or zero
 function M.match(s, p)
-    -- TODO set RSTART and RLENGTH
-    error("match: not implemented", -1)
+    -- TODO adjust docs
+    -- FIXME which environment should be used?
+    s = s and tostring(s) or ""
+    p = p and tostring(p) or ""
+    local rstart, rend = string.find(s,p)
+    if rstart then
+        RSTART = rstart
+        RLENGTH = rend - rstart + 1
+        return rstart
+    end
+    return nil
 end
 
 --- Split the string s into array elements a[1], a[2], ..., a[n], and return n.
