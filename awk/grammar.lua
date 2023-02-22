@@ -61,7 +61,7 @@ local grammar = {
 		END = {},
 		BEGINFILE = {},
 		ENDFILE = {},
-		actions = {}
+		main = {}
 	}), 'program');
 
 	shebang^-1 * V'newobj' * ((V'⌴' * (V'awkenv' + V'awkrule') * (V'⌴' * P';')^-1)^1) * V'⌴' * -1;
@@ -72,9 +72,9 @@ local grammar = {
 		  Cb('program') * Cc('BEGIN') / rawget * V'awkfunction' / table.insert
 		;
 	awkrule =
-		  Cb('program') * Cc('actions') / rawget * Ct(V'awkpatternlist' * V'⌴' * V'awkaction') / table.insert
-		+ Cb('program') * Cc('actions') / rawget * Ct(V'awkpatternlist' * Cc('print()')) / table.insert
-		+ Cb('program') * Cc('actions') / rawget * Ct(Cc(true) * V'awkaction') / table.insert
+		  Cb('program') * Cc('main') / rawget * Ct(V'awkpatternlist' * V'⌴' * V'awkaction') / table.insert
+		+ Cb('program') * Cc('main') / rawget * Ct(V'awkpatternlist' * Cc('print()')) / table.insert
+		+ Cb('program') * Cc('main') / rawget * Ct(Cc(true) * V'awkaction') / table.insert
 		+ Cb('program') * C(V'awkspecialpattern') / rawget * V'⌴' * V'awkaction' / table.insert
 		;
 	awkpatternlist =
@@ -203,17 +203,21 @@ local grammar = {
 		-- var [+-*/%^]= exp
 		+ (Cs(V'var') * V'⌴' * Cs(S'+-*/%^') * P"=" * V'⌴' * Cs(V'exp')) / '%1=%1%2(%3)'
 		+ V'functioncall'
+		+ V'awkexit'
 		+ V'awktoken'
 		+ V'awknext'
 		;
 	awknext =
 		  (K'next' + K'nextfile') / 'coroutine.yield("%0")'
 		;
+	awkexit =
+		  Cs((K'exit') / '"%0"' * (V'⌴' * Cc',' * V'exp')^-1) / 'coroutine.yield(%1)'
+		;
 	awktoken =
 		  Cs(V'awkkeywords' * Cc('(') * (V'⌴' * V'explist')^-1 * Cc(')'))
 		;
 	awkkeywords =
-		  K'print' + K'getline' + K'exit'
+		  K'print' + K'getline'
 		;
 	laststat =
 		  K'return' * (V'⌴' * V'explist')^-1 + K'break'
