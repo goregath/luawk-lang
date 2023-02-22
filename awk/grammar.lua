@@ -1,8 +1,11 @@
 #!/usr/bin/env lua
 
+--- Luawk parser.
+-- @alias M
+-- @module grammar
+
 local M = {}
 
-local inspect = require "inspect";
 local lpeg = require "lpeg";
 local locale = lpeg.locale();
 
@@ -64,7 +67,7 @@ local grammar = {
 		main = {}
 	}), 'program');
 
-	shebang^-1 * V'newobj' * ((V'⌴' * (V'awkenv' + V'awkrule') * (V'⌴' * P';')^-1)^1) * V'⌴' * -1;
+	shebang^-1 * V'newobj' * ((V'⌴' * (V'awkenv' + V'awkrule') * (V'⌴' * P';')^-1)^1)^0 * V'⌴' * -1;
 
 	-- AWK language extensions
 
@@ -217,7 +220,7 @@ local grammar = {
 		  Cs(V'awkkeywords' * Cc('(') * (V'⌴' * V'explist')^-1 * Cc(')'))
 		;
 	awkkeywords =
-		  K'print' + K'getline'
+		  K'printf' + K'print' + K'getline'
 		;
 	laststat =
 		  K'return' * (V'⌴' * V'explist')^-1 + K'break'
@@ -349,6 +352,9 @@ local grammar = {
 		;
 };
 
+--- Parse luawk source string.
+--  @param[type=string]  source input string
+--  @return defaults
 function M.parse(source)
 	local lang = Ct(P(grammar))
 	local parsed = lang:match(source)
