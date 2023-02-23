@@ -236,7 +236,7 @@ do
 				line = line:gsub("%s", "\x20")
 				local prefix = string.format('%s: %s:%d:%d: ', name, label, lineno, col)
 				abort(
-					'%s%s\n%'..(#prefix+col)..'s %s',
+					'%s%s\n%'..(#prefix+col-1)..'s %s',
 					prefix, line, "^", msg
 				)
 			else
