@@ -220,13 +220,27 @@ do
 		table.insert(_env.ARGV, arg[i])
 	end
 	for _,srcobj in ipairs(sources) do
-		local srcname, source = table.unpack(srcobj)
-		local parsed, msg, _, line, col = awkgrammar.parse(source)
+		local label, source = table.unpack(srcobj)
+		local parsed, msg, _, lineno, col = awkgrammar.parse(source)
 		if not parsed then
 			if parsed == false then
-				abort('%s: %s:%d:%d: %s\n', name, srcname, line, col, msg)
+				local line
+				local l = 1
+				for str in string.gmatch(source, "[^\n]*") do
+					if l == lineno then
+						line = str
+						break
+					end
+					l = l + 1
+				end
+				line = line:gsub("%s", "\x20")
+				local prefix = string.format('%s: %s:%d:%d: ', name, label, lineno, col)
+				abort(
+					'%s%s\n%'..(#prefix+col)..'s %s',
+					prefix, line, "^", msg
+				)
 			else
-				abort('%s: %s: %s\n', name, srcname, msg)
+				abort('%s: %s: %s\n', name, label, msg)
 			end
 		end
 		for _,list in pairs(parsed.program) do
