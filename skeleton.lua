@@ -163,7 +163,8 @@ do
 	local function compile(src, srcname)
 		local chunk, msg = loadstring(src, srcname)
 		if not chunk then
-			abort('%s: %s: %s\n', name, srcname, msg)
+			msg = msg:gsub("^%b[]", "")
+			abort('%s: [%s]%s\n', name, src, msg)
 		end
 		setfenv(chunk, _env)
 		return chunk
@@ -236,7 +237,7 @@ do
 				line = line:gsub("%s", "\x20")
 				local prefix = string.format('%s: %s:%d:%d: ', name, label, lineno, col)
 				abort(
-					'%s%s\n%'..(#prefix+col-1)..'s %s',
+					'%s%s\n%'..(#prefix+(col-1))..'s %s\n',
 					prefix, line, "^", msg
 				)
 			else
@@ -249,21 +250,21 @@ do
 					if #src == 2 then
 						-- pattern, action
 						if type(src[1]) == "boolean" and src[1] then
-							list[at] = compile(src[2])
+							list[at] = compile(src[2], "action")
 						else
 							list[at] = compile(string.format(
-								'if (%s) then %s end',
+								'if %s then %s end',
 								table.unpack(src)
-							))
+							), "action")
 						end
 					elseif #src == 3 then
 						-- pattern, pattern, action
-						abort('error: ranger pattern not implemented\n')
+						abort('error: range pattern not implemented\n')
 					else
 						abort('%s: invalid pattern or action\n', name)
 					end
 				else
-					list[at] = compile(src)
+					list[at] = compile(src, "action")
 				end
 			end
 		end
@@ -286,6 +287,7 @@ _env.ARGV[0] = arg[0]
 _env.close = awkclose
 _env.coroutine = _G.coroutine
 _env.F = _record
+_env.getline = awkgetline
 _env.ipairs = _G.ipairs
 _env.math = _G.math
 _env.pairs = _G.pairs
@@ -325,7 +327,7 @@ local function singlerun(section)
 end
 
 local function loop()
-	while awkgetline() do
+	while _env.getline() do
 		program('main')
 	end
 	coroutine.yield("nextfile")
