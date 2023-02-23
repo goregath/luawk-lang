@@ -6,7 +6,8 @@
 
 local M = {}
 
-local lpeg = require "lpeg";
+local lpeg = require 'lpeglabel'
+local re = require 'relabel'
 local locale = lpeg.locale();
 
 local P, S, V = lpeg.P, lpeg.S, lpeg.V;
@@ -354,25 +355,38 @@ local grammar = {
 
 --- Parse luawk source string.
 --  @param[type=string]  source input string
---  @return defaults
+--  @return[1] table
+--  @return[2,type=nil]    generic error
+--  @return[2,type=string] error message
+--  @return[3,type=false]  parser error
+--  @return[3,type=string] error message
+--  @return[3,type=number] position in source
+--  @return[3,type=number] source line
+--  @return[3,type=number] source column
 function M.parse(source)
 	local lang = Ct(P(grammar))
-	local parsed = lang:match(source)
-	if parsed then
-		return parsed
+	local stat, obj, _, pos = pcall(lpeg.match, lang, source)
+	if not stat then
+		return nil, obj, nil, nil, nil
+	end
+	if not obj then
+		return false, "syntax error", pos, re.calcline(source, pos)
 	else
-		return nil, "syntax error"
+		return obj
 	end
 end
 
 if (...) ~= "awk.grammar" then
 	local ins = require 'inspect'
 	for _,chunk in ipairs(arg) do
-		local program = M.parse(chunk)
+		local program, msg, _, line, col = M.parse(chunk)
 		print(chunk)
 		print(('-'):rep(#chunk < 8 and 8 or #chunk))
-		print(ins(program))
-		print()
+		if program then
+			io.stdout:write(ins(program), "\n")
+		else
+			io.stderr:write("error: ", msg, " at line ", line or "?", " col ", col or "?", "\n")
+		end
 	end
 end
 
