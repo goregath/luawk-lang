@@ -12,8 +12,8 @@ local locale = lpeg.locale();
 
 local P, S, V = lpeg.P, lpeg.S, lpeg.V;
 
-local C, Cb, Cc, Cf, Cg, Cp, Cs, Ct, Cmt =
-lpeg.C, lpeg.Cb, lpeg.Cc, lpeg.Cf, lpeg.Cg, lpeg.Cp, lpeg.Cs, lpeg.Ct, lpeg.Cmt;
+local C, Cb, Cc, Cf, Cg, Cs, Ct, Cmt =
+lpeg.C, lpeg.Cb, lpeg.Cc, lpeg.Cf, lpeg.Cg, lpeg.Cs, lpeg.Ct, lpeg.Cmt;
 
 local shebang = P"#" * (P(1) - P"\n")^0 * P"\n";
 
