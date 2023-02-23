@@ -214,9 +214,13 @@ do
 		table.insert(_env.ARGV, arg[i])
 	end
 	local source = table.concat(sources, '\n')
-	local parsed, msg = awkgrammar.parse(source)
+	local parsed, msg, _, line, col = awkgrammar.parse(source)
 	if not parsed then
-		abort('%s: %s\n', name, msg)
+		if parsed ~= false then
+			abort('%s: %s\n', name, msg)
+		else
+			abort('%s: %s at line %d:%d\n', name, msg, line, col)
+		end
 	end
 	for _,list in pairs(parsed.program) do
 		for at,src in ipairs(list) do
