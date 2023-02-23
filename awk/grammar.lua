@@ -96,7 +96,7 @@ local grammar = {
 	awkfunction =
 		Cg(K'local'^-1 * V'⌴' * K'function' * V'⌴' * V'Name' * V'⌴' *
 			P"(" * V'⌴' * (V'parlist' * V'⌴')^-1 * P")" * V'⌴') * Cg(
-				(P'{' * V'⌴' * Cs(V'block') * V'⌴' * P'}') / '%1 end' +
+				-- (P'{' * V'⌴' * Cs(V'block') * V'⌴' * P'}') / '%1 end' +
 				((V'block') * V'⌴' * K'end')
 		) / '%1%2';
 	awkrecord =
