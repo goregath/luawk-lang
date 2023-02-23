@@ -17,7 +17,13 @@ local awkgrammar = require 'awk.grammar'
 local name = basename(arg[0])
 local fileinfo = {}
 local _env, _record = awkenv:new()
-local program = {}
+local program = {
+	BEGIN = {},
+	END = {},
+	BEGINFILE = {},
+	ENDFILE = {},
+	main = {}
+}
 local program_mt = {
 	__call = function(tab,tag)
 		local list = tag and tab[tag] or tab.main
@@ -190,7 +196,7 @@ do
 				abort('%s: %s\n', name, msg)
 			end
 			local src = handle:read("*a")
-			table.insert(sources, src)
+			table.insert(sources, { optarg, src })
 			stat, msg = pcall(io.close, handle)
 			if not stat then
 				abort('%s: %s\n', name, msg)
@@ -207,46 +213,54 @@ do
 			usage(io.stderr)
 			abort('%s: program expected\n', name)
 		end
-		table.insert(sources, src)
+		table.insert(sources, { "cmdline", src })
 		last_index = last_index + 1
 	end
 	for i = last_index, #arg do
 		table.insert(_env.ARGV, arg[i])
 	end
-	local source = table.concat(sources, '\n')
-	local parsed, msg, _, line, col = awkgrammar.parse(source)
-	if not parsed then
-		if parsed ~= false then
-			abort('%s: %s\n', name, msg)
-		else
-			abort('%s: %s at line %d:%d\n', name, msg, line, col)
-		end
-	end
-	for _,list in pairs(parsed.program) do
-		for at,src in ipairs(list) do
-			if type(src) == 'table' then
-				if #src == 2 then
-					-- pattern, action
-					if type(src[1]) == "boolean" and src[1] then
-						list[at] = compile(src[2])
-					else
-						list[at] = compile(string.format(
-							'if (%s) then %s end',
-							table.unpack(src)
-						))
-					end
-				elseif #src == 3 then
-					-- pattern, pattern, action
-					abort('error: ranger pattern not implemented\n')
-				else
-					abort('%s: invalid pattern or action\n', name)
-				end
+	for _,srcobj in ipairs(sources) do
+		local srcname, source = table.unpack(srcobj)
+		local parsed, msg, _, line, col = awkgrammar.parse(source)
+		if not parsed then
+			if parsed == false then
+				abort('%s: %s:%d:%d: %s\n', name, srcname, line, col, msg)
 			else
-				list[at] = compile(src)
+				abort('%s: %s: %s\n', name, srcname, msg)
+			end
+		end
+		for _,list in pairs(parsed.program) do
+			for at,src in ipairs(list) do
+				if type(src) == 'table' then
+					if #src == 2 then
+						-- pattern, action
+						if type(src[1]) == "boolean" and src[1] then
+							list[at] = compile(src[2])
+						else
+							list[at] = compile(string.format(
+								'if (%s) then %s end',
+								table.unpack(src)
+							))
+						end
+					elseif #src == 3 then
+						-- pattern, pattern, action
+						abort('error: ranger pattern not implemented\n')
+					else
+						abort('%s: invalid pattern or action\n', name)
+					end
+				else
+					list[at] = compile(src)
+				end
+			end
+		end
+		for section,actions in pairs(parsed.program) do
+			local tbl = program[section]
+			for _,action in ipairs(actions) do
+				table.insert(tbl, action)
 			end
 		end
 	end
-	program = setmetatable(parsed.program, program_mt)
+	program = setmetatable(program, program_mt)
 end
 
 -----------------------------------------------------------
