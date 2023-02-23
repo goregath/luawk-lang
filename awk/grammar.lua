@@ -6,13 +6,14 @@
 
 local M = {}
 
-local lpeg = require "lpeg";
+local lpeg = require 'lpeglabel'
+local re = require 'relabel'
 local locale = lpeg.locale();
 
 local P, S, V = lpeg.P, lpeg.S, lpeg.V;
 
-local C, Cb, Cc, Cf, Cg, Cp, Cs, Ct, Cmt =
-lpeg.C, lpeg.Cb, lpeg.Cc, lpeg.Cf, lpeg.Cg, lpeg.Cp, lpeg.Cs, lpeg.Ct, lpeg.Cmt;
+local C, Cb, Cc, Cf, Cg, Cs, Ct, Cmt =
+lpeg.C, lpeg.Cb, lpeg.Cc, lpeg.Cf, lpeg.Cg, lpeg.Cs, lpeg.Ct, lpeg.Cmt;
 
 local shebang = P"#" * (P(1) - P"\n")^0 * P"\n";
 
@@ -95,7 +96,7 @@ local grammar = {
 	awkfunction =
 		Cg(K'local'^-1 * V'⌴' * K'function' * V'⌴' * V'Name' * V'⌴' *
 			P"(" * V'⌴' * (V'parlist' * V'⌴')^-1 * P")" * V'⌴') * Cg(
-				(P'{' * V'⌴' * Cs(V'block') * V'⌴' * P'}') / '%1 end' +
+				-- (P'{' * V'⌴' * Cs(V'block') * V'⌴' * P'}') / '%1 end' +
 				((V'block') * V'⌴' * K'end')
 		) / '%1%2';
 	awkrecord =
@@ -354,25 +355,38 @@ local grammar = {
 
 --- Parse luawk source string.
 --  @param[type=string]  source input string
---  @return defaults
+--  @return[1] table
+--  @return[2,type=nil]    generic error
+--  @return[2,type=string] error message
+--  @return[3,type=false]  parser error
+--  @return[3,type=string] error message
+--  @return[3,type=number] position in source
+--  @return[3,type=number] source line
+--  @return[3,type=number] source column
 function M.parse(source)
 	local lang = Ct(P(grammar))
-	local parsed = lang:match(source)
-	if parsed then
-		return parsed
+	local stat, obj, _, pos = pcall(lpeg.match, lang, source)
+	if not stat then
+		return nil, obj, nil, nil, nil
+	end
+	if not obj then
+		return false, "syntax error", pos, re.calcline(source, pos)
 	else
-		return nil, "syntax error"
+		return obj
 	end
 end
 
 if (...) ~= "awk.grammar" then
 	local ins = require 'inspect'
 	for _,chunk in ipairs(arg) do
-		local program = M.parse(chunk)
+		local program, msg, _, line, col = M.parse(chunk)
 		print(chunk)
 		print(('-'):rep(#chunk < 8 and 8 or #chunk))
-		print(ins(program))
-		print()
+		if program then
+			io.stdout:write(ins(program), "\n")
+		else
+			io.stderr:write("error: ", msg, " at line ", line or "?", " col ", col or "?", "\n")
+		end
 	end
 end
 

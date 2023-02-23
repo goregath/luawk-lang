@@ -1,0 +1,18 @@
+#!/usr/bin/env -S luawk -f
+
+-- read /etc/passwd and print user with login shell
+
+function match(s,p)
+	local posix = require("posix.fnmatch")
+	return 0 == posix.fnmatch(p, s, posix.FNM_PATHNAME)
+end
+
+BEGIN {
+	ARGV[1] = "/etc/passwd"
+	ARGC = 2
+	FS = ":"
+}
+
+$7 ~ "/bin/*sh" {
+	printf "%s (%s)\n", $1, $7
+}
