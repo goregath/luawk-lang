@@ -7,16 +7,14 @@
 --
 -- @script luawk
 
-local getopt = require 'posix.unistd'.getopt
-local basename = require 'posix.libgen'.basename
 local awkenv = require 'awk.env'
 local awkstr = require 'awk.string'
 local awkmath = require 'awk.math'
-local awkgrammar = require 'awk.grammar'
+local getopt = require 'posix.unistd'.getopt
 
-local name = basename(arg[0])
+local name = string.gsub(arg[0], "(.*/)(.*)", "%2")
+local runtime, record = awkenv:new()
 local fileinfo = {}
-local _env, _record = awkenv:new()
 local rangestate = {}
 local program = {
 	BEGIN = {},
@@ -37,6 +35,24 @@ local program_mt = {
 -----------------------------------------------------------
 -- UTILITIES
 -----------------------------------------------------------
+
+local function usage(handle)
+	handle:write(table.concat {
+		"Usage: ", name, " [-F value] [-v var=value] [--] 'program' [file ...]\n",
+		"       ", name, " [-F value] [-v var=value] [-f file] [--] [file ...]\n",
+		"\n",
+	})
+end
+
+local function help(handle)
+	usage(handle)
+	handle:write(table.concat {
+		"	-f file        Program text is read from file instead of from the command line.\n",
+		"	-F value       Sets the field separator, FS, to value.\n",
+		"	-v var=value   Assigns value to program variable var.\n",
+		"\n",
+	})
+end
 
 --- Compatibility layer setfenv() for Lua 5.2+.
 --  Taken from Penlight Lua Libraries (lunarmodules/Penlight).
@@ -73,7 +89,7 @@ end
 --    Shall return true for successful input,
 --    false for end-of-file and raise an error otherwise.
 local function awkgetline(var)
-	local filename = _env.FILENAME
+	local filename = runtime.FILENAME
 	local info = fileinfo[filename]
 	if filename == "-" then
 		filename = "/dev/stdin"
@@ -88,7 +104,7 @@ local function awkgetline(var)
 			handle = handle,
 			nr = 0
 		}
-		fileinfo[_env.FILENAME] = info
+		fileinfo[runtime.FILENAME] = info
 	end
 	-- TODO read record delimited by RS
 	local record = info.handle:read()
@@ -100,13 +116,13 @@ local function awkgetline(var)
 		end
 		return false
 	elseif var then
-		_env["var"] = record
+		runtime["var"] = record
 	else
-		_record[0] = record
+		record[0] = record
 	end
 	info.nr = info.nr + 1
-	_env.FNR = info.nr
-	_env.NR = _env.NR + 1
+	runtime.FNR = info.nr
+	runtime.NR = runtime.NR + 1
 	return true
 end
 
@@ -118,9 +134,9 @@ local function awkprint(...)
 			__index = function(_,k) return tostring(args[k]) end,
 			__len = function() return #args end
 		})
-		io.stdout:write(table.concat(stab, _env.OFS), _env.ORS)
+		io.stdout:write(table.concat(stab, runtime.OFS), runtime.ORS)
 	else
-		io.stdout:write(_record[0], _env.ORS)
+		io.stdout:write(record[0], runtime.ORS)
 	end
 end
 
@@ -145,36 +161,21 @@ end
 do
 	local sources = {}
 	local loadstring = _G.loadstring or _G.load
-	local function usage(handle)
-		handle:write(table.concat {
-			"Usage: ", name, " [-F value] [-v var=value] [--] 'program' [file ...]\n",
-			"       ", name, " [-F value] [-v var=value] [-f file] [--] [file ...]\n",
-			"\n",
-		})
-	end
-	local function help(handle)
-		usage(handle)
-		handle:write(table.concat {
-			"	-f file        Program text is read from file instead of from the command line.\n",
-			"	-F value       Sets the field separator, FS, to value.\n",
-			"	-v var=value   Assigns value to program variable var.\n",
-			"\n",
-		})
-	end
 	local function compile(src, srcname)
 		local chunk, msg = loadstring(src, srcname)
 		if not chunk then
 			msg = msg:gsub("^%b[]", "")
 			abort('%s: [%s]%s\n', name, src, msg)
 		end
-		setfenv(chunk, _env)
+		setfenv(chunk, runtime)
 		return chunk
 	end
+	-- options parsing
 	local last_index = 1
 	for r, optarg, optind in getopt(arg, 'hf:F:v:') do
 		if r == '?' then
 			usage(io.stderr)
-			abort('%s: invalid option: %s\n', name, arg[optind-1])
+			abort('%s: invalid option: %s\n', name, arg[optind])
 		end
 		last_index = optind
 		if r == 'h' then
@@ -182,12 +183,12 @@ do
 			os.exit(0)
 		elseif r == 'F' then
 			-- TODO apply after any BEGIN rule(s) have been run
-			_env.FS = optarg
+			runtime.FS = optarg
 		elseif r == 'v' then
 			-- TODO apply after any BEGIN rule(s) have been run
 			local k,v = string.match(optarg, "^(%w+)=(.*)$")
 			if k and v then
-				_env[k] = v
+				runtime[k] = v
 			else
 				abort('%s: invalid argument: %s\n', name, optarg)
 			end
@@ -205,7 +206,8 @@ do
 			end
 		end
 	end
-	-- handle remaining arguments
+	-- handle arguments
+	runtime.ARGV[1] = "-"
 	if arg[last_index] == '--' then
 		last_index = last_index + 1
 	end
@@ -219,9 +221,11 @@ do
 		table.insert(sources, { "cmdline", src })
 		last_index = last_index + 1
 	end
+	-- remaining arguments are files
 	for i = last_index, #arg do
-		table.insert(_env.ARGV, arg[i])
+		runtime.ARGV[i-last_index+1] = arg[i]
 	end
+	local awkgrammar = require 'awk.grammar'
 	-- compile sources
 	for _,srcobj in ipairs(sources) do
 		local label, source = table.unpack(srcobj)
@@ -290,28 +294,28 @@ end
 -- SETUP
 -----------------------------------------------------------
 
-_env.ARGC = #_env.ARGV+1
-_env.ARGV[0] = arg[0]
-_env.close = awkclose
-_env.coroutine = _G.coroutine
-_env.F = _record
-_env.getline = awkgetline
-_env.ipairs = _G.ipairs
-_env.math = _G.math
-_env.pairs = _G.pairs
-_env.print = awkprint
-_env.printf = awkprintf
-_env.require = _G.require
-_env.string = _G.string
-_env.system = awksystem
-_env.table = _G.table
+runtime.ARGC = #runtime.ARGV+1
+runtime.ARGV[0] = arg[0]
+runtime.close = awkclose
+runtime.coroutine = _G.coroutine
+runtime.F = record
+runtime.getline = awkgetline
+runtime.ipairs = _G.ipairs
+runtime.math = _G.math
+runtime.pairs = _G.pairs
+runtime.print = awkprint
+runtime.printf = awkprintf
+runtime.require = _G.require
+runtime.string = _G.string
+runtime.system = awksystem
+runtime.table = _G.table
 
 for n,f in pairs(awkstr) do
-	_env[n] = f
+	runtime[n] = f
 end
 
 for n,f in pairs(awkmath) do
-	_env[n] = f
+	runtime[n] = f
 end
 
 if warn == nil then
@@ -335,7 +339,7 @@ local function singlerun(section)
 end
 
 local function loop()
-	while _env.getline() do
+	while runtime.getline() do
 		program('main')
 	end
 	coroutine.yield("nextfile")
@@ -364,10 +368,10 @@ if not specialaction('BEGIN') then
 	goto END
 end
 
-for i=1,_env.ARGC-1 do
-	_env.FILENAME = _env.ARGV[i]
+for i=1,runtime.ARGC-1 do
+	runtime.FILENAME = runtime.ARGV[i]
 	-- If the value of a particular element of ARGV is empty (""), awk skips over it.
-	if _env.FILENAME and _env.FILENAME ~= "" then
+	if runtime.FILENAME and runtime.FILENAME ~= "" then
 		local runner = coroutine.create(loop)
 		local d0 = nil
 		repeat
@@ -411,7 +415,7 @@ for i=1,_env.ARGC-1 do
 	::NEXTFILE::
 	-- TODO refactor
 	-- FNR==2 { nextfile } 1' /etc/passwd /etc/passwd -> should print two lines
-	fileinfo[_env.FILENAME] = nil
+	fileinfo[runtime.FILENAME] = nil
 end
 ::END::
 
