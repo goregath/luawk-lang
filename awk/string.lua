@@ -93,6 +93,12 @@ end
 --  @param[type=string,opt=FS] fs field separator
 --  @return[type=number]          number of fields
 function M.split(s, a, fs)
+    -- TODO If RS is null, then records are separated by sequences
+    --      consisting of a <newline> plus one or more blank lines,
+    --      leading or trailing blank lines shall not result in empty
+    --      records at the beginning or end of the input, and a
+    --      <newline> shall always be a field separator, no matter
+    --      what the value of FS is.
     assert(type(a) == "table", "split: second argument is not an array")
     s = s ~= nil and tostring(s) or ""
     fs = fs ~= nil and tostring(fs) or (FS or '\32')

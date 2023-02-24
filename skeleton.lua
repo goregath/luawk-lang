@@ -90,6 +90,7 @@ end
 --    false for end-of-file and raise an error otherwise.
 local function awkgetline(var)
 	local filename = runtime.FILENAME
+	local rs = runtime.RS and runtime.RS:sub(1,1) or ""
 	local info = fileinfo[filename]
 	if filename == "-" then
 		filename = "/dev/stdin"
@@ -98,7 +99,7 @@ local function awkgetline(var)
 		-- TODO check for file type
 		local handle, msg = io.open(filename)
 		if handle == nil then
-			error(msg, -1)
+			abort("%s: %s\n", name, msg)
 		end
 		info = {
 			handle = handle,
@@ -107,7 +108,24 @@ local function awkgetline(var)
 		fileinfo[runtime.FILENAME] = info
 	end
 	-- TODO read record delimited by RS
-	local rec = info.handle:read()
+	-- TODO The first character of the string value of RS shall be
+	--      the input record separator; a <newline> by default.
+	--      If RS contains more than one character, the results
+	--      are unspecified.
+	-- TODO If RS is null, then records are separated by sequences
+	--      consisting of a <newline> plus one or more blank lines,
+	--      leading or trailing blank lines shall not result in empty
+	--      records at the beginning or end of the input, and a
+	--      <newline> shall always be a field separator, no matter
+	--      what the value of FS is.
+	local rec
+	if rs == "\n" then
+		rec = info.handle:read()
+	elseif rs == "" then
+		abort("%s: empty RS not implemented\n", name)
+	else
+		abort("%s: non-standard RS not implemented\n", name)
+	end
 	if rec == nil then
 		fileinfo[filename] = nil
 		local s, msg = pcall(io.close, info.handle)
@@ -172,10 +190,14 @@ do
 	end
 	-- options parsing
 	local last_index = 1
-	for r, optarg, optind in getopt(arg, 'hf:F:v:') do
+	for r, optarg, optind in getopt(arg, ':hf:F:v:') do
 		if r == '?' then
 			usage(io.stderr)
-			abort('%s: invalid option: %s\n', name, arg[optind])
+			abort('%s: invalid option: %s\n', name, arg[optind-1])
+		end
+		if r == ':' then
+			usage(io.stderr)
+			abort('%s: missing argument: %s\n', name, arg[optind-1])
 		end
 		last_index = optind
 		if r == 'h' then
@@ -266,6 +288,7 @@ do
 						end
 					elseif #src == 3 then
 						-- pattern, pattern, action
+						-- FIXME
 						-- TODO refactor, matching twice could be expensive
 						rangestate[at] = false
 						list[at] = compile(string.format(

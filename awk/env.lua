@@ -139,6 +139,13 @@ local function new(G)
                 -- immediately recompute $0
                 record[0] = nil
                 local _ = recobj[0]
+            elseif k == "RS" then
+                if v == nil then v = ""
+                elseif type(v) ~= "string" then
+                    error("RS set to invalid type: " .. type(v))
+                end
+                rawset(global, k, v)
+                return
             else
                 rawset(t, k, v)
             end
