@@ -107,8 +107,8 @@ local function awkgetline(var)
 		fileinfo[runtime.FILENAME] = info
 	end
 	-- TODO read record delimited by RS
-	local record = info.handle:read()
-	if record == nil then
+	local rec = info.handle:read()
+	if rec == nil then
 		fileinfo[filename] = nil
 		local s, msg = pcall(io.close, info.handle)
 		if not s then
@@ -116,9 +116,9 @@ local function awkgetline(var)
 		end
 		return false
 	elseif var then
-		runtime["var"] = record
+		runtime["var"] = rec
 	else
-		record[0] = record
+		record[0] = rec
 	end
 	info.nr = info.nr + 1
 	runtime.FNR = info.nr
@@ -127,11 +127,11 @@ local function awkgetline(var)
 end
 
 local function awkprint(...)
-	if (...) then
+	if select('#', ...) > 0 then
 		-- FIXME implementation far from optimal
 		local args = {...}
 		local stab = setmetatable({}, {
-			__index = function(_,k) return tostring(args[k]) end,
+			__index = function(_,k) return args[k] and tostring(args[k]) or "" end,
 			__len = function() return #args end
 		})
 		io.stdout:write(table.concat(stab, runtime.OFS), runtime.ORS)
