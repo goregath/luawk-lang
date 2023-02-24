@@ -260,6 +260,7 @@ do
 						end
 					elseif #src == 3 then
 						-- pattern, pattern, action
+						-- TODO refactor, matching twice could be expensive
 						rangestate[at] = false
 						list[at] = compile(string.format(
 							'if coroutine.yield("x-range-on",%d,%s,%s) then %s end',
