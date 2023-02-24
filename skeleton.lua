@@ -205,6 +205,7 @@ do
 			end
 		end
 	end
+	-- handle remaining arguments
 	if arg[last_index] == '--' then
 		last_index = last_index + 1
 	end
@@ -221,6 +222,7 @@ do
 	for i = last_index, #arg do
 		table.insert(_env.ARGV, arg[i])
 	end
+	-- compile sources
 	for _,srcobj in ipairs(sources) do
 		local label, source = table.unpack(srcobj)
 		local parsed, msg, _, lineno, col = awkgrammar.parse(source)
