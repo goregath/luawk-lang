@@ -17,6 +17,7 @@ local awkgrammar = require 'awk.grammar'
 local name = basename(arg[0])
 local fileinfo = {}
 local _env, _record = awkenv:new()
+local rangestate = {}
 local program = {
 	BEGIN = {},
 	END = {},
@@ -255,16 +256,20 @@ do
 							list[at] = compile(string.format(
 								'if %s then %s end',
 								table.unpack(src)
-							), "action")
+							), "pattern-action")
 						end
 					elseif #src == 3 then
 						-- pattern, pattern, action
-						abort('error: range pattern not implemented\n')
+						rangestate[at] = false
+						list[at] = compile(string.format(
+							'if coroutine.yield("x-range-on",%d,%s,%s) then %s end',
+							at, table.unpack(src)
+						), "range-pattern-action")
 					else
 						abort('%s: invalid pattern or action\n', name)
 					end
 				else
-					list[at] = compile(src, "action")
+					list[at] = compile(src, "special-pattern-action")
 				end
 			end
 		end
@@ -336,15 +341,17 @@ end
 local function specialaction(action)
 	local runner = coroutine.create(singlerun)
 	repeat
-		local stat, yield, data = coroutine.resume(runner, action)
+		local stat, yield, d1, d2, d3 = coroutine.resume(runner, action)
 		if (not stat) then
 			abort("%s: error: %s\n", name, yield)
 		end
 		if yield == "next" or yield == "nextfile" then
 			abort("%s: error: '%s' used in BEGIN action\n", name, yield)
 		elseif yield == "exit" then
-			exitcode = data or exitcode
+			exitcode = d1 or exitcode
 			return false
+		elseif yield ~= nil then
+			warn(string.format("unknown yield value: %q (%q,%q,%q)", yield, d1, d2, d3))
 		end
 	until coroutine.status(runner) == "dead"
 	return true
@@ -359,8 +366,10 @@ for i=1,_env.ARGC-1 do
 	-- If the value of a particular element of ARGV is empty (""), awk skips over it.
 	if _env.FILENAME and _env.FILENAME ~= "" then
 		local runner = coroutine.create(loop)
+		local d0 = nil
 		repeat
-			local stat, yield, data = coroutine.resume(runner)
+			local stat, yield, d1, d2, d3 = coroutine.resume(runner, d0)
+			d0 = nil
 			if (not stat) then
 				abort("%s: error: %s\n", name, yield)
 			end
@@ -370,10 +379,28 @@ for i=1,_env.ARGC-1 do
 			elseif yield == "nextfile" then
 				goto NEXTFILE
 			elseif yield == "exit" then
-				exitcode = data or exitcode
+				exitcode = d1 or exitcode
 				goto END
-			else
-				warn(string.format("unknown yield value: %s", yield))
+			elseif yield == "x-range-on" then
+				d0 = rangestate[d1]
+				-- FIXME range not handled properly
+				-- $ printf '%s\n' {1..9} > seq.txt
+				-- $ awk '/9/,/1/' seq.txt seq.txt
+				-- 9
+				-- 1
+				-- 9
+				-- $ luawk '/9/,/1/' seq.txt seq.txt
+				-- 9
+				-- 9
+				if d0 == true then
+					if d3 then d0 = false end
+				end
+				if d0 == false then
+					if d2 then d0 = true end
+				end
+				rangestate[d1] = d0
+			elseif yield ~= nil then
+				warn(string.format("unknown yield value: %q (%q,%q,%q)", yield, d1, d2, d3))
 			end
 			::NEXT::
 		until coroutine.status(runner) == "dead"
