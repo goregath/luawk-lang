@@ -10,14 +10,21 @@ local lpeg = require 'lpeglabel'
 local re = require 'relabel'
 local locale = lpeg.locale();
 
-local P, S, V = lpeg.P, lpeg.S, lpeg.V;
+local P, S, V = lpeg.P, lpeg.S, lpeg.V
 
-local C, Cb, Cc, Cf, Cg, Cs, Ct, Cmt =
-lpeg.C, lpeg.Cb, lpeg.Cc, lpeg.Cf, lpeg.Cg, lpeg.Cs, lpeg.Ct, lpeg.Cmt;
+local C = lpeg.C
+local Cb = lpeg.Cb
+local Cc = lpeg.Cc
+local Cf = lpeg.Cf
+local Cg = lpeg.Cg
+local Cmt = lpeg.Cmt
+local Cs = lpeg.Cs
+local Ct = lpeg.Ct
 
-local space = (locale.space + V'comment')^0
+local sp = (locale.space + V'comment')^0
 local newline = P'\n'
 local noident = -(locale.alnum + P'_')
+local shebang = P"#" * (P(1) - newline)^0 * newline
 
 local Kand = P('and') * noident
 local Kbreak = P('break') * noident
@@ -41,14 +48,12 @@ local Ktrue = P('true') * noident
 local Kuntil = P('until') * noident
 local Kwhile = P('while') * noident
 
+local Kexit = P('exit') * noident
 local Kgetline = P('getline') * noident
-local Kprint = P('print') * noident
-local Kprintf = P('printf') * noident
 local Knext = P('next') * noident
 local Knextfile = P('nextfile') * noident
-local Kexit = P('exit') * noident
-
-local shebang = P"#" * (P(1) - newline)^0 * newline;
+local Kprint = P('print') * noident
+local Kprintf = P('printf') * noident
 
 local function quote(s)
 	return string.format("%q", s)
@@ -59,33 +64,19 @@ end
 -- http://lua-users.org/wiki/LpegRecipes
 -- @author Patrick Donnelly (https://github.com/batrick)
 local grammar = {
-	-- TODO pattern: support re-pattern /.../, `exp` ~ /.../ and `exp` !~ /.../
-	-- TODO support ! expr
 	-- TODO support expr in array
 	-- TODO support (index) in array
-	-- TODO support expr1 ? expr2 : expr3
 	-- TODO support expr expr (string concatenation)
 	-- TODO support for-loop
-	-- TODO support lvalue++, ++lvalue
 	-- TODO support autoinit of variables
-	-- TODO support field access $`Number` and $(`exp`)
-	-- TODO support builtin functions w/o parenthesis
 	-- TODO unary_expr: unary_expr '?' expr ':' expr
 	-- TODO unary_expr: unary_expr In NAME
-	-- TODO non_unary_expr: '!' expr
 	-- TODO non_unary_expr: '+' expr
 	-- TODO non_unary_expr: lvalue INCR
 	-- TODO non_unary_expr: lvalue DECR
 	-- TODO non_unary_expr: INCR lvalue
 	-- TODO non_unary_expr: DECR lvalue
 	-- TEST awk '$0 ~ /b/ ~ 1 { print }' <<<"a b c" --> "a b c"
-
-	-- Tokens:
-	-- -------
-	-- BEGIN, break, continue, delete, do
-	-- else, END, exit, for, function,
-	-- getline, if, in, next, print,
-	-- printf, return, while
 
 	-- AWK grammar
 
@@ -97,7 +88,7 @@ local grammar = {
 		main = {}
 	}), 'program');
 
-	shebang^-1 * V'newobj' * ((space * (V'awkenv' + V'awkrule') * (space * P';')^-1)^1)^0 * space * -1;
+	shebang^-1 * V'newobj' * ((sp * (V'awkenv' + V'awkrule') * (sp * ';')^-1)^1)^0 * sp * -1;
 
 	-- AWK language extensions
 
@@ -105,40 +96,51 @@ local grammar = {
 		  Cb('program') * Cc('BEGIN') / rawget * V'awkfunction' / table.insert
 		;
 	awkrule =
-		  Cb('program') * Cc('main') / rawget * Ct(V'awkpatternlist' * space * V'awkaction') / table.insert
+		  Cb('program') * Cc('main') / rawget * Ct(V'awkpatternlist' * sp * V'awkaction') / table.insert
 		+ Cb('program') * Cc('main') / rawget * Ct(V'awkpatternlist' * Cc('print()')) / table.insert
 		+ Cb('program') * Cc('main') / rawget * Ct(Cc(true) * V'awkaction') / table.insert
-		+ Cb('program') * C(V'awkspecialpattern') / rawget * space * V'awkaction' / table.insert
+		+ Cb('program') * C(V'awkspecialpattern') / rawget * sp * V'awkaction' / table.insert
 		;
 	awkpatternlist =
-		  -P'{' * Cg(Cs(V'awkpattern') * (space * P',' * space * Cs(V'awkpattern'))^-1)
+		  -P'{' * Cg(Cs(V'awkpattern') * (sp * ',' * sp * Cs(V'awkpattern'))^-1)
 		;
 	awkspecialpattern =
-		  P'BEGINFILE' + P'ENDFILE' + P'BEGIN' + P'END'
+		  P'BEGINFILE' + 'ENDFILE' + 'BEGIN' + 'END'
 		;
 	awkpattern =
 		  -(V'awkspecialpattern') * V'exp'
 		;
 	awkaction =
-		  P'{' * space * Cs(V'chunk') * space * P'}'
+		  '{' * sp * Cs(V'chunk') * sp * '}'
 		;
 	awkfunction =
-		Cg(Klocal^-1 * space * Kfunction * space * V'Name' * space *
-			P"(" * space * (V'parlist' * space)^-1 * P")" * space) * Cg(
-				-- (P'{' * space * Cs(V'block') * space * P'}') / '%1 end' +
-				((V'block') * space * Kend)
+		Cg(Klocal^-1 * sp * Kfunction * sp * V'Name' * sp *
+			'(' * sp * (V'parlist' * sp)^-1 * ')' * sp) * Cg(
+				((V'block') * sp * Kend)
 		) / '%1%2';
 	awkrecord =
-		  (P'$' * space * Cs(V'Number' + V'var')) / 'F[%1]'
-		+ (P'$' * space * Cs(V'exp')) / 'F[%1]'
+		  ('$' * sp * Cs(V'Number' + V'var')) / 'F[%1]'
+		+ ('$' * sp * Cs(V'exp')) / 'F[%1]'
 		;
 	awkregex =
-		  P'/' * Cg((P"\\" * P(1) + (1 - P"/"))^0) * P'/' / quote
+		  '/' * Cg((P'\\' * P(1) + (1 - P'/'))^0) * '/' / quote
 		;
 	awkmatchexp =
-		  Cf(Cs(V'value') * (space * Ct(Cg(P'!~' + P'~') * space * Cs(V'awkregex' + V'value')))^1, function(a,c)
+		  Cf(Cs(V'value') * (sp * Ct(Cg(P'!~' + P'~') * sp * Cs(V'awkregex' + V'value')))^1, function(a,c)
 			return string.format("%smatch(%s,%s)", c[1]=='!~' and 'not ' or '', a, c[2])
 		  end)
+		;
+	awknext =
+		  (Knext + Knextfile) / 'coroutine.yield("%0")'
+		;
+	awkexit =
+		  Cs(Kexit / '"%0"' * (sp * Cc',' * V'exp')^-1) / 'coroutine.yield(%1)'
+		;
+	awktoken =
+		  Cs(V'awkkeywords' * Cc'(' * (sp * V'explist')^-1 * Cc')')
+		;
+	awkkeywords =
+		  Kprintf + Kprint + Kgetline
 		;
 
 	-- keywords
@@ -171,98 +173,84 @@ local grammar = {
 
 	longstring = C(P{ -- from Roberto Ierusalimschy's lpeg examples
 		V'open' * C((P(1) - V'closeeq')^0) * V'close' / function (o, s) return s end;
+
 		open =
-			  "[" * Cg((P"=")^0, "init") * P"[" * (newline)^-1
+			  '[' * Cg((P'=')^0, "init") * '[' * (newline)^-1
 			;
 		close =
-			  "]" * C((P"=")^0) * "]"
+			  ']' * C((P'=')^0) * ']'
 			;
 		closeeq =
-			  Cmt(V'close' * Cb "init", function (s, i, a, b) return a == b end)
+			  Cmt(V'close' * Cb'init', function (s, i, a, b) return a == b end)
 	});
 
 	-- comments & whitespace
 
 	comment =
-		  P"--" * V'longstring'
-		+ P"--" * (P(1) - newline)^0 * (newline + -P(1))
+		  '--' * V'longstring'
+		+ '--' * (P(1) - newline)^0 * (newline + -P(1))
 		;
-	-- ["⌴"] =
-	-- 	  (locale.space + V'comment')^0
-	-- 	;
 
 	-- Types and Comments
 
 	Name =
-		  (locale.alpha + P'_') * (locale.alnum + P'_')^0 - V'keywords'
+		  (locale.alpha + '_') * (locale.alnum + '_')^0 - V'keywords'
 		+ V'awkrecord'
 		;
 	Number =
-		  (P"-")^-1 * space * P'0x' * locale.xdigit^1 * -(locale.alnum + P'_')
-		+ (P"-")^-1 * space * locale.digit^1 * (P"." * locale.digit^1)^-1 * (S "eE" * (P"-")^-1 * locale.digit^1)^-1 * -(locale.alnum + P'_')
-		+ (P"-")^-1 * space * P"." * locale.digit^1 * (S'eE' * (P'-')^-1 * locale.digit^1)^-1 * -(locale.alnum + P'_')
+		  (P'-')^-1 * sp * '0x' * locale.xdigit^1 * -(locale.alnum + '_')
+		+ (P'-')^-1 * sp * locale.digit^1 * ('.' * locale.digit^1)^-1 * (S'eE' * (P'-')^-1 * locale.digit^1)^-1 * -(locale.alnum + '_')
+		+ (P'-')^-1 * sp * '.' * locale.digit^1 * (S'eE' * (P'-')^-1 * locale.digit^1)^-1 * -(locale.alnum + '_')
 		;
 	String =
-		  P"\"" * (P"\\" * P(1) + (1 - P"\""))^0 * P"\""
-		+ P"'" * (P"\\" * P(1) + (1 - P"'"))^0 * P"'"
+		  '"' * ('\\' * P(1) + (P(1) - '"'))^0 * '"'
+		+ "'" * ("\\" * P(1) + (P(1) - "'"))^0 * "'"
 		+ V'longstring'
 		;
 
 	-- Lua Complete Syntax
 
 	chunk =
-		  (space * V'stat' * (space * P";")^-1)^0 * (space * V'laststat' * (space * P";")^-1)^-1
+		  (sp * V'stat' * (sp * ';')^-1)^0 * (sp * V'laststat' * (sp * ';')^-1)^-1
 		;
 
 	block = V'chunk';
 
 	stat =
-		  Kdo * space * V'block' * space * Kend
-		+ Kwhile * space * V'exp' * space * Kdo * space * V'block' * space * Kend
-		+ Krepeat * space * V'block' * space * Kuntil * space * V'exp'
-		+ Kif * space * V'exp' * space * Kthen * space * V'block' * space *
-			(Kelseif * space * V'exp' * space * Kthen * space * V'block' * space)^0 *
-			(Kelse * space * V'block' * space)^-1 * Kend
-		+ Kfor * space * V'Name' * space * P"=" * space *
-			V'exp' * space * P"," * space * V'exp' * (space * P"," * space * V'exp')^-1 * space *
-			Kdo * space * V'block' * space * Kend
-		+ Kfor * space * V'namelist' * space * Kin * space * V'explist' * space * Kdo * space * V'block' * space * Kend
-		+ Kfunction * space * V'funcname' * space *  V'funcbody'
-		+ Klocal * space * Kfunction * space * V'Name' * space * V'funcbody'
+		  Kdo * sp * V'block' * sp * Kend
+		+ Kwhile * sp * V'exp' * sp * Kdo * sp * V'block' * sp * Kend
+		+ Krepeat * sp * V'block' * sp * Kuntil * sp * V'exp'
+		+ Kif * sp * V'exp' * sp * Kthen * sp * V'block' * sp *
+			(Kelseif * sp * V'exp' * sp * Kthen * sp * V'block' * sp)^0 *
+			(Kelse * sp * V'block' * sp)^-1 * Kend
+		+ Kfor * sp * V'Name' * sp * '=' * sp *
+			V'exp' * sp * ',' * sp * V'exp' * (sp * ',' * sp * V'exp')^-1 * sp *
+			Kdo * sp * V'block' * sp * Kend
+		+ Kfor * sp * V'namelist' * sp * Kin * sp * V'explist' * sp * Kdo * sp * V'block' * sp * Kend
+		+ Kfunction * sp * V'funcname' * sp *  V'funcbody'
+		+ Klocal * sp * Kfunction * sp * V'Name' * sp * V'funcbody'
 		 -- local name [+-*/%^]= exp
-		+ (Klocal * space * Cs(V'Name') * space * Cs(S'+-*/%^') * P"=" * space * Cs(V'exp')) / 'local %1=%1%2(%3)'
-		+ Klocal * space * V'namelist' * (space * P"=" * space * V'explist')^-1
-		+ V'varlist' * space * P"=" * space * V'explist'
+		+ (Klocal * sp * Cs(V'Name') * sp * Cs(S'+-*/%^') * '=' * sp * Cs(V'exp')) / 'local %1=%1%2(%3)'
+		+ Klocal * sp * V'namelist' * (sp * '=' * sp * V'explist')^-1
+		+ V'varlist' * sp * '=' * sp * V'explist'
 		-- var [+-*/%^]= exp
-		+ (Cs(V'var') * space * Cs(S'+-*/%^') * P"=" * space * Cs(V'exp')) / '%1=%1%2(%3)'
+		+ (Cs(V'var') * sp * Cs(S'+-*/%^') * '=' * sp * Cs(V'exp')) / '%1=%1%2(%3)'
 		+ V'functioncall'
 		+ V'awkexit'
 		+ V'awktoken'
 		+ V'awknext'
 		;
-	awknext =
-		  (Knext + Knextfile) / 'coroutine.yield("%0")'
-		;
-	awkexit =
-		  Cs((Kexit) / '"%0"' * (space * Cc',' * V'exp')^-1) / 'coroutine.yield(%1)'
-		;
-	awktoken =
-		  Cs(V'awkkeywords' * Cc('(') * (space * V'explist')^-1 * Cc(')'))
-		;
-	awkkeywords =
-		  Kprintf + Kprint + Kgetline
-		;
 	laststat =
-		  Kreturn * (space * V'explist')^-1 + Kbreak
+		  Kreturn * (sp * V'explist')^-1 + Kbreak
 		;
 	funcname =
-		  V'Name' * (space * P"." * space * V'Name')^0 * (space * P":" * space * V'Name')^-1
+		  V'Name' * (sp * '.' * sp * V'Name')^0 * (sp * ':' * sp * V'Name')^-1
 		;
 	namelist =
-		  V'Name' * (space * P"," * space * V'Name')^0
+		  V'Name' * (sp * ',' * sp * V'Name')^0
 		;
 	varlist =
-		  V'var' * (space * P"," * space * V'var')^0
+		  V'var' * (sp * ',' * sp * V'var')^0
 		;
 
 	-- Let's come up with a syntax that does not use left recursion
@@ -284,99 +272,101 @@ local grammar = {
 		+ Ktrue
 		+ V'Number'
 		+ V'String'
-		+ P"..."
+		+ '...'
 		+ Cs(V'awkregex') / 'match(F[0],%1)'
 		+ V'function'
 		+ V'tableconstructor'
 		+ V'functioncall'
 		+ V'var'
-		+ P"(" * space * V'exp' * space * P")"
+		+ '(' * sp * V'exp' * sp * ')'
 		;
 	-- An expression operates on values to produce a new value or is a value
 	exp =
-		  V'unop' * space * V'exp'
-		+ V'awkmatchexp' * (space * V'binop' * space * V'exp')^-1
-		+ V'value' * (space * V'binop' * space * V'exp')^-1
+		  V'unop' * sp * V'exp'
+		+ V'awkmatchexp' * (sp * V'binop' * sp * V'exp')^-1
+		+ V'value' * (sp * V'binop' * sp * V'exp')^-1
 		;
 	-- Index and Call
 	index =
-		  P"[" * space * V'exp' * space * P"]"
-		+ P"." * space * V'Name'
+		  '[' * sp * V'exp' * sp * ']'
+		+ '.' * sp * V'Name'
 		;
 	call =
 		  V'args'
-		+ P":" * space * V'Name' * space * V'args'
+		+ ':' * sp * V'Name' * sp * V'args'
 		;
 	-- A Prefix is a the leftmost side of a var(iable) or functioncall
 	prefix =
-		  P"(" * space * V'exp' * space * P")" + V'Name'
+		  '(' * sp * V'exp' * sp * ')' + V'Name'
 		;
 	-- A Suffix is a Call or Index
 	suffix =
 		  V'call' + V'index'
 		;
 	var =
-		  V'prefix' * (space * V'suffix' * #(space * V'suffix'))^0 * space * V'index' + V'Name'
+		  V'prefix' * (sp * V'suffix' * #(sp * V'suffix'))^0 * sp * V'index' + V'Name'
 		;
 	functioncall =
-		  V'prefix' * (space * V'suffix' * #(space * V'suffix'))^0 * space * V'call'
+		  V'prefix' * (sp * V'suffix' * #(sp * V'suffix'))^0 * sp * V'call'
 		;
 	explist =
-		  V'exp' * (space * P"," * space * V'exp')^0
+		  V'exp' * (sp * ',' * sp * V'exp')^0
 		;
-	-- args = P"(" * space * (V'explist' * space)^-1 * P")" +
-	-- V'tableconstructor' +
-	-- V'String';
+	-- args =
+	-- '(' * sp * (V'explist' * sp)^-1 * ')'
+	-- + (#Cb("action") * V'String')
+	-- + (#Cb("action") * V'tableconstructor')
+	-- ;
 	args =
-		  P"(" * space * (V'explist' * space)^-1 * P")"
+		  P'(' * sp * (V'explist' * sp)^-1 * P')'
 		;
 	["function"] =
-		  Kfunction * space * V'funcbody'
+		  Kfunction * sp * V'funcbody'
 		;
 	funcbody =
-		  P"(" * space * (V'parlist' * space)^-1 * P")" * space *  V'block' * space * Kend
+		  '(' * sp * (V'parlist' * sp)^-1 * ')' * sp *  V'block' * sp * Kend
 		;
 	parlist =
-		  V'namelist' * (space * P"," * space * P"...")^-1 + P"..."
+		  V'namelist' * (sp * ',' * sp * '...')^-1 + '...'
 		;
 	tableconstructor =
-		  P"{" * space * (V'fieldlist' * space)^-1 * P"}"
+		  '{' * sp * (V'fieldlist' * sp)^-1 * '}'
 		;
 	fieldlist =
-		  V'field' * (space * V'fieldsep' * space * V'field')^0 * (space * V'fieldsep')^-1
+		  V'field' * (sp * V'fieldsep' * sp * V'field')^0 * (sp * V'fieldsep')^-1
 		;
 	field =
-		  P"[" * space * V'exp' * space * P"]" * space * P"=" * space * V'exp'
-		+ V'Name' * space * P"=" * space * V'exp'
+		  '[' * sp * V'exp' * sp * ']' * sp * '=' * sp * V'exp'
+		+ V'Name' * sp * '=' * sp * V'exp'
 		+ V'exp'
 		;
 	fieldsep =
-		  P","
-		+ P";"
+		  P','
+		+ P';'
 		;
 	binop = -- match longest token sequences first
 		  Kand
 		+ Kor
-		+ P'..'
-		+ P'<='
-		+ P'>='
-		+ P'=='
-		+ P'~='
+		+ '..'
+		+ '<='
+		+ '>='
+		+ '=='
+		+ '~='
 		+ P'&&' / ' and '
 		+ P'||' / ' or '
 		+ P'!=' / ' ~= '
-		+ P'+'
-		+ P'-'
-		+ P'*'
-		+ P'/'
-		+ P'^'
-		+ P'%'
-		+ P'<'
-		+ P'>'
+		+ '+'
+		+ '-'
+		+ '*'
+		+ '/'
+		+ '^'
+		+ '%'
+		+ '<'
+		+ '>'
 		;
 	unop =
-		  P"-"
-		+ P"#"
+		  P'-'
+		+ P'#'
 		+ P'!' / 'not '
 		+ Knot
 		;
