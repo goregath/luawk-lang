@@ -13,7 +13,7 @@ local awkmath = require 'awk.math'
 local getopt = require 'posix.unistd'.getopt
 
 local name = string.gsub(arg[0], "(.*/)(.*)", "%2")
-local runtime, record = awkenv:new()
+local runtime, record = awkenv.new()
 local fileinfo = {}
 local rangestate = {}
 local program = {
@@ -134,7 +134,7 @@ local function awkgetline(var)
 		end
 		return false
 	elseif var then
-		runtime["var"] = rec
+		runtime[var] = rec
 	else
 		record[0] = rec
 	end
