@@ -1,29 +1,10 @@
 -- @Author: goregath
 -- @Date:   2023-01-21 01:18:34
--- @Last Modified by:   goregath
--- @Last Modified time: 2023-02-20 23:52:11
+-- @Last Modified by:   Oliver.Zimmer@e3dc.com
+-- @Last Modified time: 2023-02-28 12:32:23
 
-local function assert_equal(test, expected)
-	if test ~= expected then
-		error(string.format("assert_equal: expected %q, was %q", expected, test), 2)
-	end
-end
-
-local function assert_re(test, pattern)
-	if not string.match(test, pattern) then
-		error(string.format("assert_re:  %q did not match %q", test, pattern), 2)
-	end
-end
-
-local function assert_error(f, pattern)
-	local s, m = pcall(f)
-	if s ~= false then
-		error("assert_error: succeeded")
-	end
-	if pattern ~= nil then
-		assert_re(m, pattern)
-	end
-end
+local assert_equal = require "test.utils".assert_equal
+local assert_error = require "test.utils".assert_error
 
 do -- defaults
 	local E, R = require("awk.env"):new()

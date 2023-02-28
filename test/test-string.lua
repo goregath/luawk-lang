@@ -1,51 +1,49 @@
 -- @Author: goregath
 -- @Date:   2023-01-21 01:18:34
--- @Last Modified by:   goregath
--- @Last Modified time: 2023-02-04 15:01:51
+-- @Last Modified by:   Oliver.Zimmer@e3dc.com
+-- @Last Modified time: 2023-02-28 12:31:16
 
+local assert_equal = require "test.utils".assert_equal
+local split = require "awk.string".split
 
--- require "compat53"
--- local awkenv = require "awk.env"
-local awkstring = require "awk.string"
+do -- split: defaults to FS="\x20"
+	local a = {}
+	assert_equal(split("a b c", a), 3)
+	assert_equal(table.concat(a, ","), "a,b,c")
+end
 
-local a = {}
-assert(awkstring.split("a b c", a) == 3)
-assert(table.concat(a, ",") == "a,b,c")
+do -- split: special pattern of "\x20" automatically trims leading and trailingspaces
+	local a = {}
+	assert_equal(split("  a b c  ", a, "\x20"), 3)
+	assert_equal(table.concat(a, ","), "a,b,c")
+end
 
-assert(awkstring.split("ä ö ü", a) == 3)
-assert(table.concat(a, "ß") == "äßößü")
+do -- split: special pattern of "\x20" automatically aggregate spaces
+	local a = {}
+	assert_equal(split("a  b  c", a, "\x20"), 3)
+	assert_equal(table.concat(a, ","), "a,b,c")
+end
 
-assert(awkstring.split("  a b  c  ", a) == 3)
-assert(table.concat(a, ",") == "a,b,c")
+do -- split: wide chars
+	local a = {}
+	assert_equal(split("ä ö ü", a, "\x20"), 3)
+	assert_equal(table.concat(a, "ß"), "äßößü")
+end
 
-assert(awkstring.split("a  b  c", a) == 3)
-assert(table.concat(a, ",") == "a,b,c")
+do -- split: special null pattern splits every character
+	local a = {}
+	assert_equal(split("abcäöü", a, ""), 6)
+	assert_equal(table.concat(a, ","), "a,b,c,ä,ö,ü")
+end
 
-assert(awkstring.split("abc", a, "") == 3)
-assert(table.concat(a, ",") == "a,b,c")
+do -- split: simple one-chacter pattern
+	local a = {}
+	assert_equal(split(",,a,b,c,", a, ","), 6)
+	assert_equal(table.concat(a, ";"), ";;a;b;c;")
+end
 
-assert(awkstring.split(",a,b,c,", a, ",") == 5)
-assert(table.concat(a, ",") == ",a,b,c,")
-
-assert(awkstring.split(",a,b,,,c,", a, ",+") == 5)
-assert(table.concat(a, ",") == ",a,b,c,")
-
--- luacheck: globals FS
--- do
--- 	local _ENV = awkenv.new(_ENV or _G)
--- 	_ENV[0] = " a b   c "
--- 	assert(NF == 3)
--- 	assert(#_ENV == 3)
--- 	assert(_ENV[1] == "a")
--- 	assert(_ENV[1.5] == "a")
--- 	assert(_ENV[2] == "b")
--- 	assert(_ENV[3] == "c")
--- 	assert(_ENV[4] == nil)
--- 	_ENV[3] = nil
--- 	assert(NF == 3)
--- 	assert(#_ENV == 3)
--- 	-- NF = 2
--- 	-- assert(_ENV[1] == "a")
--- 	-- assert(_ENV[2] == "b")
--- 	-- assert(_ENV[3] == nil)
--- end
+do -- split: regular expression pattern pattern
+	local a = {}
+	assert_equal(split(",a,b,,,c,", a, ",+"), 5)
+	assert_equal(table.concat(a, ","), ",a,b,c,")
+end
