@@ -1,7 +1,7 @@
 -- @Author: goregath
 -- @Date:   2023-01-21 01:18:34
 -- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-02-28 13:46:37
+-- @Last Modified time: 2023-02-28 14:40:22
 
 local assert_equal = require "test.utils".assert_equal
 local split = require "awk.string".split
@@ -58,12 +58,30 @@ end
 
 do -- patsplit: extract words
 	local a = {}
-	assert_equal(patsplit("lorem ipsum, dolor sit amet", a, "%w+"), 5)
-	assert_equal(table.concat(a, ","), "lorem,ipsum,dolor,sit,amet")
+	assert_equal(patsplit("lorem-ipsum, dolor sit amet", a, "[%w-]+"), 4)
+	assert_equal(table.concat(a, ","), "lorem-ipsum,dolor,sit,amet")
+end
+
+do -- patsplit: hex to bytes
+	local a = {}
+	assert_equal(patsplit(" dead\nbeef ", a, "%x%x"), 4)
+	assert_equal(table.concat(a, ","), "de,ad,be,ef")
+end
+
+do -- patsplit: split path
+	local a = {}
+	assert_equal(patsplit("/etc//passwd/", a, "[^/]+"), 2)
+	assert_equal(table.concat(a, ","), "etc,passwd")
 end
 
 do -- patsplit: captures
 	local a = {}
-	assert_equal(patsplit("xa,b,xc", a, "x(%w)"), 2)
-	assert_equal(table.concat(a, ";"), "a;c")
+	assert_equal(patsplit("$a,b,c\n$def;g", a, "$?(%w+)"), 5)
+	assert_equal(table.concat(a, ","), "a,b,c,def,g")
+end
+
+do -- patsplit: multiple captures
+	local a = {}
+	assert_equal(patsplit("a=1 b c=a x", a, "((%w+)=(%w+))"), 2)
+	assert_equal(table.concat(a, ","), "a=1,a,1,c=a,c,a")
 end

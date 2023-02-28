@@ -158,9 +158,11 @@ function M.patsplit(s,a,fp)
         a[i] = nil
     end
     -- a touch of functional programming ...
-    return (select(2,string.gsub(s, fp, setmetatable({}, {__index = function(_,k)
-        table.insert(a,k)
-    end}))))
+    return (select(2,string.gsub(s, fp, function(...)
+        for _,v in ipairs{...} do
+            table.insert(a,v)
+        end
+    end)))
 end
 
 --- Format the expressions according to the @{printf} format given by fmt and
