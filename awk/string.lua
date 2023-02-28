@@ -146,7 +146,6 @@ end
 -- @param[type=string,opt=FPAT] fs    field pattern
 -- @return[type=number]         number of fields
 function M.patsplit(s,a,fp)
-    -- error("patsplit: not implemented", -1)
     assert(type(a) == "table", "patsplit: second argument is not an array")
     s = s ~= nil and tostring(s) or ""
     fp = fp ~= nil and tostring(fp) or FPAT
@@ -157,12 +156,19 @@ function M.patsplit(s,a,fp)
     for i in ipairs(a) do
         a[i] = nil
     end
-    -- a touch of functional programming ...
-    return (select(2,string.gsub(s, fp, function(...)
-        for _,v in ipairs{...} do
-            table.insert(a,v)
+    -- standard regex mode
+    local i, b, c = 1, string.find(s, fp, 1)
+    while b do
+        if c < b then
+            rawset(a, i, "")
+            c = c + 1
+        else
+            rawset(a, i, string.sub(s, b, c))
+            i = i + 1
         end
-    end)))
+        b, c = string.find(s, fp, c + 1)
+    end
+    return #a
 end
 
 --- Format the expressions according to the @{printf} format given by fmt and
