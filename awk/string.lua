@@ -25,6 +25,10 @@ or parentheses are indicated as optional in the following list
 All of the preceding functions that take ERE as a parameter expect
 a pattern or a string valued expression that is a regular
 expression as defined in Regular Expressions.
+
+GAWK extensions:
+
+    patsplit(s, a [, r [, seps] ])
 ]]--
 
 local lua_version = _VERSION:sub(-3)
@@ -133,6 +137,32 @@ function M.split(s, a, fs)
         rawset(a, i, string.sub(s, j))
         return #a
     end
+end
+
+--- Split the string s into array elements a[1], a[2], ..., a[n], and return n.
+--
+-- @param[type=string]          s     input string
+-- @param[type=table]           a     split into array
+-- @param[type=string,opt=FPAT] fs    field pattern
+-- @return[type=number]         number of fields
+function M.patsplit(s,a,fp)
+    -- error("patsplit: not implemented", -1)
+    assert(type(a) == "table", "patsplit: second argument is not an array")
+    s = s ~= nil and tostring(s) or ""
+    fp = fp ~= nil and tostring(fp) or FPAT
+    if fp == nil or fp == "" then
+        error("patsplit: third argument cannot be empty", -1)
+    end
+    -- clear array
+    for i in ipairs(a) do
+        a[i] = nil
+    end
+    -- a touch of functional programming ...
+    return (select(2,string.gsub(s, fp, function(...)
+        for _,v in ipairs{...} do
+            table.insert(a,v)
+        end
+    end)))
 end
 
 --- Format the expressions according to the @{printf} format given by fmt and
