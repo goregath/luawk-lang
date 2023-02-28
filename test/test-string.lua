@@ -1,10 +1,11 @@
 -- @Author: goregath
 -- @Date:   2023-01-21 01:18:34
 -- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-02-28 12:31:16
+-- @Last Modified time: 2023-02-28 13:46:37
 
 local assert_equal = require "test.utils".assert_equal
 local split = require "awk.string".split
+local patsplit = require "awk.string".patsplit
 
 do -- split: defaults to FS="\x20"
 	local a = {}
@@ -46,4 +47,23 @@ do -- split: regular expression pattern pattern
 	local a = {}
 	assert_equal(split(",a,b,,,c,", a, ",+"), 5)
 	assert_equal(table.concat(a, ","), ",a,b,c,")
+end
+
+do -- patsplit: fallback to env.FPATH
+	local a = {}
+	FPAT="%w+"
+	assert_equal(patsplit("a b c", a), 3)
+	assert_equal(table.concat(a, ","), "a,b,c")
+end
+
+do -- patsplit: extract words
+	local a = {}
+	assert_equal(patsplit("lorem ipsum, dolor sit amet", a, "%w+"), 5)
+	assert_equal(table.concat(a, ","), "lorem,ipsum,dolor,sit,amet")
+end
+
+do -- patsplit: captures
+	local a = {}
+	assert_equal(patsplit("xa,b,xc", a, "x(%w)"), 2)
+	assert_equal(table.concat(a, ";"), "a;c")
 end
