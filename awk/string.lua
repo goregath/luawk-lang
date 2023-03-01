@@ -139,34 +139,130 @@ function M.split(s, a, fs)
     end
 end
 
+-- function mypatsplit(string, array, pattern, seps,
+--          eosflag, non_empty, nf) # locals
+-- {
+--  delete array
+--  delete seps
+--  if (length(string) == 0)
+--      return 0
+--
+--  eosflag = non_empty = false
+--  nf = 0
+--  while (match(string, pattern)) {
+--      if (RLENGTH > 0) {  # easy case
+--          non_empty = true
+--          if (! (nf in seps)) {
+--              if (RSTART == 1)    # match at front of string
+--                  seps[nf] = ""
+--              else
+--                  seps[nf] = substr(string, 1, RSTART - 1)
+--          }
+--          array[++nf] = substr(string, RSTART, RLENGTH)
+--          string = substr(string, RSTART+RLENGTH)
+--          if (length(string) == 0)
+--              break
+--      } else if (non_empty) {
+--          # last match was non-empty, and at the
+--          # current character we get a zero length match,
+--          # which we don't want, so skip over it
+--          non_empty = false
+--          seps[nf] = substr(string, 1, 1)
+--          string = substr(string, 2)
+--      } else {
+--          # 0 length match
+--          if (! (nf in seps)) {
+--              if (RSTART == 1)
+--                  seps[nf] = ""
+--              else
+--                  seps[nf] = substr(string, 1, RSTART - 1)
+--          }
+--          array[++nf] = ""
+--          if (! non_empty && ! eosflag) { # prev was empty
+--              seps[nf] = substr(string, 1, 1)
+--          }
+--          if (RSTART == 1) {
+--              string = substr(string, 2)
+--          } else {
+--              string = substr(string, RSTART + 1)
+--          }
+--          non_empty = false
+--      }
+--      if (length(string) == 0) {
+--          if (eosflag)
+--              break
+--          else
+--              eosflag = true
+--      }
+--  }
+--  if (length(string) > 0)
+--      seps[nf] = string
+--
+--  return length(array)
+-- }
+
 --- Split the string s into array elements a[1], a[2], ..., a[n], and return n.
 --
 -- @param[type=string]          s     input string
 -- @param[type=table]           a     split into array
 -- @param[type=string,opt=FPAT] fs    field pattern
 -- @return[type=number]         number of fields
-function M.patsplit(s,a,fp)
+function M.patsplit(s,a,fp,seps)
+    -- print(require'inspect'(s))
+    -- TODO RELEASE UNDER DIFFERENT LIBRARY AND LICENSE
+    -- TODO THIS IS GNU General Public License v3.0
+    -- https://github.com/gvlx/gawk/blob/a892293556960b0813098ede7da7a34774da7d3c/field.c#L1052
+    -- https://github.com/gvlx/gawk/blob/a892293556960b0813098ede7da7a34774da7d3c/field.c#L1472
     assert(type(a) == "table", "patsplit: second argument is not an array")
     s = s ~= nil and tostring(s) or ""
     fp = fp ~= nil and tostring(fp) or FPAT
     if fp == nil or fp == "" then
         error("patsplit: third argument cannot be empty", -1)
     end
-    -- clear array
+    if a == seps then
+        error("patsplit: second and fourth array cannot be the same", -1)
+    end
+    -- clear array(s)
     for i in ipairs(a) do
         a[i] = nil
     end
-    -- standard regex mode
-    local i, b, c = 1, string.find(s, fp, 1)
-    while b do
-        if c < b then
-            rawset(a, i, "")
-            c = c + 1
-        else
-            rawset(a, i, string.sub(s, b, c))
-            i = i + 1
+    if seps ~= nil then
+        for i in ipairs(seps) do
+            a[i] = nil
         end
-        b, c = string.find(s, fp, c + 1)
+    end
+    if s == "" then
+        -- nothing to do
+        return 0
+    end
+    -- standard regex mode
+    local non_empty = false
+    local nf, b, c = 0, string.find(s, fp, 1)
+    while b do
+        if c >= b then
+            -- easy case
+            non_empty = true
+            nf = nf + 1
+            a[nf] = string.sub(s, b, c)
+            if c >= #s then break end;
+            c = c + 1
+        elseif non_empty then
+            -- last match was non-empty, and at the
+            -- current character we get a zero length match,
+            -- which we don't want, so skip over it
+            non_empty = false
+            c = c + 2
+        else
+            nf = nf + 1
+            a[nf] = ""
+            if b == 1 then
+                c = c + 2
+            else
+                c = b + 1
+            end
+            non_empty = false
+        end
+        b, c = string.find(s, fp, c)
     end
     return #a
 end
