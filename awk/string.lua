@@ -97,12 +97,17 @@ end
 --  @param[type=string,opt=FS] fs field separator
 --  @return[type=number]          number of fields
 function M.split(s, a, fs)
-    -- TODO If RS is null, then records are separated by sequences
-    --      consisting of a <newline> plus one or more blank lines,
-    --      leading or trailing blank lines shall not result in empty
-    --      records at the beginning or end of the input, and a
-    --      <newline> shall always be a field separator, no matter
-    --      what the value of FS is.
+    -- TODO Seps is a gawk extension, with seps[i] being the separator string
+    -- between array[i] and array[i+1]. If fieldsep is a single space, then any
+    -- leading whitespace goes into seps[0] and any trailing whitespace goes
+    -- into seps[n], where n is the return value of split() (i.e., the number of
+    -- elements in array).
+    --
+    -- TODO If RS is null, then records are separated by sequences consisting of
+    -- a <newline> plus one or more blank lines, leading or trailing blank lines
+    -- shall not result in empty records at the beginning or end of the input,
+    -- and a <newline> shall always be a field separator, no matter what the
+    -- value of FS is.
     assert(type(a) == "table", "split: second argument is not an array")
     s = s ~= nil and tostring(s) or ""
     fs = fs ~= nil and tostring(fs) or (FS or '\32')
@@ -139,36 +144,141 @@ function M.split(s, a, fs)
     end
 end
 
+-- function mypatsplit(string, array, pattern, seps,
+--          eosflag, non_empty, nf) # locals
+-- {
+--  delete array
+--  delete seps
+--  if (length(string) == 0)
+--      return 0
+--
+--  eosflag = non_empty = false
+--  nf = 0
+--  while (match(string, pattern)) {
+--      if (RLENGTH > 0) {  # easy case
+--          non_empty = true
+--          if (! (nf in seps)) {
+--              if (RSTART == 1)    # match at front of string
+--                  seps[nf] = ""
+--              else
+--                  seps[nf] = substr(string, 1, RSTART - 1)
+--          }
+--          array[++nf] = substr(string, RSTART, RLENGTH)
+--          string = substr(string, RSTART+RLENGTH)
+--          if (length(string) == 0)
+--              break
+--      } else if (non_empty) {
+--          # last match was non-empty, and at the
+--          # current character we get a zero length match,
+--          # which we don't want, so skip over it
+--          non_empty = false
+--          seps[nf] = substr(string, 1, 1)
+--          string = substr(string, 2)
+--      } else {
+--          # 0 length match
+--          if (! (nf in seps)) {
+--              if (RSTART == 1)
+--                  seps[nf] = ""
+--              else
+--                  seps[nf] = substr(string, 1, RSTART - 1)
+--          }
+--          array[++nf] = ""
+--          if (! non_empty && ! eosflag) { # prev was empty
+--              seps[nf] = substr(string, 1, 1)
+--          }
+--          if (RSTART == 1) {
+--              string = substr(string, 2)
+--          } else {
+--              string = substr(string, RSTART + 1)
+--          }
+--          non_empty = false
+--      }
+--      if (length(string) == 0) {
+--          if (eosflag)
+--              break
+--          else
+--              eosflag = true
+--      }
+--  }
+--  if (length(string) > 0)
+--      seps[nf] = string
+--
+--  return length(array)
+-- }
+
 --- Split the string s into array elements a[1], a[2], ..., a[n], and return n.
 --
 -- @param[type=string]          s     input string
 -- @param[type=table]           a     split into array
 -- @param[type=string,opt=FPAT] fs    field pattern
 -- @return[type=number]         number of fields
-function M.patsplit(s,a,fp)
+function M.patsplit(s,a,fp,seps)
+    -- TODO RELEASE UNDER DIFFERENT LIBRARY AND LICENSE
+    -- TODO THIS IS GNU General Public License v3.0
+    -- https://github.com/gvlx/gawk/blob/a892293556960b0813098ede7da7a34774da7d3c/field.c#L1052
+    -- https://github.com/gvlx/gawk/blob/a892293556960b0813098ede7da7a34774da7d3c/field.c#L1472
     assert(type(a) == "table", "patsplit: second argument is not an array")
     s = s ~= nil and tostring(s) or ""
     fp = fp ~= nil and tostring(fp) or FPAT
     if fp == nil or fp == "" then
         error("patsplit: third argument cannot be empty", -1)
     end
-    -- clear array
+    if a == seps then
+        error("patsplit: second and fourth array cannot be the same", -1)
+    end
+    -- clear array(s)
     for i in ipairs(a) do
         a[i] = nil
     end
-    -- standard regex mode
-    local i, b, c = 1, string.find(s, fp, 1)
-    while b do
-        if c < b then
-            rawset(a, i, "")
-            c = c + 1
-        else
-            rawset(a, i, string.sub(s, b, c))
-            i = i + 1
+    if seps ~= nil then
+        for i in ipairs(seps) do
+            a[i] = nil
         end
-        b, c = string.find(s, fp, c + 1)
     end
-    return #a
+    if s == "" then
+        -- nothing to do
+        return 0
+    end
+    -- standard regex mode
+    local found = {}
+    local empty = true
+    local b, c = string.find(s, fp, 1)
+    while b do
+        if c >= b then
+            -- easy case
+            empty = false
+            table.insert(a, string.sub(s, b, c))
+            table.insert(found, b)
+            if c >= #s then break end;
+            c = c + 1
+        elseif not empty then
+            -- last match was non-empty, and at the
+            -- current character we get a zero length match,
+            -- which we don't want, so skip over it
+            empty = true
+            c = c + 2
+        else
+            table.insert(a, "")
+            table.insert(found, b)
+            if b == 1 then
+                c = c + 2
+            else
+                c = b + 1
+            end
+            empty = true
+        end
+        b, c = string.find(s, fp, c)
+    end
+    if seps then
+        -- extract separators from string
+        local pp = 1
+        for i,p in ipairs(found) do
+            seps[i-1] = string.sub(s, pp, p-1)
+            pp = p + #a[i]
+        end
+        seps[#found] = string.sub(s, found[#found] + #a[#found])
+    end
+    return #a, table.unpack(found)
 end
 
 --- Format the expressions according to the @{printf} format given by fmt and
