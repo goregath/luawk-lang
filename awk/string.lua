@@ -97,6 +97,7 @@ end
 --  @param[type=string,opt=FS] fs field separator
 --  @return[type=number]          number of fields
 function M.split(s, a, fs)
+    -- TODO add seps argument (gnuawk)
     -- TODO If RS is null, then records are separated by sequences
     --      consisting of a <newline> plus one or more blank lines,
     --      leading or trailing blank lines shall not result in empty
@@ -268,9 +269,8 @@ function M.patsplit(s,a,fp,seps)
         -- extract separators from string
         local pp = 1
         for i,p in ipairs(found) do
-            local f = a[i]
             seps[i-1] = string.sub(s, pp, p-1)
-            pp = p + #f
+            pp = p + #a[i]
         end
         seps[#found] = string.sub(s, found[#found] + #a[#found])
     end
