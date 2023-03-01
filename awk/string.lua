@@ -2,8 +2,6 @@
 -- @alias M
 -- @module string
 
--- luacheck: globals FS RSTART RLENGTH
-
 --[[
 The string functions in the following list shall be supported.
 Although the grammar (see Grammar ) permits built-in functions
@@ -42,7 +40,11 @@ else
     utf8_charpattern = utf8.charpattern
 end
 
-local M = {}
+local array_type = { table = true, userdata = true }
+
+local M = {
+    find = string.find
+}
 
 local function trim(s)
     local _, i = string.find(s, '^[\32\t\n]*')
@@ -56,19 +58,23 @@ end
 --  (which is the same as the returned value), zero if no match is found;
 --  @{env.RLENGTH|RLENGTH} shall be set to the length of the matched
 --  string, -1 if no match is found.
---  @param[type=string]  s input string
---  @param[type=string]  p pattern
---  @return[type=number]   position of first match, or zero
-function M.match(s, p)
+--
+--  @param[type=string] s  input string
+--  @param[type=string] p  pattern
+--  @return[type=number] position of first match, or zero
+function M:match(s, p)
     -- TODO adjust docs
     -- FIXME which environment should be used?
     s = s and tostring(s) or ""
     p = p and tostring(p) or ""
-    local rstart, rend = string.find(s,p)
+    local rstart, rend = self.find(s,p)
     if rstart then
-        RSTART = rstart
-        RLENGTH = rend - rstart + 1
+        self.RSTART = rstart
+        self.RLENGTH = rend - rstart + 1
         return rstart
+    else
+        self.RSTART = 0
+        self.RLENGTH = -1
     end
     return nil
 end
@@ -96,7 +102,7 @@ end
 --  @param[type=table]         a  split into array
 --  @param[type=string,opt=FS] fs field separator
 --  @return[type=number]          number of fields
-function M.split(s, a, fs)
+function M:split(s, a, fs)
     -- TODO Seps is a gawk extension, with seps[i] being the separator string
     -- between array[i] and array[i+1]. If fieldsep is a single space, then any
     -- leading whitespace goes into seps[0] and any trailing whitespace goes
@@ -108,9 +114,11 @@ function M.split(s, a, fs)
     -- shall not result in empty records at the beginning or end of the input,
     -- and a <newline> shall always be a field separator, no matter what the
     -- value of FS is.
-    assert(type(a) == "table", "split: second argument is not an array")
     s = s ~= nil and tostring(s) or ""
-    fs = fs ~= nil and tostring(fs) or (FS or '\32')
+    fs = fs ~= nil and tostring(fs) or (self.FS or '\32')
+    if not array_type[type(a)] then
+        error("split: second argument is not an array", -1)
+    end
     -- special mode
     if fs == '\32' then
         s = trim(s)
@@ -125,115 +133,63 @@ function M.split(s, a, fs)
         -- empty field separator, split to characters
         local i = 1
         for c in string.gmatch(s, utf8_charpattern) do
-            rawset(a, i, c)
+            a[i] = c
             i = i + 1
         end
         return #a
     else
         -- standard regex mode
         local i, j = 1, 1
-        local b, c = string.find(s, fs, j)
+        local b, c = self.find(s, fs, j)
         while b do
-            rawset(a, i, string.sub(s, j, b - 1))
+            a[i] = string.sub(s, j, b - 1)
             j = c + 1
             i = i + 1
-            b, c = string.find(s, fs, j)
+            b, c = self.find(s, fs, j)
         end
-        rawset(a, i, string.sub(s, j))
+        a[i] = string.sub(s, j)
         return #a
     end
 end
 
--- function mypatsplit(string, array, pattern, seps,
---          eosflag, non_empty, nf) # locals
--- {
---  delete array
---  delete seps
---  if (length(string) == 0)
---      return 0
---
---  eosflag = non_empty = false
---  nf = 0
---  while (match(string, pattern)) {
---      if (RLENGTH > 0) {  # easy case
---          non_empty = true
---          if (! (nf in seps)) {
---              if (RSTART == 1)    # match at front of string
---                  seps[nf] = ""
---              else
---                  seps[nf] = substr(string, 1, RSTART - 1)
---          }
---          array[++nf] = substr(string, RSTART, RLENGTH)
---          string = substr(string, RSTART+RLENGTH)
---          if (length(string) == 0)
---              break
---      } else if (non_empty) {
---          # last match was non-empty, and at the
---          # current character we get a zero length match,
---          # which we don't want, so skip over it
---          non_empty = false
---          seps[nf] = substr(string, 1, 1)
---          string = substr(string, 2)
---      } else {
---          # 0 length match
---          if (! (nf in seps)) {
---              if (RSTART == 1)
---                  seps[nf] = ""
---              else
---                  seps[nf] = substr(string, 1, RSTART - 1)
---          }
---          array[++nf] = ""
---          if (! non_empty && ! eosflag) { # prev was empty
---              seps[nf] = substr(string, 1, 1)
---          }
---          if (RSTART == 1) {
---              string = substr(string, 2)
---          } else {
---              string = substr(string, RSTART + 1)
---          }
---          non_empty = false
---      }
---      if (length(string) == 0) {
---          if (eosflag)
---              break
---          else
---              eosflag = true
---      }
---  }
---  if (length(string) > 0)
---      seps[nf] = string
---
---  return length(array)
--- }
-
 --- Split the string s into array elements a[1], a[2], ..., a[n], and return n.
+--  @usage
+--      local String = require("luawk.string")
+--      local utils = String:new()
+--      local a, s = {}, {}
+--      local n = utils:patsplit("0xDEAD, 0xBEEF", a, "%x%x", s)
+--      -- n = 4
+--      -- a = { "DE", "AD", "BE", "EF" }
+--      -- s = { [0]="0x", "", ", 0x", "", "" }
 --
--- @param[type=string]          s     input string
--- @param[type=table]           a     split into array
--- @param[type=string,opt=FPAT] fs    field pattern
--- @return[type=number]         number of fields
-function M.patsplit(s,a,fp,seps)
+--  @param[type=string] s  input string
+--  @param[type=table] a  split fields into array
+--  @param[type=string,opt=FPAT] fp  field pattern
+--  @param[type=table,opt] seps  save separators into array
+--  @return[type=number] number of fields
+--  @return[type=...] indices of fields in s
+function M:patsplit(s,a,fp,seps)
     -- TODO RELEASE UNDER DIFFERENT LIBRARY AND LICENSE
     -- TODO THIS IS GNU General Public License v3.0
     -- https://github.com/gvlx/gawk/blob/a892293556960b0813098ede7da7a34774da7d3c/field.c#L1052
     -- https://github.com/gvlx/gawk/blob/a892293556960b0813098ede7da7a34774da7d3c/field.c#L1472
-    assert(type(a) == "table", "patsplit: second argument is not an array")
     s = s ~= nil and tostring(s) or ""
-    fp = fp ~= nil and tostring(fp) or FPAT
+    fp = fp ~= nil and tostring(fp) or self.FPAT
+    if not array_type[type(a)] then
+        error("patsplit: second argument is not an array", -1)
+    end
     if fp == nil or fp == "" then
         error("patsplit: third argument cannot be empty", -1)
+    end
+    if seps ~= nil and not array_type[type(seps)] then
+        error("patsplit: fourth argument is not an array", -1)
     end
     if a == seps then
         error("patsplit: second and fourth array cannot be the same", -1)
     end
-    -- clear array(s)
+    -- clear array
     for i in ipairs(a) do
         a[i] = nil
-    end
-    if seps ~= nil then
-        for i in ipairs(seps) do
-            a[i] = nil
-        end
     end
     if s == "" then
         -- nothing to do
@@ -242,7 +198,7 @@ function M.patsplit(s,a,fp,seps)
     -- standard regex mode
     local found = {}
     local empty = true
-    local b, c = string.find(s, fp, 1)
+    local b, c = self.find(s, fp, 1)
     while b do
         if c >= b then
             -- easy case
@@ -267,9 +223,12 @@ function M.patsplit(s,a,fp,seps)
             end
             empty = true
         end
-        b, c = string.find(s, fp, c)
+        b, c = self.find(s, fp, c)
     end
     if seps then
+        for i in ipairs(seps) do
+            a[i] = nil
+        end
         -- extract separators from string
         local pp = 1
         for i,p in ipairs(found) do
@@ -286,8 +245,16 @@ end
 --  @param[type=string]     fmt format string
 --  @param[type=string,opt] ... arguments
 --  @return[type=string]
-function M.sprintf(fmt, ...)
+function M:sprintf(fmt, ...)
     error("sprintf: not implemented", -1)
+end
+
+function M:new(obj)
+    obj = obj or {}
+    setmetatable(obj, {
+        __index = self
+    })
+    return obj
 end
 
 return M
