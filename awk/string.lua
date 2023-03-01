@@ -208,7 +208,6 @@ end
 -- @param[type=string,opt=FPAT] fs    field pattern
 -- @return[type=number]         number of fields
 function M.patsplit(s,a,fp,seps)
-    -- print(require'inspect'(s))
     -- TODO RELEASE UNDER DIFFERENT LIBRARY AND LICENSE
     -- TODO THIS IS GNU General Public License v3.0
     -- https://github.com/gvlx/gawk/blob/a892293556960b0813098ede7da7a34774da7d3c/field.c#L1052
@@ -236,35 +235,46 @@ function M.patsplit(s,a,fp,seps)
         return 0
     end
     -- standard regex mode
-    local non_empty = false
-    local nf, b, c = 0, string.find(s, fp, 1)
+    local found = {}
+    local empty = true
+    local b, c = string.find(s, fp, 1)
     while b do
         if c >= b then
             -- easy case
-            non_empty = true
-            nf = nf + 1
-            a[nf] = string.sub(s, b, c)
+            empty = false
+            table.insert(a, string.sub(s, b, c))
+            table.insert(found, b)
             if c >= #s then break end;
             c = c + 1
-        elseif non_empty then
+        elseif not empty then
             -- last match was non-empty, and at the
             -- current character we get a zero length match,
             -- which we don't want, so skip over it
-            non_empty = false
+            empty = true
             c = c + 2
         else
-            nf = nf + 1
-            a[nf] = ""
+            table.insert(a, "")
+            table.insert(found, b)
             if b == 1 then
                 c = c + 2
             else
                 c = b + 1
             end
-            non_empty = false
+            empty = true
         end
         b, c = string.find(s, fp, c)
     end
-    return #a
+    if seps then
+        -- extract separators from string
+        local pp = 1
+        for i,p in ipairs(found) do
+            local f = a[i]
+            seps[i-1] = string.sub(s, pp, p-1)
+            pp = p + #f
+        end
+        seps[#found] = string.sub(s, found[#found] + #a[#found])
+    end
+    return #a, table.unpack(found)
 end
 
 --- Format the expressions according to the @{printf} format given by fmt and
