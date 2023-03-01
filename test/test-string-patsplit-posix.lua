@@ -1,7 +1,7 @@
 -- @Author: goregath
 -- @Date:   2023-01-21 01:18:34
 -- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-03-01 14:25:28
+-- @Last Modified time: 2023-03-01 15:45:41
 
 require "inspect"
 local assert_equal = require "test.utils".assert_equal
@@ -20,7 +20,7 @@ do -- patsplit: gawk csv example
 	print(require'inspect'(s))
 	assert_equal(n, 11)
 	assert_equal(#a, 11)
-	assert_equal(#s, 11)
+	assert_equal(#s, 11) -- 11+1 (zeroth sep)
 	assert_equal(s[00], "")
 	assert_equal(a[01], "")
 	assert_equal(s[01], ",")
