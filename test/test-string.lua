@@ -1,7 +1,7 @@
 -- @Author: goregath
 -- @Date:   2023-01-21 01:18:34
--- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-03-01 14:45:38
+-- @Last Modified by:   goregath
+-- @Last Modified time: 2023-03-01 22:01:23
 
 local assert_equal = require "test.utils".assert_equal
 local split = require "awk.string".split
@@ -62,11 +62,21 @@ do -- patsplit: extract words
 	assert_equal(table.concat(a, ","), "lorem-ipsum,dolor,sit,amet")
 end
 
-do -- patsplit: hex to bytes
-	local a = {}
-	assert_equal(patsplit(" dead\nbeef ", a, "%x%x"), 4)
-
-	assert_equal(table.concat(a, ","), "de,ad,be,ef")
+do -- patsplit: dead beef
+	local a, s = {}, {}
+	local n = patsplit("0xDEAD, 0xBEEF", a, "%x%x", s)
+	assert_equal(n, 4)
+	assert_equal(#a, 4)
+	assert_equal(#s, 4)
+	assert_equal(s[0],  "0x")
+	assert_equal(a[1],  "DE")
+	assert_equal(s[1],  "")
+	assert_equal(a[2],  "AD")
+	assert_equal(s[2],  ", 0x")
+	assert_equal(a[3],  "BE")
+	assert_equal(s[3],  "")
+	assert_equal(a[4],  "EF")
+	assert_equal(s[4],  "")
 end
 
 do -- patsplit: split path
@@ -78,8 +88,6 @@ end
 do -- patsplit: trailing case
 	local a, s = {}, {}
 	local n = patsplit("bbbaaacccdddaaaaaqqqqa", a, "aa+", s)
-	print(require'inspect'(a))
-	print(require'inspect'(s))
 	assert_equal(n, 2)
 	assert_equal(#a, 2)
 	assert_equal(#s, 2)
