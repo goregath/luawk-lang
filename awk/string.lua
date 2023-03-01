@@ -97,13 +97,17 @@ end
 --  @param[type=string,opt=FS] fs field separator
 --  @return[type=number]          number of fields
 function M.split(s, a, fs)
-    -- TODO add seps argument (gnuawk)
-    -- TODO If RS is null, then records are separated by sequences
-    --      consisting of a <newline> plus one or more blank lines,
-    --      leading or trailing blank lines shall not result in empty
-    --      records at the beginning or end of the input, and a
-    --      <newline> shall always be a field separator, no matter
-    --      what the value of FS is.
+    -- TODO Seps is a gawk extension, with seps[i] being the separator string
+    -- between array[i] and array[i+1]. If fieldsep is a single space, then any
+    -- leading whitespace goes into seps[0] and any trailing whitespace goes
+    -- into seps[n], where n is the return value of split() (i.e., the number of
+    -- elements in array).
+    --
+    -- TODO If RS is null, then records are separated by sequences consisting of
+    -- a <newline> plus one or more blank lines, leading or trailing blank lines
+    -- shall not result in empty records at the beginning or end of the input,
+    -- and a <newline> shall always be a field separator, no matter what the
+    -- value of FS is.
     assert(type(a) == "table", "split: second argument is not an array")
     s = s ~= nil and tostring(s) or ""
     fs = fs ~= nil and tostring(fs) or (FS or '\32')
