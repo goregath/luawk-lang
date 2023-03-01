@@ -26,34 +26,60 @@ local newline = P'\n'
 local noident = -(locale.alnum + P'_')
 local shebang = P"#" * (P(1) - newline)^0 * newline
 
-local Kand = P('and') * noident
-local Kbreak = P('break') * noident
-local Kdo = P('do') * noident
-local Kelse = P('else') * noident
-local Kelseif = P('elseif') * noident
-local Kend = P('end') * noident
-local Kfalse = P('false') * noident
-local Kfor = P('for') * noident
-local Kfunction = P('function') * noident
-local Kif = P('if') * noident
-local Kin = P('in') * noident
-local Klocal = P('local') * noident
-local Knil = P('nil') * noident
-local Knot = P('not') * noident
-local Kor = P('or') * noident
-local Krepeat = P('repeat') * noident
-local Kreturn = P('return') * noident
-local Kthen = P('then') * noident
-local Ktrue = P('true') * noident
-local Kuntil = P('until') * noident
-local Kwhile = P('while') * noident
+local Kand = P'and' * noident
+local Kbreak = P'break' * noident
+local Kdo = P'do' * noident
+local Kelse = P'else' * noident
+local Kelseif = P'elseif' * noident
+local Kend = P'end' * noident
+local Kfalse = P'false' * noident
+local Kfor = P'for' * noident
+local Kfunction = P'function' * noident
+local Kif = P'if' * noident
+local Kin = P'in' * noident
+local Klocal = P'local' * noident
+local Knil = P'nil' * noident
+local Knot = P'not' * noident
+local Kor = P'or' * noident
+local Krepeat = P'repeat' * noident
+local Kreturn = P'return' * noident
+local Kthen = P'then' * noident
+local Ktrue = P'true' * noident
+local Kuntil = P'until' * noident
+local Kwhile = P'while' * noident
 
-local Kexit = P('exit') * noident
-local Kgetline = P('getline') * noident
-local Knext = P('next') * noident
-local Knextfile = P('nextfile') * noident
-local Kprint = P('print') * noident
-local Kprintf = P('printf') * noident
+local Kexit = 'exit' * noident
+local Kgetline = 'getline' * noident
+local Knext = 'next' * noident
+local Knextfile = 'nextfile' * noident
+local Kprint = 'print' * noident
+local Kprintf = 'printf' * noident
+
+-- AWK builtin functions
+local Katan2 = P'atan2' * noident
+local Kclose = P'close' * noident
+local Kcos = P'cos' * noident
+local Kexp = P'exp' * noident
+local Kgsub = P'gsub' * noident
+local Kindex = P'index' * noident
+local Kint = P'int' * noident
+local Klength = P'length' * noident
+local Klog = P'log' * noident
+local Kmatch = P'match' * noident
+local Krand = P'rand' * noident
+local Ksin = P'sin' * noident
+local Ksplit = P'split' * noident
+local Ksprintf = P'sprintf' * noident
+local Ksqrt = P'sqrt' * noident
+local Ksrand = P'srand' * noident
+local Ksub = P'sub' * noident
+local Ksubstr = P'substr' * noident
+local Ksystem = P'system' * noident
+local Ktolower = P'tolower' * noident
+local Ktoupper = P'toupper' * noident
+
+-- GNU AWK builtin functions
+local Kpatsplit = P'patsplit' * noident
 
 local function quote(s)
 	return string.format("%q", s)
@@ -140,7 +166,33 @@ local grammar = {
 		  Cs(V'awkkeywords' * Cc'(' * (sp * V'explist')^-1 * Cc')')
 		;
 	awkkeywords =
-		  Kprintf + Kprint + Kgetline
+		  Kprintf
+		+ Kprint
+		+ Kgetline
+		;
+	awkbuiltins =
+		  Katan2
+		+ Kclose
+		+ Kcos
+		+ Kexp
+		+ Kgsub
+		+ Kindex
+		+ Kint
+		+ Klength
+		+ Klog
+		+ Kmatch
+		+ Kpatsplit
+		+ Krand
+		+ Ksin
+		+ Ksplit
+		+ Ksprintf
+		+ Ksqrt
+		+ Ksrand
+		+ Ksub
+		+ Ksubstr
+		+ Ksystem
+		+ Ktolower
+		+ Ktoupper
 		;
 
 	-- keywords
