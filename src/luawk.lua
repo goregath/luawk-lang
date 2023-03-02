@@ -17,6 +17,10 @@ local awkstr = require 'awk.string'
 local awkmath = require 'awk.math'
 local getopt = require 'posix.unistd'.getopt
 
+local utils = require 'luawk.utils'
+local abort = utils.abort
+local setfenv = utils.setfenv
+
 local name = string.gsub(arg[0], "(.*/)(.*)", "%2")
 local runtime, record = awkenv.new()
 local fileinfo = {}
@@ -57,27 +61,6 @@ local function help(handle)
 		"	-v var=value   Assigns value to program variable var.\n",
 		"\n",
 	})
-end
-
---- Compatibility layer setfenv() for Lua 5.2+.
---  Taken from Penlight Lua Libraries (lunarmodules/Penlight).
-local setfenv = _G.setfenv or function(f, t)
-	local var
-	local up = 0
-	repeat
-		up = up + 1
-		var = debug.getupvalue(f, up)
-	until var == '_ENV' or var == nil
-	if var then
-		debug.upvaluejoin(f, up, function() return var end, 1) -- use unique upvalue
-		debug.setupvalue(f, up, t)
-	end
-	if f ~= 0 then return f end
-end
-
-local function abort(...)
-	io.stderr:write(string.format(...))
-	os.exit(1)
 end
 
 -----------------------------------------------------------

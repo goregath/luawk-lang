@@ -1,11 +1,10 @@
---- GNU AWK runtime.
--- Dependencies: `POSIX`
--- @alias M
--- @classmod GNU
+--- GNU AWK Runtime Environment.
+--
+-- Extends the @{POSIX|POSIX (Runtime)} environment.
+-- @runtime GNU
+--
 -- @usage local libawk = require("luawk.runtime.gnu")
 -- @license GPLv3
--- @see POSIX
--- @see awk(1p)
 -- @see gawk(1)
 
 local M = {}

@@ -1,22 +1,19 @@
---- POSIX AWK runtime.
+--- POSIX AWK Runtime.
 -- @usage local libawk = require("luawk.runtime.posix")
--- @alias M
--- @classmod POSIX
+-- @runtime POSIX
 -- @license MIT
 -- @see awk(1p)
 
-local setenv = require 'posix.stdlib'.setenv
-local getenv = require 'posix.stdlib'.getenv
+local stdlib = require 'posix.stdlib'
+local setenv = stdlib.setenv
+local getenv = stdlib.getenv
+
+local utils = require 'luawk.utils'
+local trim = utils.trim
+local abort = utils.abort
+local utf8charpattern = utils.utf8charpattern
 
 local M = {}
-
-local array_type = { table = true, userdata = true }
-
-local function trim(s)
-    local _, i = string.find(s, '^[\32\t\n]*')
-    local j = string.find(s, '[\32\t\n]*$')
-    return string.sub(s, i + 1, j - 1)
-end
 
 --- The number of elements in the @{ARGV} array.
 M.ARGC = 0
@@ -182,8 +179,8 @@ function M:split(s, a, fs)
     -- value of FS is.
     s = s ~= nil and tostring(s) or ""
     fs = fs ~= nil and tostring(fs) or (self.FS or '\32')
-    if not array_type[type(a)] then
-        error("split: second argument is not an array", -1)
+    if not utils.isarray(a) then
+        abort("split: second argument is not an array\n")
     end
     -- special mode
     if fs == '\32' then
@@ -198,7 +195,7 @@ function M:split(s, a, fs)
         -- special null string mode
         -- empty field separator, split to characters
         local i = 1
-        for c in string.gmatch(s, utf8_charpattern) do
+        for c in string.gmatch(s, utf8charpattern) do
             a[i] = c
             i = i + 1
         end
