@@ -1,15 +1,27 @@
 --- GNU AWK runtime.
+-- Dependencies: `POSIX`
 -- @alias M
--- @classmod gawk
+-- @classmod GNU
+-- @usage local libawk = require("luawk.runtime.gnu")
 -- @license GPLv3
+-- @see POSIX
+-- @see awk(1p)
+-- @see gawk(1)
 
 local M = {}
 
 local array_type = { table = true, userdata = true }
 
+--- A regular expression (as a string) that is used to split text into fields
+--  that match the regular expresson. Assigning a value to @{FPAT} overrides
+--  the use of @{POSIX.FS} and @{FIELDWIDTHS} for field splitting.
+--  @see patsplit
+--  @see POSIX.FS
+M.FPAT = ''
+
 --- Split the string s into array elements a[1], a[2], ..., a[n], and return n.
 --  @usage
---      local libawk = require("luawk.runtime.gawk")
+--      local libawk = require("luawk.runtime.gnu")
 --      local gawk = libawk:new()
 --      local a, s = {}, {}
 --      local n = gawk:patsplit("0xDEAD, 0xBEEF", a, "%x%x", s)
@@ -23,6 +35,9 @@ local array_type = { table = true, userdata = true }
 --  @param[type=table,opt] seps  save separators into array
 --  @return[type=number] number of fields
 --  @return[type=...] indices of fields in s
+--
+--  @see POSIX.split
+--  @see FPAT
 function M:patsplit(s,a,fp,seps)
     -- TODO RELEASE UNDER DIFFERENT LIBRARY AND LICENSE
     -- TODO THIS IS GNU General Public License v3.0
@@ -97,8 +112,9 @@ end
 
 --- Create a new object.
 --  @param[type=table,opt] obj
+--  @return[type=GNU]
 function M:new(obj)
-	local libawk = require 'luawk.runtime.awk'
+	local libawk = require 'luawk.runtime.posix'
     obj = obj or {}
     setmetatable(obj, {
         __index = libawk:new(self)

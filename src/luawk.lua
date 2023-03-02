@@ -2,8 +2,13 @@
 
 --- Luawk interpreter.
 --
---    Usage: luawk [-F value] [-v var=value] [--] 'program' [file ...]
---           luawk [-F value] [-v var=value] [-f file] [--] [file ...]
+--  @usage
+--      Usage: luawk.lua [-F value] [-v var=value] [--] 'program' [file ...]
+--             luawk.lua [-F value] [-v var=value] [-f file] [--] [file ...]
+--
+--          -f file        Program text is read from file instead of from the command line.
+--          -F value       Sets the field separator, FS, to value.
+--          -v var=value   Assigns value to program variable var.
 --
 -- @script luawk
 
@@ -333,7 +338,7 @@ runtime.string = _G.string
 runtime.system = awksystem
 runtime.table = _G.table
 
-for n,f in pairs(awkstr) do
+for n,f in pairs(awkstr:new()) do
 	runtime[n] = f
 end
 
