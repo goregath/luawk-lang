@@ -48,6 +48,7 @@ M.CONVFMT = "%.6g"
 --  environment at the time awk began executing; it is implementation-defined
 --  whether any modification of @{ENVIRON} affects this environment.
 --  @table ENVIRON
+--  @label virtual
 --  @see getenv(3)
 --  @see setenv(3)
 M.ENVIRON = setmetatable({}, {
@@ -76,7 +77,7 @@ M.FS = '\32'
 --  for the last record read, unless a subsequent, redirected, getline function
 --  without a var argument is performed prior to entering the _END_ action.
 --  @class field
---  @virtual
+--  @label virtual
 --  @name NF
 
 --- The ordinal number of the current record from the start of input. Inside a
@@ -222,7 +223,8 @@ end
 
 --- Record string.
 --  @class field
---  @virtual
+--  @label $0
+--  @label virtual
 --  @name 0
 
 --- Fields as handled by @{split}() for @{0|$0}.
@@ -234,7 +236,8 @@ end
 --    -- NF = 4
 --    -- F[0] = "a b c d"
 --  @class field
---  @virtual
+--  @label $1..$NF
+--  @label virtual
 --  @name 1..NF
 --  @see split
 
