@@ -9,7 +9,8 @@ format = "markdown"
 no_space_before_args = true
 
 custom_tags = {
-	{ "runtime", title = "Runtimes" }
+	{ "runtime", title = "Runtimes" },
+	{ "constructor", title = "Constructors" }
 }
 
 kind_names={
@@ -20,8 +21,12 @@ examples = {
 	"examples/plugins"
 }
 
+alias("TODO","todo")
+alias("FIXME","fixme")
+alias("WARNING","warning")
+alias("BUG","fixme")
+
 new_type("runtime", "Runtimes", true)
-new_type("exported", "Exported Symbols", false)
 
 custom_tags = {
 	{ "label", hidden = true }

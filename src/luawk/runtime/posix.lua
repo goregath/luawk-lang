@@ -123,16 +123,17 @@ M.RSTART = 0
 --
 --  @param[type=string] s  input string
 --  @param[type=string] p  pattern
---  @return[type=number] position of first match, or zero
+--  @return[type=number] position of first match, or nil
 --
 --  @see RSTART
 --  @see RLENGTH
 --  @function Runtime:match
 function M:match(s, p)
-    -- TODO adjust docs
-    -- FIXME which environment should be used?
+    --- @TODO fix description
+    if not self then abort("split: self expected, got: %s\n", type(self)) end
     s = s and tostring(s) or ""
     p = p and tostring(p) or ""
+    --- @TODO self.find not part of awk and could be from an external library
     local rstart, rend = self.find(s,p)
     if rstart then
         self.RSTART = rstart
@@ -164,10 +165,18 @@ end
 --
 --  Any other pattern is considered as regex pattern in the domain of lua.
 --
---  @param[type=string]        s  input string
---  @param[type=table]         a  split into array
---  @param[type=string,opt=FS] fs field separator
---  @return[type=number]          number of fields
+--  @usage
+--    local F = require "luawk.runtime.posix":new()
+--    local n = F:split "a b c"
+--    --    n = 3
+--    -- F[1] = "a"
+--    -- F[2] = "b"
+--    -- F[3] = "c"
+--
+--  @param[type=string] s  input string
+--  @param[type=table,opt=self] a  split into array
+--  @param[type=string,opt=self.FS] fs  field separator
+--  @return[type=number]  number of fields
 --
 --  @see FS
 --  @function Runtime:split
@@ -177,17 +186,16 @@ function M:split(s, a, fs)
     -- leading whitespace goes into seps[0] and any trailing whitespace goes
     -- into seps[n], where n is the return value of split() (i.e., the number of
     -- elements in array).
-    --
     -- TODO If RS is null, then records are separated by sequences consisting of
     -- a <newline> plus one or more blank lines, leading or trailing blank lines
     -- shall not result in empty records at the beginning or end of the input,
     -- and a <newline> shall always be a field separator, no matter what the
     -- value of FS is.
+    if not self then abort("split: self expected, got: %s\n", type(self)) end
     s = s ~= nil and tostring(s) or ""
+    a = a or self
     fs = fs ~= nil and tostring(fs) or (self.FS or '\32')
-    if not isarray(a) then
-        abort("split: second argument is not an array\n")
-    end
+    if not isarray(a) then abort("split: second argument is not an array\n") end
     -- special mode
     if fs == '\32' then
         s = trim(s)
@@ -221,35 +229,65 @@ function M:split(s, a, fs)
     end
 end
 
---- Record string.
+--- The record.
 --  @class field
 --  @label $0
---  @label virtual
 --  @name 0
 
 --- Fields as handled by @{split}() for @{0|$0}.
 --  @usage
 --    local F = require 'luawk.runtime.posix':new()
---    F.FS = ","
---    F[0] = "a,b,c"
+--    F.OFS = ","
+--    F[0] = "a b c"
 --    F[NF+1] = "d"
---    -- NF = 4
---    -- F[0] = "a b c d"
+--    -- F.NF = 4
+--    -- F[0] = "a,b,c,d"
 --  @class field
 --  @label $1..$NF
---  @label virtual
 --  @name 1..NF
 --  @see split
 
 --- Create a new object.
 --  @param[type=table,opt] obj
+--  @return[type=Runtime]
 --  @function new
-function M:new(obj)
+local function new(obj)
     obj = obj or {}
     setmetatable(obj, {
-        __index = self
+        __index = function(self,k)
+            local idx = tonumber(k)
+            if idx then
+                idx = math.modf(idx)
+                if idx < 0 then abort("runtime: access to negative field\n") end
+                if idx == 0 and rawget(self, 0) == nil then
+                    -- recompute $0
+                    rawset(self, 0, table.concat(self, self.OFS))
+                end
+                return self[idx]
+            end
+            if k == "NF" then
+                return #self
+            end
+            if type(M[k]) == "function" then
+                -- wrap function self
+                local fn = M[k]
+                self[k] = function(...)
+                    return fn(self, ...)
+                end
+                return fn
+            end
+            return M[k]
+        end,
+        __newindex = function(self,k,v)
+            local idx = tonumber(k)
+            if idx then
+                idx = math.modf(idx)
+            end
+        end
     })
     return obj
 end
 
-return M
+return {
+    new = new
+}
