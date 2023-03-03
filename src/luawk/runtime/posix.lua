@@ -9,6 +9,7 @@ local setenv = stdlib.setenv
 local getenv = stdlib.getenv
 
 local utils = require 'luawk.utils'
+local isarray = utils.isarray
 local trim = utils.trim
 local abort = utils.abort
 local utf8charpattern = utils.utf8charpattern
@@ -47,6 +48,7 @@ M.CONVFMT = "%.6g"
 --  environment at the time awk began executing; it is implementation-defined
 --  whether any modification of @{ENVIRON} affects this environment.
 --  @table ENVIRON
+--  @label virtual
 --  @see getenv(3)
 --  @see setenv(3)
 M.ENVIRON = setmetatable({}, {
@@ -74,7 +76,9 @@ M.FS = '\32'
 --  executed previously. Inside an _END_ action, @{NF} shall retain the value it had
 --  for the last record read, unless a subsequent, redirected, getline function
 --  without a var argument is performed prior to entering the _END_ action.
-M.NF = 0
+--  @class field
+--  @label virtual
+--  @name NF
 
 --- The ordinal number of the current record from the start of input. Inside a
 --  _BEGIN_ action the value shall be zero. Inside an _END_ action the value shall
@@ -123,6 +127,7 @@ M.RSTART = 0
 --
 --  @see RSTART
 --  @see RLENGTH
+--  @function Runtime:match
 function M:match(s, p)
     -- TODO adjust docs
     -- FIXME which environment should be used?
@@ -165,6 +170,7 @@ end
 --  @return[type=number]          number of fields
 --
 --  @see FS
+--  @function Runtime:split
 function M:split(s, a, fs)
     -- TODO Seps is a gawk extension, with seps[i] being the separator string
     -- between array[i] and array[i+1]. If fieldsep is a single space, then any
@@ -179,7 +185,7 @@ function M:split(s, a, fs)
     -- value of FS is.
     s = s ~= nil and tostring(s) or ""
     fs = fs ~= nil and tostring(fs) or (self.FS or '\32')
-    if not utils.isarray(a) then
+    if not isarray(a) then
         abort("split: second argument is not an array\n")
     end
     -- special mode
@@ -215,8 +221,29 @@ function M:split(s, a, fs)
     end
 end
 
+--- Record string.
+--  @class field
+--  @label $0
+--  @label virtual
+--  @name 0
+
+--- Fields as handled by @{split}() for @{0|$0}.
+--  @usage
+--    local F = require 'luawk.runtime.posix':new()
+--    F.FS = ","
+--    F[0] = "a,b,c"
+--    F[NF+1] = "d"
+--    -- NF = 4
+--    -- F[0] = "a b c d"
+--  @class field
+--  @label $1..$NF
+--  @label virtual
+--  @name 1..NF
+--  @see split
+
 --- Create a new object.
 --  @param[type=table,opt] obj
+--  @function new
 function M:new(obj)
     obj = obj or {}
     setmetatable(obj, {

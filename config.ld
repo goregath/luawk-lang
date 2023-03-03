@@ -4,7 +4,7 @@ package = "luawk"
 file = "src"
 readme = "README.md"
 
-one = true
+sort = true
 format = "markdown"
 no_space_before_args = true
 
@@ -21,6 +21,11 @@ examples = {
 }
 
 new_type("runtime", "Runtimes", true)
+new_type("exported", "Exported Symbols", false)
+
+custom_tags = {
+	{ "label", hidden = true }
+}
 
 custom_see_handler('^([%w_]+)%((%d)(p?)%)$', function(name,section,subsection)
 	local upat = "http://www.kernel.org/doc/man-pages/online/pages/man%s/%s.%s.html"
@@ -28,3 +33,18 @@ custom_see_handler('^([%w_]+)%((%d)(p?)%)$', function(name,section,subsection)
 	name = name .. '(' ..section..subsection..')'
 	return name, url
 end)
+
+custom_display_name_handler = function(item, default_handler)
+	local name = item.name
+	if item.tags.label then
+		name = name .. " <sup>("
+		for _,label in ipairs(item.tags.label) do
+			name = name .. label .. ", "
+		end
+		name = name:sub(1,-3) .. ")</sup>"
+	end
+	if name ~= item.name then
+		return name
+	end
+	return default_handler(item)
+end
