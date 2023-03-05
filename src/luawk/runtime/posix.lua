@@ -253,6 +253,7 @@ end
 --  @return[type=Runtime]
 --  @function new
 local function new(obj)
+    -- @TODO R should use weak references
     local R = { nf = 0 }
     obj = obj or {}
     setmetatable(obj, {
@@ -287,8 +288,11 @@ local function new(obj)
                 idx = math.modf(idx)
                 v = v and tostring(v) or ""
                 if idx == 0 then
-                    print("split", v, R, self.FS)
-                    R.nf = self.split(v, R, self.FS)
+                    if v ~= "" then
+                        R.nf = self.split(v, R, self.FS)
+                    else
+                        R.nf = 0
+                    end
                     rawset(R, 0, v)
                 else
                     R.nf = math.max(idx, R.nf)
