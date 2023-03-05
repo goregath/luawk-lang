@@ -231,7 +231,7 @@ end
 
 --- The record.
 --  @class field
---  @label $0
+--  @label virtual
 --  @name 0
 
 --- Fields as handled by @{split}() for @{0|$0}.
@@ -243,46 +243,68 @@ end
 --    -- F.NF = 4
 --    -- F[0] = "a,b,c,d"
 --  @class field
---  @label $1..$NF
+--  @label virtual
 --  @name 1..NF
 --  @see split
+--  @see NF
 
 --- Create a new object.
 --  @param[type=table,opt] obj
 --  @return[type=Runtime]
 --  @function new
 local function new(obj)
+    local R = { nf = 0 }
     obj = obj or {}
     setmetatable(obj, {
         __index = function(self,k)
             local idx = tonumber(k)
-            if idx then
+            if idx and idx >= 0 then
                 idx = math.modf(idx)
-                if idx < 0 then abort("runtime: access to negative field\n") end
-                if idx == 0 and rawget(self, 0) == nil then
-                    -- recompute $0
-                    rawset(self, 0, table.concat(self, self.OFS))
+                if idx == 0 and R[0] == nil then
+                    -- build $0 from $1..$NF
+                    rawset(R, 0, table.concat(self, self.OFS, 1, R.nf))
                 end
-                return self[idx]
+                if idx > R.nf then return nil end
+                return R[idx] or ""
             end
             if k == "NF" then
-                return #self
+                return R.nf
             end
-            if type(M[k]) == "function" then
+            local fn = M[k]
+            if type(fn) == "function" then
                 -- wrap function self
-                local fn = M[k]
-                self[k] = function(...)
+                local proxy = function(...)
                     return fn(self, ...)
                 end
-                return fn
+                rawset(self, k, proxy)
+                return proxy
             end
             return M[k]
         end,
         __newindex = function(self,k,v)
             local idx = tonumber(k)
-            if idx then
+            if idx and idx >= 0 then
                 idx = math.modf(idx)
+                v = v and tostring(v) or ""
+                if idx == 0 then
+                    print("split", v, R, self.FS)
+                    R.nf = self.split(v, R, self.FS)
+                    rawset(R, 0, v)
+                else
+                    R.nf = math.max(idx, R.nf)
+                    rawset(R, idx, v)
+                    rawset(R, 0, nil)
+                end
+            elseif k == "NF" then
+                -- ensure NF is always a number
+                R.nf = math.modf(tonumber(v) or 0)
+                rawset(R, 0, nil)
+            else
+                rawset(self, k, v)
             end
+        end,
+        __len = function()
+            return R.nf
         end
     })
     return obj
