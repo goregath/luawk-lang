@@ -285,16 +285,20 @@ local function new(obj)
             if k == "NF" then
                 return R.nf
             end
-            local fn = M[k]
-            if type(fn) == "function" then
+            local prop = M[k]
+            if type(prop) == "function" then
                 -- wrap function self
                 local proxy = function(...)
-                    return fn(self, ...)
+                    return prop(self, ...)
                 end
                 rawset(self, k, proxy)
                 return proxy
             end
-            return M[k]
+            -- if prop == nil then
+            --     prop = {}
+            --     self[k] = prop
+            -- end
+            return prop
         end,
         __newindex = function(self,k,v)
             local idx = tonumber(k)
