@@ -86,6 +86,7 @@ function M:patsplit(...)
     -- https://github.com/gvlx/gawk/blob/a892293556960b0813098ede7da7a34774da7d3c/field.c#L1052
     -- https://github.com/gvlx/gawk/blob/a892293556960b0813098ede7da7a34774da7d3c/field.c#L1472
     s = s ~= nil and tostring(s) or ""
+    a = a or self
     fp = fp ~= nil and tostring(fp) or self.FPAT
     if not self then
         abort("patsplit: self expected, got: %s\n", type(self))
@@ -116,15 +117,16 @@ function M:patsplit(...)
     -- standard regex mode
     local found = {}
     local empty = true
-    local b, c = self.find(s, fp, 1)
+    local i, b, c = 1, self.find(s, fp, 1)
     while b do
         if c >= b then
             -- easy case
             empty = false
-            table.insert(a, string.sub(s, b, c))
-            table.insert(found, b)
+            a[i] = string.sub(s, b, c)
+            found[i] = b
             if c >= #s then break end;
             c = c + 1
+            i = i + 1
         elseif not empty then
             -- last match was non-empty, and at the
             -- current character we get a zero length match,
@@ -132,26 +134,27 @@ function M:patsplit(...)
             empty = true
             c = c + 2
         else
-            table.insert(a, "")
-            table.insert(found, b)
+            a[i] = ""
+            found[i] = b
             if b == 1 then
                 c = c + 2
             else
                 c = b + 1
             end
+            i = i + 1
             empty = true
         end
         b, c = self.find(s, fp, c)
     end
     if seps then
-        for i in ipairs(seps) do
-            a[i] = nil
+        for j in ipairs(seps) do
+            a[j] = nil
         end
         -- extract separators from string
         local pp = 1
-        for i,p in ipairs(found) do
-            seps[i-1] = string.sub(s, pp, p-1)
-            pp = p + #a[i]
+        for j,p in ipairs(found) do
+            seps[j-1] = string.sub(s, pp, p-1)
+            pp = p + #a[j]
         end
         seps[#found] = string.sub(s, found[#found] + #a[#found])
     end
@@ -169,7 +172,6 @@ local function new(obj)
     function mt.__index(self,k)
         local fn = M[k]
         if type(fn) == "function" then
-            print("saved ", k)
             -- wrap function self
             local proxy = function(...)
                 return fn(self, ...)
