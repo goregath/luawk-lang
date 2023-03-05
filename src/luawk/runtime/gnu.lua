@@ -7,8 +7,10 @@
 -- @license GPLv3
 -- @see gawk(1)
 
+local libawk = require 'luawk.runtime.posix'
 local utils = require 'luawk.utils'
 local isarray = utils.isarray
+local abort = utils.fail
 
 local M = {}
 
@@ -68,32 +70,40 @@ M.TEXTDOMAIN = ''
 --      -- s = { [0]="0x", "", ", 0x", "", "" }
 --
 --  @param[type=string] s  input string
---  @param[type=table] a  split fields into array
---  @param[type=string,opt=FPAT] fp  field pattern
+--  @param[type=table,opt=self] a  split fields into array
+--  @param[type=string,opt=self.FPAT] fp  field pattern
 --  @param[type=table,opt] seps  save separators into array
 --  @return[type=number] number of fields
 --  @return[type=...] indices of fields in s
 --
 --  @see POSIX
 --  @see FPAT
-function M:patsplit(s,a,fp,seps)
+--  @function Runtime:patsplit
+function M:patsplit(...)
+    local argc, s,a,fp,seps = select('#', ...), ...
     -- TODO RELEASE UNDER DIFFERENT LIBRARY AND LICENSE
     -- TODO THIS IS GNU General Public License v3.0
     -- https://github.com/gvlx/gawk/blob/a892293556960b0813098ede7da7a34774da7d3c/field.c#L1052
     -- https://github.com/gvlx/gawk/blob/a892293556960b0813098ede7da7a34774da7d3c/field.c#L1472
     s = s ~= nil and tostring(s) or ""
     fp = fp ~= nil and tostring(fp) or self.FPAT
-    if not isarray(a) then
-        error("patsplit: second argument is not an array", -1)
+    if not self then
+        abort("patsplit: self expected, got: %s\n", type(self))
+    end
+    if argc == 0 then
+        abort("patsplit: first argument is mandatory\n")
+    end
+    if argc > 1 and not isarray(a) then
+        abort("patsplit: second argument is not an array\n")
     end
     if fp == nil or fp == "" then
-        error("patsplit: third argument cannot be empty", -1)
+        abort("patsplit: third argument cannot be empty\n")
     end
     if seps ~= nil and not isarray(seps) then
-        error("patsplit: fourth argument is not an array", -1)
+        abort("patsplit: fourth argument is not an array\n")
     end
     if a == seps then
-        error("patsplit: second and fourth array cannot be the same", -1)
+        abort("patsplit: second and fourth array cannot be the same\n")
     end
     -- clear array
     for i in ipairs(a) do
@@ -150,14 +160,30 @@ end
 
 --- Create a new object.
 --  @param[type=table,opt] obj
---  @return[type=GNU]
-function M:new(obj)
-	local libawk = require 'luawk.runtime.posix'
-    obj = obj or {}
-    setmetatable(obj, {
-        __index = libawk:new(self)
+--  @return[type=Runtime]
+--  @function new
+local function new(obj)
+    obj = libawk.new(obj)
+    local mt = getmetatable(obj)
+    return setmetatable(obj, {
+        __index = function(self,k)
+            local fn = M[k]
+            if type(fn) == "function" then
+                print("saved ", k)
+                -- wrap function self
+                local proxy = function(...)
+                    return fn(self, ...)
+                end
+                rawset(self, k, proxy)
+                return proxy
+            end
+            return M[k] or mt.__index(self, k)
+        end,
+        __newindex = mt.__newindex,
+        __len = mt.__len
     })
-    return obj
 end
 
-return M
+return {
+    new = new
+}
