@@ -165,23 +165,21 @@ end
 local function new(obj)
     obj = libawk.new(obj)
     local mt = getmetatable(obj)
-    return setmetatable(obj, {
-        __index = function(self,k)
-            local fn = M[k]
-            if type(fn) == "function" then
-                print("saved ", k)
-                -- wrap function self
-                local proxy = function(...)
-                    return fn(self, ...)
-                end
-                rawset(self, k, proxy)
-                return proxy
+    local index = mt.__index
+    function mt.__index(self,k)
+        local fn = M[k]
+        if type(fn) == "function" then
+            print("saved ", k)
+            -- wrap function self
+            local proxy = function(...)
+                return fn(self, ...)
             end
-            return M[k] or mt.__index(self, k)
-        end,
-        __newindex = mt.__newindex,
-        __len = mt.__len
-    })
+            rawset(self, k, proxy)
+            return proxy
+        end
+        return M[k] or index(self, k)
+    end
+    return setmetatable(obj,mt)
 end
 
 return {
