@@ -217,6 +217,7 @@ function M:split(...)
         a[i] = nil
     end
     if s == "" then
+        -- nothing to do
         return 0
     end
     if fs == "" then
@@ -268,9 +269,8 @@ end
 --  @function new
 local function new(obj)
     -- @TODO R should use weak references
-    local R = { nf = 0 }
-    obj = obj or {}
-    setmetatable(obj, {
+    local R = { [0] = "", nf = 0 }
+    return setmetatable(obj or {}, {
         __index = function(self,k)
             local idx = tonumber(k)
             if idx and idx >= 0 then
@@ -300,7 +300,7 @@ local function new(obj)
             local idx = tonumber(k)
             if idx and idx >= 0 then
                 idx = math.modf(idx)
-                v = v and tostring(v) or ""
+                v = v ~= nil and tostring(v) or ""
                 if idx == 0 then
                     R.nf = self.split(v, R, self.FS)
                     rawset(R, 0, v)
@@ -310,8 +310,15 @@ local function new(obj)
                     rawset(R, 0, nil)
                 end
             elseif k == "NF" then
+                local nf = R.nf
                 -- ensure NF is always a number
                 R.nf = math.modf(tonumber(v) or 0)
+                if nf > R.nf then
+                    -- clear fields after NF
+                    for i=R.nf+1,nf do
+                        R[i] = nil
+                    end
+                end
                 rawset(R, 0, nil)
             else
                 rawset(self, k, v)
@@ -321,7 +328,6 @@ local function new(obj)
             return R.nf
         end
     })
-    return obj
 end
 
 return {
