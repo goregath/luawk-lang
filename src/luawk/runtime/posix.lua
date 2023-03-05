@@ -11,7 +11,7 @@ local getenv = stdlib.getenv
 local utils = require 'luawk.utils'
 local isarray = utils.isarray
 local trim = utils.trim
-local abort = utils.abort
+local abort = utils.fail
 local utf8charpattern = utils.utf8charpattern
 
 local M = {}
@@ -128,9 +128,12 @@ M.RSTART = 0
 --  @see RSTART
 --  @see RLENGTH
 --  @function Runtime:match
-function M:match(s, p)
+function M:match(...)
+    local argc, s, p = select('#', ...), ...
     --- @TODO fix description
-    if not self then abort("split: self expected, got: %s\n", type(self)) end
+    if not self then
+        abort("split: self expected, got: %s\n", type(self))
+    end
     s = s and tostring(s) or ""
     p = p and tostring(p) or ""
     --- @TODO self.find not part of awk and could be from an external library
@@ -180,7 +183,7 @@ end
 --
 --  @see FS
 --  @function Runtime:split
-function M:split(s, a, fs)
+function M:split(...)
     -- TODO Seps is a gawk extension, with seps[i] being the separator string
     -- between array[i] and array[i+1]. If fieldsep is a single space, then any
     -- leading whitespace goes into seps[0] and any trailing whitespace goes
@@ -191,11 +194,19 @@ function M:split(s, a, fs)
     -- shall not result in empty records at the beginning or end of the input,
     -- and a <newline> shall always be a field separator, no matter what the
     -- value of FS is.
-    if not self then abort("split: self expected, got: %s\n", type(self)) end
+    local argc, s, a, fs = select('#', ...), ...
+    if not self then
+        abort("split: self expected, got: %s\n", type(self))
+    end
+    if argc == 0 then
+        abort("split: first argument is mandatory\n")
+    end
+    if argc > 1 and not isarray(a) then
+        abort("split: second argument is not an array\n")
+    end
     s = s ~= nil and tostring(s) or ""
     a = a or self
     fs = fs ~= nil and tostring(fs) or (self.FS or '\32')
-    if not isarray(a) then abort("split: second argument is not an array\n") end
     -- special mode
     if fs == '\32' then
         s = trim(s)

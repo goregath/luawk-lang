@@ -31,6 +31,12 @@ function M.abort(...)
     os.exit(1)
 end
 
+--- Pass arguments to `error` using `string.format`.
+--  @param ... arguments for `string.format`
+function M.fail(...)
+    error(string.format(...), -1)
+end
+
 --- Trim leading and trailing whitespace from `s` and return the resulting
 --  substring.
 --  @param[type=string] s input string
