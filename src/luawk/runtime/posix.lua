@@ -205,6 +205,9 @@ function M:split(s, a, fs)
     for i in ipairs(a) do
         a[i] = nil
     end
+    if s == "" then
+        return 0
+    end
     if fs == "" then
         -- special null string mode
         -- empty field separator, split to characters
@@ -288,11 +291,7 @@ local function new(obj)
                 idx = math.modf(idx)
                 v = v and tostring(v) or ""
                 if idx == 0 then
-                    if v ~= "" then
-                        R.nf = self.split(v, R, self.FS)
-                    else
-                        R.nf = 0
-                    end
+                    R.nf = self.split(v, R, self.FS)
                     rawset(R, 0, v)
                 else
                     R.nf = math.max(idx, R.nf)
