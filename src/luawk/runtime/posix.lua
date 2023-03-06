@@ -216,8 +216,12 @@ function M:split(...)
         fs = '[\32\t\n]+'
     end
     -- clear array
-    for i in ipairs(a) do
-        a[i] = nil
+    if a == self then
+        self[0] = ""
+    else
+        for i in ipairs(a) do
+            a[i] = nil
+        end
     end
     if s == "" then
         -- nothing to do
