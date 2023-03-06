@@ -37,6 +37,27 @@ function M.fail(...)
     error(string.format(...), -1)
 end
 
+local function info(...)
+    io.stderr:write(string.format(...))
+end
+M.info = info
+
+--- Iterates over arguments and returns the first module it could find.
+--  @param ... modnames (see `require`)
+function M.requireany(...)
+    local pkgname
+    for _,v in ipairs{...} do
+        info("require %q ...", v)
+        pkgname = v
+        local loaded, lib, where = pcall(require, pkgname)
+        if loaded then
+            info(" found at %q\n", where or package.searchpath(pkgname, package.path))
+            return lib
+        end
+        info(" not found\n", v)
+    end
+end
+
 --- Trim leading and trailing whitespace from `s` and return the resulting
 --  substring.
 --  @param[type=string] s input string
