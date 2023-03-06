@@ -136,24 +136,6 @@ local function awkgetline(var)
 	return true
 end
 
-local function awkprint(...)
-	if select('#', ...) > 0 then
-		-- FIXME implementation far from optimal
-		local args = {...}
-		local stab = setmetatable({}, {
-			__index = function(_,k) return args[k] and tostring(args[k]) or "" end,
-			__len = function() return #args end
-		})
-		io.stdout:write(table.concat(stab, runtime.OFS), runtime.ORS)
-	else
-		io.stdout:write(runtime[0], runtime.ORS)
-	end
-end
-
-local function awkprintf(...)
-	io.write(string.format(...))
-end
-
 local function awkclose(...)
 	-- TODO add proper file handling
 	abort("close: not implemented\n")
@@ -340,8 +322,6 @@ runtime.ARGC = #runtime.ARGV+1
 runtime.ARGV[0] = arg[0]
 runtime.close = awkclose
 runtime.getline = awkgetline
-runtime.print = awkprint
-runtime.printf = awkprintf
 runtime.system = awksystem
 runtime = libruntime.new(runtime)
 
