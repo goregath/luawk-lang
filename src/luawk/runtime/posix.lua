@@ -115,6 +115,31 @@ M.RS = '\n'
 --  function.
 M.RSTART = 0
 
+--- Print arguments to `io.stdout` delimited by `OFS` using `tostring`. If no arguments are
+--  given, the record value @{0|$0} is printed.
+--  @param ... the arguments
+--  @function Runtime:print
+function M:print(...)
+    if select('#', ...) > 0 then
+        -- FIXME implementation far from optimal
+        local args = {...}
+        local stab = setmetatable({}, {
+            __index = function(_,k) return args[k] and tostring(args[k]) or "" end,
+            __len = function() return #args end
+        })
+        io.stdout:write(table.concat(stab, self.OFS), self.ORS)
+    else
+        io.stdout:write(self[0], self.ORS)
+    end
+end
+
+--- Prints to `io.stdout` by passing the arguments to `string.format`.
+--  @param ... the arguments
+--  @function Runtime:printf
+function M:printf(...)
+    io.stdout:write(string.format(...))
+end
+
 --- Return the position, in characters, numbering from 1, in string `s` where
 --  the extended regular expression `p` occurs, or zero if it does not occur
 --  at all. @{RSTART} shall be set to the starting position
@@ -278,6 +303,7 @@ local function new(obj)
     -- @TODO R should use weak references
     local R = { [0] = "", nf = 0 }
     obj = obj or {}
+    rawset(obj, "print", nil)
     rawset(obj, "FS", nil)
     rawset(obj, "ENVIRON", nil)
     return setmetatable(obj, {
