@@ -1,6 +1,7 @@
 #!/usr/bin/env lua
 
---- Luawk parser.
+--- Luawk parser based on an Lua 5.1 grammer, written in LPeg by Patrick
+--  Donnelly (https://github.com/batrick).
 -- @alias M
 -- @module grammar
 
@@ -85,7 +86,7 @@ local function quote(s)
 	return string.format("%q", s)
 end
 
---- Lua AWK grammar and parser.
+-- Lua AWK grammar and parser.
 -- Based on Patrick Donnelly LPeg recipe:
 -- http://lua-users.org/wiki/LpegRecipes
 -- @author Patrick Donnelly (https://github.com/batrick)
@@ -434,6 +435,7 @@ local grammar = {
 --  @return[3,type=number] position in source
 --  @return[3,type=number] source line
 --  @return[3,type=number] source column
+--  @function M.parse
 function M.parse(source)
 	local lang = Ct(P(grammar))
 	local stat, obj, _, pos = pcall(lpeg.match, lang, source)
