@@ -20,9 +20,11 @@ local abort = utils.abort
 local setfenv = utils.setfenv
 
 local name = string.gsub(arg[0], "(.*/)(.*)", "%2")
-local runtime = libruntime.new(setmetatable({}, {
+local runtime = setmetatable({
+	ARGV = {}
+}, {
 	__index = _G
-}))
+})
 local fileinfo = {}
 local rangestate = {}
 local program = {
@@ -47,8 +49,8 @@ local program_mt = {
 
 local function usage(handle)
 	handle:write(table.concat {
-		"Usage: ", name, " [-F value] [-v var=value] [--] 'program' [file ...]\n",
-		"       ", name, " [-F value] [-v var=value] [-f file] [--] [file ...]\n",
+		"Usage: ", name, " [-W option] [-F value] [-v var=value] [--] 'program' [file ...]\n",
+		"       ", name, " [-W option] [-F value] [-v var=value] [-f file] [--] [file ...]\n",
 		"\n",
 	})
 end
@@ -59,6 +61,8 @@ local function help(handle)
 		"	-f file        Program text is read from file instead of from the command line.\n",
 		"	-F value       Sets the field separator, FS, to value.\n",
 		"	-v var=value   Assigns value to program variable var.\n",
+		"	-W flag\n",
+		"	-W var=value\n",
 		"\n",
 	})
 end
@@ -164,6 +168,16 @@ end
 -- COMMAND LINE INTERFACE
 -----------------------------------------------------------
 
+if warn == nil then
+	-- luacheck:ignore 121
+	warn = function(...)
+		io.stderr:write("warning: ", ...)
+		io.stderr:write("\n")
+	end
+else
+	warn("@on")
+end
+
 do
 	local sources = {}
 	local loadstring = _G.loadstring or _G.load
@@ -178,7 +192,7 @@ do
 	end
 	-- options parsing
 	local last_index = 1
-	for r, optarg, optind in getopt(arg, ':hf:F:v:') do
+	for r, optarg, optind in getopt(arg, ':hf:F:v:W:') do
 		if r == '?' then
 			usage(io.stderr)
 			abort('%s: invalid option: %s\n', name, arg[optind-1])
@@ -199,6 +213,23 @@ do
 			local k,v = string.match(optarg, "^(%w+)=(.*)$")
 			if k and v then
 				runtime[k] = v
+			else
+				abort('%s: invalid argument: %s\n', name, optarg)
+			end
+		elseif r == 'W' then
+			local k,v = string.match(optarg, "^(%w+)=?(.*)$")
+			if k then
+				if k == "runtime" then
+					libruntime =
+						utils.requireany(v, "luawk.runtime." .. v)
+						or abort('%s: cannot find runtime for %q\n', name, v)
+				elseif k == "regex" then
+					package.loaded["luawk.regex"] =
+						utils.requireany(v, "rex_" .. v)
+						or abort('%s: cannot find regex library for %q\n', name, v)
+				else
+					abort('%s: invalid argument: %s\n', name, optarg)
+				end
 			else
 				abort('%s: invalid argument: %s\n', name, optarg)
 			end
@@ -312,16 +343,7 @@ runtime.getline = awkgetline
 runtime.print = awkprint
 runtime.printf = awkprintf
 runtime.system = awksystem
-
-if warn == nil then
-	-- luacheck:ignore 121
-	warn = function(...)
-		io.stderr:write("warning: ", ...)
-		io.stderr:write("\n")
-	end
-else
-	warn("@on")
-end
+runtime = libruntime.new(runtime)
 
 -----------------------------------------------------------
 -- MAIN LOOP
