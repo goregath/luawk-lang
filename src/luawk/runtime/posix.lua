@@ -8,6 +8,7 @@ local stdlib = require 'posix.stdlib'
 local setenv = stdlib.setenv
 local getenv = stdlib.getenv
 
+local regex = require 'luawk.regex'
 local utils = require 'luawk.utils'
 local isarray = utils.isarray
 local trim = utils.trim
@@ -127,6 +128,7 @@ M.RSTART = 0
 --
 --  @see RSTART
 --  @see RLENGTH
+--  @see regex.find
 --  @function Runtime:match
 function M:match(...)
     local argc, s, p = select('#', ...), ...
@@ -137,7 +139,7 @@ function M:match(...)
     s = s and tostring(s) or ""
     p = p and tostring(p) or ""
     --- @TODO self.find not part of awk and could be from an external library
-    local rstart, rend = self.find(s,p)
+    local rstart, rend = regex.find(s,p)
     if rstart then
         self.RSTART = rstart
         self.RLENGTH = rend - rstart + 1
@@ -182,6 +184,7 @@ end
 --  @return[type=number]  number of fields
 --
 --  @see FS
+--  @see regex.find
 --  @function Runtime:split
 function M:split(...)
     -- TODO Seps is a gawk extension, with seps[i] being the separator string
@@ -232,12 +235,12 @@ function M:split(...)
     else
         -- standard regex mode
         local i, j = 1, 1
-        local b, c = self.find(s, fs, j)
+        local b, c = regex.find(s, fs, j)
         while b do
             a[i] = string.sub(s, j, b - 1)
             j = c + 1
             i = i + 1
-            b, c = self.find(s, fs, j)
+            b, c = regex.find(s, fs, j)
         end
         a[i] = string.sub(s, j)
         return #a

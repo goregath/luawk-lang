@@ -8,6 +8,7 @@
 -- @see gawk(1)
 
 local libawk = require 'luawk.runtime.posix'
+local regex = require 'luawk.regex'
 local utils = require 'luawk.utils'
 local isarray = utils.isarray
 local abort = utils.fail
@@ -78,6 +79,7 @@ M.TEXTDOMAIN = ''
 --
 --  @see POSIX
 --  @see FPAT
+--  @see regex.find
 --  @function Runtime:patsplit
 function M:patsplit(...)
     local argc, s,a,fp,seps = select('#', ...), ...
@@ -117,7 +119,7 @@ function M:patsplit(...)
     -- standard regex mode
     local found = {}
     local empty = true
-    local i, b, c = 1, self.find(s, fp, 1)
+    local i, b, c = 1, regex.find(s, fp, 1)
     while b do
         if c >= b then
             -- easy case
@@ -144,7 +146,7 @@ function M:patsplit(...)
             i = i + 1
             empty = true
         end
-        b, c = self.find(s, fp, c)
+        b, c = regex.find(s, fp, c)
     end
     if seps then
         for j in ipairs(seps) do
