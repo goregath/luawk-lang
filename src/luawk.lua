@@ -308,7 +308,6 @@ end
 runtime.ARGC = #runtime.ARGV+1
 runtime.ARGV[0] = arg[0]
 runtime.close = awkclose
-runtime.F = runtime
 runtime.getline = awkgetline
 runtime.print = awkprint
 runtime.printf = awkprintf

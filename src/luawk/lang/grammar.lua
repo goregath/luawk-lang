@@ -145,8 +145,8 @@ local grammar = {
 				((V'block') * sp * Kend)
 		) / '%1%2';
 	awkrecord =
-		  ('$' * sp * Cs(V'Number' + V'var')) / 'F[%1]'
-		+ ('$' * sp * Cs(V'exp')) / 'F[%1]'
+		  ('$' * sp * Cs(V'Number' + V'var')) / '_ENV[%1]'
+		+ ('$' * sp * Cs(V'exp')) / '_ENV[%1]'
 		;
 	awkregex =
 		  '/' * Cg((P'\\' * P(1) + (1 - P'/'))^0) * '/' / quote
@@ -325,7 +325,7 @@ local grammar = {
 		+ V'Number'
 		+ V'String'
 		+ '...'
-		+ Cs(V'awkregex') / 'match(F[0],%1)'
+		+ Cs(V'awkregex') / 'match(_ENV[0],%1)'
 		+ V'function'
 		+ V'tableconstructor'
 		+ V'functioncall'
