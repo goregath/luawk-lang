@@ -3,7 +3,7 @@
 -- Extends the @{POSIX|POSIX (Runtime)} environment.
 -- @runtime GNU
 --
--- @usage local libawk = require("luawk.runtime.gnu")
+-- @usage require("luawk.runtime.gnu").new(_G)
 -- @license GPLv3
 -- @see gawk(1)
 

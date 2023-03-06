@@ -1,5 +1,5 @@
 --- POSIX AWK Runtime.
--- @usage local libawk = require("luawk.runtime.posix")
+-- @usage require("luawk.runtime.posix").new(_G)
 -- @runtime POSIX
 -- @license MIT
 -- @see awk(1p)
