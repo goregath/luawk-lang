@@ -277,7 +277,10 @@ end
 local function new(obj)
     -- @TODO R should use weak references
     local R = { [0] = "", nf = 0 }
-    return setmetatable(obj or {}, {
+    obj = obj or {}
+    rawset(obj, "FS", nil)
+    rawset(obj, "ENVIRON", nil)
+    return setmetatable(obj, {
         __index = function(self,k)
             local idx = tonumber(k)
             if idx and idx >= 0 then
