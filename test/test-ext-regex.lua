@@ -1,24 +1,24 @@
 -- @Author: goregath
 -- @Date:   2023-01-21 01:18:34
 -- @Last Modified by:   goregath
--- @Last Modified time: 2023-03-02 00:10:17
+-- @Last Modified time: 2023-03-06 12:45:39
 
+package.path = "src/?.lua;" .. package.path
 
-require "inspect"
 local relib = require "rex_posix"
 local assert_equal = require "test.utils".assert_equal
 
-local env = { find = relib.find }
-local lib = require "awk.string":new(env)
+require "luawk.regex".find = relib.find
+local lib = require "luawk.runtime.gnu".new()
 
 do -- patsplit: gawk csv example
 	-- See https://www.gnu.org/software/gawk/manual/html_node/Splitting-By-Content.html
 	local a, s = {}, {}
 	local input = ',Robbins,,Arnold,"1234 A Pretty Street, NE",MyTown,MyState,12345-6789,USA,,'
 	local fpat = '([^,]*)|("[^"]+")'
-	local n = lib:patsplit(input, a, fpat, s)
-	print(require'inspect'(a))
-	print(require'inspect'(s))
+	local n = lib.patsplit(input, a, fpat, s)
+	-- print(require'inspect'(a))
+	-- print(require'inspect'(s))
 	assert_equal(n, 11)
 	assert_equal(#a, 11)
 	assert_equal(#s, 11) -- 11+1 (zeroth sep)
@@ -51,7 +51,7 @@ do -- patsplit: patterns without delimiter
 	local a = {}
 	local input = 'deadbeef'
 	local fpat = '[a-f][a-f]'
-	local n = lib:patsplit(input, a, fpat)
+	local n = lib.patsplit(input, a, fpat)
 	assert_equal(n, 4)
 	assert_equal(#a, 4)
 	assert_equal(table.concat(a, ","), "de,ad,be,ef")
