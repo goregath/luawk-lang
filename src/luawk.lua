@@ -12,17 +12,17 @@
 --
 -- @script luawk
 
-local awkenv = require 'awk.env'
-local awkstr = require 'awk.string'
-local awkmath = require 'awk.math'
 local getopt = require 'posix.unistd'.getopt
 
+local libruntime = require 'luawk.runtime'
 local utils = require 'luawk.utils'
 local abort = utils.abort
 local setfenv = utils.setfenv
 
 local name = string.gsub(arg[0], "(.*/)(.*)", "%2")
-local runtime, record = awkenv.new()
+local runtime = libruntime.new(setmetatable({}, {
+	__index = _G
+}))
 local fileinfo = {}
 local rangestate = {}
 local program = {
@@ -124,7 +124,7 @@ local function awkgetline(var)
 	elseif var then
 		runtime[var] = rec
 	else
-		record[0] = rec
+		runtime[0] = rec
 	end
 	info.nr = info.nr + 1
 	runtime.FNR = info.nr
@@ -142,7 +142,7 @@ local function awkprint(...)
 		})
 		io.stdout:write(table.concat(stab, runtime.OFS), runtime.ORS)
 	else
-		io.stdout:write(record[0], runtime.ORS)
+		io.stdout:write(runtime[0], runtime.ORS)
 	end
 end
 
@@ -235,7 +235,7 @@ do
 	for i = last_index, #arg do
 		runtime.ARGV[i-last_index+1] = arg[i]
 	end
-	local awkgrammar = require 'awk.grammar'
+	local awkgrammar = require 'luawk.lang.grammar'
 	-- compile sources
 	for _,srcobj in ipairs(sources) do
 		local label, source = table.unpack(srcobj)
@@ -308,26 +308,11 @@ end
 runtime.ARGC = #runtime.ARGV+1
 runtime.ARGV[0] = arg[0]
 runtime.close = awkclose
-runtime.coroutine = _G.coroutine
-runtime.F = record
+runtime.F = runtime
 runtime.getline = awkgetline
-runtime.ipairs = _G.ipairs
-runtime.math = _G.math
-runtime.pairs = _G.pairs
 runtime.print = awkprint
 runtime.printf = awkprintf
-runtime.require = _G.require
-runtime.string = _G.string
 runtime.system = awksystem
-runtime.table = _G.table
-
-for n,f in pairs(awkstr:new()) do
-	runtime[n] = f
-end
-
-for n,f in pairs(awkmath) do
-	runtime[n] = f
-end
 
 if warn == nil then
 	-- luacheck:ignore 121

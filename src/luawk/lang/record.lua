@@ -1,6 +1,0 @@
---- GNU AWK runtime.
--- @alias M
--- @classmod Record
--- @license MIT
--- @see awk
--- @see gawk
