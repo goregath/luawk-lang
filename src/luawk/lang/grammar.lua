@@ -425,12 +425,20 @@ local grammar = {
 		;
 };
 
+--- Program data type.
+--  @field[type=callable] BEGIN
+--  @field[type=callable] BEGINFILE
+--  @field[type=callable] END
+--  @field[type=callable] ENDFILE
+--  @field[type=callable] main
+--  @table Program
+
 --- Parse luawk source string.
 --  @param[type=string]  source input string
---  @return[1] table
---  @return[2,type=nil]    generic error
+--  @return[1,type=Program]
+--  @return[2,type=nil] generic error
 --  @return[2,type=string] error message
---  @return[3,type=false]  parser error
+--  @return[3,type=false] parser error
 --  @return[3,type=string] error message
 --  @return[3,type=number] position in source
 --  @return[3,type=number] source line
