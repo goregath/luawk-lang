@@ -13,12 +13,24 @@ local M = {}
 --  By default, this function is an alias for `string.find` and thus uses lua
 --  pattern matching.
 --
+--  @usage
+--      > find = require 'luawk.regex'.find
+--      > find("0123456789abcdef", "%D+")   -- match
+--      11	16
+--      > find("0123456789abcdef", "%X")    -- no match
+--      nil
+--      > find("0123456789abcdef", "%X*")   -- empty match
+--      1	0
+--
 --  @param[type=string] s input string
 --  @param[type=string] pattern search pattern
---  @param[type=number,opt] init specifies where to start the search, its
+--  @param[type=number,opt=1] init specifies where to start the search, its
 --   default value is 1 and can be negative
---  @return[type=number] if the pattern has captures, then in a successful
---   match the captured values are also returned, after the two indices.
+--  @return[1,type=number] If it finds a match, then find returns the indices of
+--   s where this occurrence starts and ends; otherwise, it returns nil. If
+--   the pattern has captures, then in a successful match the captured values
+--   are also returned, after the two indices.
+--  @return[2,type=nil]
 --
 --  @function find
 M.find = string.find
