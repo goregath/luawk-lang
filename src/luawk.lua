@@ -43,9 +43,9 @@ local program_mt = {
 	end
 }
 
------------------------------------------------------------
+-- ---------------------------------------------------------
 -- UTILITIES
------------------------------------------------------------
+-- ---------------------------------------------------------
 
 local function usage(handle)
 	handle:write(table.concat {
@@ -67,19 +67,19 @@ local function help(handle)
 	})
 end
 
------------------------------------------------------------
+-- ---------------------------------------------------------
 -- AWK FUNCTIONS AND KEYWORDS
------------------------------------------------------------
+-- ---------------------------------------------------------
 
 --- Set $0 (or var) to the next input record from the current input file.
 --  This form of getline shall set the NF, NR, and FNR variables.
 --
---  @param[type=string,opt=@{env.FILENAME|FILENAME}] var
---    Set variable var to the next input record from the current input file.
+--  @param[type=string,opt=FILENAME] var  Set variable var to the next input
+--   record from the current input file.
 --
---  @return[type=boolean]
---    Shall return true for successful input,
---    false for end-of-file and raise an error otherwise.
+--  @return[type=boolean] Shall return true for successful input, false for
+--   end-of-file and raise an error otherwise.
+-- @function getline
 local function awkgetline(var)
 	local filename = runtime.FILENAME
 	local rs = runtime.RS and runtime.RS:sub(1,1) or ""
@@ -136,19 +136,21 @@ local function awkgetline(var)
 	return true
 end
 
+--- @function close
 local function awkclose(...)
 	-- TODO add proper file handling
 	abort("close: not implemented\n")
 end
 
+--- @function system
 local function awksystem(...)
 	-- TODO implement
 	abort("system: not implemented\n")
 end
 
------------------------------------------------------------
+-- ---------------------------------------------------------
 -- COMMAND LINE INTERFACE
------------------------------------------------------------
+-- ---------------------------------------------------------
 
 if warn == nil then
 	-- luacheck:ignore 121
@@ -314,9 +316,9 @@ do
 	program = setmetatable(program, program_mt)
 end
 
------------------------------------------------------------
+-- ---------------------------------------------------------
 -- SETUP
------------------------------------------------------------
+-- ---------------------------------------------------------
 
 runtime.ARGC = #runtime.ARGV+1
 runtime.ARGV[0] = arg[0]
@@ -325,9 +327,9 @@ runtime.getline = awkgetline
 runtime.system = awksystem
 runtime = libruntime.new(runtime)
 
------------------------------------------------------------
+-- ---------------------------------------------------------
 -- MAIN LOOP
------------------------------------------------------------
+-- ---------------------------------------------------------
 
 local exitcode = 0
 
