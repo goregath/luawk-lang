@@ -115,6 +115,73 @@ M.RS = '\n'
 --  function.
 M.RSTART = 0
 
+--- Set `var` to the next input record from the current input file. If `var`
+--  is unspecified, set record to @{0|$0}.
+--
+--  This form of getline should update the values of `NF`, `NR`, and `FNR`.
+--
+--  @param[type=string,opt] var  Set variable var to the next input
+--   record from the current input file.
+--
+--  @return[type=boolean] Shall return true for successful input, false for
+--   end-of-file and raise an error otherwise.
+-- @function Runtime:getline
+function M:getline(var)
+    local filename = self.FILENAME
+    local rs = self.RS and self.RS:sub(1,1) or ""
+    local info = fileinfo[filename]
+    if filename == "-" then
+        filename = "/dev/stdin"
+    end
+    if info == nil then
+        -- TODO check for file type
+        local handle, msg = io.open(filename)
+        if handle == nil then
+            abort("%s: %s\n", name, msg)
+        end
+        info = {
+            handle = handle,
+            nr = 0
+        }
+        fileinfo[self.FILENAME] = info
+    end
+    -- TODO read record delimited by RS
+    -- TODO The first character of the string value of RS shall be
+    --      the input record separator; a <newline> by default.
+    --      If RS contains more than one character, the results
+    --      are unspecified.
+    -- TODO If RS is null, then records are separated by sequences
+    --      consisting of a <newline> plus one or more blank lines,
+    --      leading or trailing blank lines shall not result in empty
+    --      records at the beginning or end of the input, and a
+    --      <newline> shall always be a field separator, no matter
+    --      what the value of FS is.
+    local rec
+    if rs == "\n" then
+        rec = info.handle:read()
+    elseif rs == "" then
+        abort("%s: empty RS not implemented\n", name)
+    else
+        abort("%s: non-standard RS not implemented\n", name)
+    end
+    if rec == nil then
+        fileinfo[filename] = nil
+        local s, msg = pcall(io.close, info.handle)
+        if not s then
+            error(msg, -1)
+        end
+        return false
+    elseif var then
+        self[var] = rec
+    else
+        self[0] = rec
+    end
+    info.nr = info.nr + 1
+    self.FNR = info.nr
+    self.NR = self.NR + 1
+    return true
+end
+
 --- Print arguments to `io.stdout` delimited by `OFS` using `tostring`. If no arguments are
 --  given, the record value @{0|$0} is printed.
 --  @param ... the arguments
