@@ -176,7 +176,7 @@ function M:match(...)
     return nil
 end
 
---- Split the string s into array elements a[1], a[2], ..., a[n], and return n.
+--- Split string `s` into array `a` by `fs` and return `n`.
 --
 --  All elements of the array shall be deleted before the split is performed.
 --  The separation shall be done with the ERE fs or with the field separator

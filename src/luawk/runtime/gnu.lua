@@ -60,7 +60,8 @@ M.RT = ''
 --- Used for internationalization of programs at the awk level.
 M.TEXTDOMAIN = ''
 
---- Split the string s into array elements a[1], a[2], ..., a[n], and return n.
+--- Split the string `s` into fields of array `a` matching pattern `fp` and return `n`.
+--
 --  @usage
 --      local libawk = require("luawk.runtime.gnu")
 --      local gawk = libawk:new()
