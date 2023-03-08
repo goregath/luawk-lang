@@ -3,6 +3,8 @@
 -- @module utils
 -- @license MIT
 
+local log = require 'luawk.log'
+
 local lua_version = _VERSION:sub(-3)
 local M = {
     --- Character pattern matching UTF-8.
@@ -28,6 +30,7 @@ end
 --  @param ... arguments for `string.format`
 function M.abort(...)
     io.stderr:write(string.format(...))
+    -- log.error(...)
     os.exit(1)
 end
 
@@ -37,36 +40,18 @@ function M.fail(...)
     error(string.format(...), -1)
 end
 
-local function info(...)
-    io.stderr:write("info: ", string.format(...))
-end
-M.info = info
-
-local function dbgmsg(...)
-    local fmt = ...
-    local argc = select('#', ...)
-    local argv = { select(2, ...) }
-    local varg = setmetatable({}, {
-        __index = function(_,k) return argv[k] ~= nil and string.format("%q", tostring(argv[k])) or "<nil>" end,
-        __len = function() return argc end
-    })
-    io.stderr:write("debug: ", string.format(fmt, table.unpack(varg)))
-end
-M.dbgmsg = dbgmsg
-
 --- Iterates over arguments and returns the first module it could find.
 --  @param ... modnames (see `require`)
 function M.requireany(...)
     local pkgname
     for _,v in ipairs{...} do
-        info("require %q ...", v)
+        log.debug("require %s\n", v)
         pkgname = v
         local loaded, lib, where = pcall(require, pkgname)
         if loaded then
-            info(" found at %q\n", where or package.searchpath(pkgname, package.path))
+            log.debug("found %s at %s\n", v, where or package.searchpath(pkgname, package.path))
             return lib
         end
-        info(" not found\n", v)
     end
 end
 
