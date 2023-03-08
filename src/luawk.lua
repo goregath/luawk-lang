@@ -14,18 +14,14 @@
 
 local getopt = require 'posix.unistd'.getopt
 
+local log = require 'luawk.log'
 local libruntime = require 'luawk.runtime'
 local utils = require 'luawk.utils'
 local abort = utils.abort
 local setfenv = utils.setfenv
 
 local name = string.gsub(arg[0], "(.*/)(.*)", "%2")
-local runtime = setmetatable({
-	ARGV = {}
-}, {
-	__index = _G
-})
-local fileinfo = {}
+local runtime = _G
 local rangestate = {}
 local program = {
 	BEGIN = {},
@@ -46,6 +42,8 @@ local program_mt = {
 -- ---------------------------------------------------------
 -- UTILITIES
 -- ---------------------------------------------------------
+
+local optstring = ':hf:F:v:W:'
 
 local function usage(handle)
 	handle:write(table.concat {
@@ -71,71 +69,6 @@ end
 -- AWK FUNCTIONS AND KEYWORDS
 -- ---------------------------------------------------------
 
---- Set $0 (or var) to the next input record from the current input file.
---  This form of getline shall set the NF, NR, and FNR variables.
---
---  @param[type=string,opt=FILENAME] var  Set variable var to the next input
---   record from the current input file.
---
---  @return[type=boolean] Shall return true for successful input, false for
---   end-of-file and raise an error otherwise.
--- @function getline
-local function awkgetline(var)
-	local filename = runtime.FILENAME
-	local rs = runtime.RS and runtime.RS:sub(1,1) or ""
-	local info = fileinfo[filename]
-	if filename == "-" then
-		filename = "/dev/stdin"
-	end
-	if info == nil then
-		-- TODO check for file type
-		local handle, msg = io.open(filename)
-		if handle == nil then
-			abort("%s: %s\n", name, msg)
-		end
-		info = {
-			handle = handle,
-			nr = 0
-		}
-		fileinfo[runtime.FILENAME] = info
-	end
-	-- TODO read record delimited by RS
-	-- TODO The first character of the string value of RS shall be
-	--      the input record separator; a <newline> by default.
-	--      If RS contains more than one character, the results
-	--      are unspecified.
-	-- TODO If RS is null, then records are separated by sequences
-	--      consisting of a <newline> plus one or more blank lines,
-	--      leading or trailing blank lines shall not result in empty
-	--      records at the beginning or end of the input, and a
-	--      <newline> shall always be a field separator, no matter
-	--      what the value of FS is.
-	local rec
-	if rs == "\n" then
-		rec = info.handle:read()
-	elseif rs == "" then
-		abort("%s: empty RS not implemented\n", name)
-	else
-		abort("%s: non-standard RS not implemented\n", name)
-	end
-	if rec == nil then
-		fileinfo[filename] = nil
-		local s, msg = pcall(io.close, info.handle)
-		if not s then
-			error(msg, -1)
-		end
-		return false
-	elseif var then
-		runtime[var] = rec
-	else
-		runtime[0] = rec
-	end
-	info.nr = info.nr + 1
-	runtime.FNR = info.nr
-	runtime.NR = runtime.NR + 1
-	return true
-end
-
 --- @function close
 local function awkclose(...)
 	-- TODO add proper file handling
@@ -152,16 +85,6 @@ end
 -- COMMAND LINE INTERFACE
 -- ---------------------------------------------------------
 
-if warn == nil then
-	-- luacheck:ignore 121
-	warn = function(...)
-		io.stderr:write("warning: ", ...)
-		io.stderr:write("\n")
-	end
-else
-	warn("@on")
-end
-
 do
 	local sources = {}
 	local loadstring = _G.loadstring or _G.load
@@ -174,32 +97,14 @@ do
 		setfenv(chunk, runtime)
 		return chunk
 	end
-	-- options parsing
-	local last_index = 1
-	for r, optarg, optind in getopt(arg, ':hf:F:v:W:') do
-		if r == '?' then
-			usage(io.stderr)
-			abort('%s: invalid option: %s\n', name, arg[optind-1])
-		end
+	-- getopt stage 1 - special flags and options
+	for r, optarg, optind in getopt(arg, optstring) do
 		if r == ':' then
 			usage(io.stderr)
 			abort('%s: missing argument: %s\n', name, arg[optind-1])
-		end
-		last_index = optind
-		if r == 'h' then
+		elseif r == 'h' then
 			help(io.stdout)
 			os.exit(0)
-		elseif r == 'F' then
-			-- TODO apply after any BEGIN rule(s) have been run
-			runtime.FS = optarg
-		elseif r == 'v' then
-			-- TODO apply after any BEGIN rule(s) have been run
-			local k,v = string.match(optarg, "^(%w+)=(.*)$")
-			if k and v then
-				runtime[k] = v
-			else
-				abort('%s: invalid argument: %s\n', name, optarg)
-			end
 		elseif r == 'W' then
 			local k,v = string.match(optarg, "^(%w+)=?(.*)$")
 			if k then
@@ -211,9 +116,39 @@ do
 					package.loaded["luawk.regex"] =
 						utils.requireany(v, "rex_" .. v)
 						or abort('%s: cannot find regex library for %q\n', name, v)
+				elseif k == "loglevel" then
+					-- TODO check for valid name
+					log.level = v
 				else
 					abort('%s: invalid argument: %s\n', name, optarg)
 				end
+			else
+				abort('%s: invalid argument: %s\n', name, optarg)
+			end
+		end
+	end
+	-- initialiaze final runtime implementaton
+	runtime = libruntime.new(runtime)
+	-- getopt stage 2 - runtime flags and options
+	local last_index = 1
+	for r, optarg, optind in getopt(arg, optstring) do
+		if r == '?' then
+			usage(io.stderr)
+			abort('%s: invalid option: %s\n', name, arg[optind-1])
+		end
+		if r == ':' then
+			usage(io.stderr)
+			abort('%s: missing argument: %s\n', name, arg[optind-1])
+		end
+		last_index = optind
+		if r == 'F' then
+			-- TODO apply after any BEGIN rule(s) have been run
+			runtime.FS = optarg
+		elseif r == 'v' then
+			-- TODO apply after any BEGIN rule(s) have been run
+			local k,v = string.match(optarg, "^(%w+)=(.*)$")
+			if k and v then
+				runtime[k] = v
 			else
 				abort('%s: invalid argument: %s\n', name, optarg)
 			end
@@ -314,18 +249,16 @@ do
 		end
 	end
 	program = setmetatable(program, program_mt)
+	runtime.ARGV[0] = arg[0]
+	runtime.ARGC = #runtime.ARGV+1
 end
 
 -- ---------------------------------------------------------
 -- SETUP
 -- ---------------------------------------------------------
 
-runtime.ARGC = #runtime.ARGV+1
-runtime.ARGV[0] = arg[0]
-runtime.close = awkclose
-runtime.getline = awkgetline
-runtime.system = awksystem
-runtime = libruntime.new(runtime)
+-- runtime.close = awkclose
+-- runtime.system = awksystem
 
 -- ---------------------------------------------------------
 -- MAIN LOOP
@@ -357,7 +290,7 @@ local function specialaction(action)
 			exitcode = d1 or exitcode
 			return false
 		elseif yield ~= nil then
-			warn(string.format("unknown yield value: %q (%q,%q,%q)", yield, d1, d2, d3))
+			log.warn("unknown yield value: %s (%s,%s,%s)", yield, d1, d2, d3)
 		end
 	until coroutine.status(runner) == "dead"
 	return true
@@ -369,6 +302,9 @@ end
 
 for i=1,runtime.ARGC-1 do
 	runtime.FILENAME = runtime.ARGV[i]
+	if not specialaction('BEGINFILE') then
+		goto END
+	end
 	-- If the value of a particular element of ARGV is empty (""), awk skips over it.
 	if runtime.FILENAME and runtime.FILENAME ~= "" then
 		local runner = coroutine.create(loop)
@@ -406,15 +342,18 @@ for i=1,runtime.ARGC-1 do
 				end
 				rangestate[d1] = d0
 			elseif yield ~= nil then
-				warn(string.format("unknown yield value: %q (%q,%q,%q)", yield, d1, d2, d3))
+				log.warn("unknown yield value: %s (%s,%s,%s)", yield, d1, d2, d3)
 			end
 			::NEXT::
 		until coroutine.status(runner) == "dead"
 	end
 	::NEXTFILE::
+	if not specialaction('ENDFILE') then
+		goto END
+	end
 	-- TODO refactor
 	-- FNR==2 { nextfile } 1' /etc/passwd /etc/passwd -> should print two lines
-	fileinfo[runtime.FILENAME] = nil
+	-- TODO ?? fileinfo[runtime.FILENAME] = nil
 end
 ::END::
 
