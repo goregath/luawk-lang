@@ -38,9 +38,21 @@ function M.fail(...)
 end
 
 local function info(...)
-    io.stderr:write(string.format(...))
+    io.stderr:write("info: ", string.format(...))
 end
 M.info = info
+
+local function dbgmsg(...)
+    local fmt = ...
+    local argc = select('#', ...)
+    local argv = { select(2, ...) }
+    local varg = setmetatable({}, {
+        __index = function(_,k) return argv[k] ~= nil and string.format("%q", tostring(argv[k])) or "<nil>" end,
+        __len = function() return argc end
+    })
+    io.stderr:write("debug: ", string.format(fmt, table.unpack(varg)))
+end
+M.dbgmsg = dbgmsg
 
 --- Iterates over arguments and returns the first module it could find.
 --  @param ... modnames (see `require`)
