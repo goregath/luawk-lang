@@ -10,7 +10,7 @@ local getenv = stdlib.getenv
 
 local regex = require 'luawk.regex'
 local utils = require 'luawk.utils'
-local dbgmsg = utils.dbgmsg
+local log = require 'luawk.log'
 local isarray = utils.isarray
 local trim = utils.trim
 local abort = utils.fail
@@ -375,12 +375,10 @@ local function new(obj)
     -- @TODO R should use weak references
     local R = { [0] = "", nf = 0 }
     obj = obj or {}
-    -- rawset(obj, "print", nil)
-    -- rawset(obj, "FS", nil)
-    -- rawset(obj, "ENVIRON", nil)
     return setmetatable({}, {
+        record = R,
         __index = function(self,k)
-            dbgmsg("get %s[%s]\n", self, k)
+            log.debug("get [%s]\n", k)
             local idx = tonumber(k)
             if idx and idx >= 0 then
                 idx = math.modf(idx)
@@ -389,10 +387,13 @@ local function new(obj)
                     -- build $0 from $1..$NF
                     rawset(R, 0, table.concat(self, ofs, 1, R.nf))
                 end
-                if idx > R.nf then return nil end
+                local val = nil
+                if idx <= R.nf then val = R[idx] or "" end
+                log.debug("    [%s]=%s <record> (field)\n", k, val)
                 return R[idx] or ""
             end
             if k == "NF" then
+                log.debug("    [%s]=%s <record>\n", k, R.nf)
                 return R.nf
             end
             local val = M[k]
@@ -401,45 +402,57 @@ local function new(obj)
                 local proxy = function(...)
                     return val(self, ...)
                 end
+                log.debug("    [%s]=%s <default> (%s)\n", k, proxy, val)
                 rawset(self, k, proxy)
                 return proxy
             end
-            if val == nil then
-                val = obj[k]
-            end
             if val ~= nil then
-                dbgmsg("mem %s[%s]=%s\n", self, k, val)
+                log.debug("    [%s]=%s <default>\n", k, val)
                 rawset(self, k, val)
                 return val
             end
+            val = obj[k]
+            if val ~= nil then
+                log.debug("    [%s]=%s <global>\n", k, val)
+                rawset(self, k, val)
+                return val
+            end
+            log.debug("    [%s]=nil <not found>\n", k)
             return nil
         end,
         __newindex = function(self,k,v)
-            dbgmsg("set %s[%s]=%s\n", self, k, v)
             local idx = tonumber(k)
             if idx and idx >= 0 then
                 idx = math.modf(idx)
+                log.debug("set [%s]=%s <field>\n", idx, v)
                 v = v ~= nil and tostring(v) or ""
                 if idx == 0 then
                     R.nf = self.split(v, R, self.FS)
                     rawset(R, 0, v)
+                    log.debug("    [*]=%s <rebuilt>\n", R)
                 else
                     R.nf = math.max(idx, R.nf)
+                    log.debug("    [%s]=%s <field>\n", idx, v)
                     rawset(R, idx, v)
+                    log.debug("    [%s]=%s <field>\n", 0, nil)
                     rawset(R, 0, nil)
                 end
             elseif k == "NF" then
+                log.debug("set [%s]=%s <virtual>\n", k, v)
                 local nf = R.nf
                 -- ensure NF is always a number
                 R.nf = math.modf(tonumber(v) or 0)
                 if nf > R.nf then
                     -- clear fields after NF
                     for i=R.nf+1,nf do
+                        log.debug("    [%s]=%s <field>\n", i, nil)
                         R[i] = nil
                     end
                 end
+                log.debug("    [%s]=%s <field>\n", 0, nil)
                 rawset(R, 0, nil)
             else
+                log.debug("set [%s]=%s <runtime>\n", k, v)
                 rawset(self, k, v)
             end
         end,
