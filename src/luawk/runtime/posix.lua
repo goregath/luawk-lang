@@ -10,6 +10,7 @@ local getenv = stdlib.getenv
 
 local regex = require 'luawk.regex'
 local utils = require 'luawk.utils'
+local dbgmsg = utils.dbgmsg
 local isarray = utils.isarray
 local trim = utils.trim
 local abort = utils.fail
@@ -115,6 +116,8 @@ M.RS = '\n'
 --  function.
 M.RSTART = 0
 
+local fileinfo = {}
+
 --- Set `var` to the next input record from the current input file. If `var`
 --  is unspecified, set record to @{0|$0}.
 --
@@ -137,7 +140,7 @@ function M:getline(var)
         -- TODO check for file type
         local handle, msg = io.open(filename)
         if handle == nil then
-            abort("%s: %s\n", name, msg)
+            abort("getline: %s\n", msg)
         end
         info = {
             handle = handle,
@@ -160,9 +163,9 @@ function M:getline(var)
     if rs == "\n" then
         rec = info.handle:read()
     elseif rs == "" then
-        abort("%s: empty RS not implemented\n", name)
+        abort("getline: empty RS not implemented\n")
     else
-        abort("%s: non-standard RS not implemented\n", name)
+        abort("getline: non-standard RS not implemented\n")
     end
     if rec == nil then
         fileinfo[filename] = nil
@@ -187,6 +190,8 @@ end
 --  @param ... the arguments
 --  @function Runtime:print
 function M:print(...)
+    local ofs = tostring(self.OFS)
+    local ors = tostring(self.ORS)
     if select('#', ...) > 0 then
         -- FIXME implementation far from optimal
         local args = {...}
@@ -194,9 +199,9 @@ function M:print(...)
             __index = function(_,k) return args[k] and tostring(args[k]) or "" end,
             __len = function() return #args end
         })
-        io.stdout:write(table.concat(stab, self.OFS), self.ORS)
+        io.stdout:write(table.concat(stab, ofs), ors)
     else
-        io.stdout:write(self[0], self.ORS)
+        io.stdout:write(self[0], ors)
     end
 end
 
@@ -370,17 +375,19 @@ local function new(obj)
     -- @TODO R should use weak references
     local R = { [0] = "", nf = 0 }
     obj = obj or {}
-    rawset(obj, "print", nil)
-    rawset(obj, "FS", nil)
-    rawset(obj, "ENVIRON", nil)
-    return setmetatable(obj, {
+    -- rawset(obj, "print", nil)
+    -- rawset(obj, "FS", nil)
+    -- rawset(obj, "ENVIRON", nil)
+    return setmetatable({}, {
         __index = function(self,k)
+            dbgmsg("get %s[%s]\n", self, k)
             local idx = tonumber(k)
             if idx and idx >= 0 then
                 idx = math.modf(idx)
                 if idx == 0 and R[0] == nil then
+                    local ofs = tostring(self.OFS)
                     -- build $0 from $1..$NF
-                    rawset(R, 0, table.concat(self, self.OFS, 1, R.nf))
+                    rawset(R, 0, table.concat(self, ofs, 1, R.nf))
                 end
                 if idx > R.nf then return nil end
                 return R[idx] or ""
@@ -388,22 +395,27 @@ local function new(obj)
             if k == "NF" then
                 return R.nf
             end
-            local prop = M[k]
-            if type(prop) == "function" then
+            local val = M[k]
+            if type(val) == "function" then
                 -- wrap function self
                 local proxy = function(...)
-                    return prop(self, ...)
+                    return val(self, ...)
                 end
                 rawset(self, k, proxy)
                 return proxy
             end
-            -- if prop == nil then
-            --     prop = {}
-            --     self[k] = prop
-            -- end
-            return prop
+            if val == nil then
+                val = obj[k]
+            end
+            if val ~= nil then
+                dbgmsg("mem %s[%s]=%s\n", self, k, val)
+                rawset(self, k, val)
+                return val
+            end
+            return nil
         end,
         __newindex = function(self,k,v)
+            dbgmsg("set %s[%s]=%s\n", self, k, v)
             local idx = tonumber(k)
             if idx and idx >= 0 then
                 idx = math.modf(idx)
