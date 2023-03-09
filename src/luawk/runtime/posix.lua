@@ -367,13 +367,30 @@ end
 --  @see split
 --  @see NF
 
+local function splitR(R, self)
+    R.nf = self.split(R[0], R, self.FS)
+    log.trace("    [*]=%s <rebuilt>\n", R)
+end
+
+local function joinR(R, self)
+    local ofs = tostring(self.OFS)
+    -- build $0 from $1..$NF
+    rawset(R, 0, table.concat(self, ofs, 1, R.nf))
+    log.trace("    [0]=%s <rebuilt>\n", R[0])
+end
+
 --- Create a new object.
 --  @param[type=table,opt] obj
 --  @return[type=Runtime]
 --  @function new
 local function new(obj)
     -- @TODO R should use weak references
-    local R = { [0] = "", nf = 0 }
+    local R = {
+        [0] = "",
+        nf = 0,
+        split = splitR,
+        join = joinR,
+    }
     obj = obj or {}
     local runtime = setmetatable({}, {
         record = R,
@@ -383,16 +400,25 @@ local function new(obj)
             if idx and idx >= 0 then
                 idx = math.modf(idx)
                 if idx == 0 and R[0] == nil then
-                    local ofs = tostring(self.OFS)
-                    -- build $0 from $1..$NF
-                    rawset(R, 0, table.concat(self, ofs, 1, R.nf))
+                    -- (re)build record from fields
+                    R:join(self)
+                end
+                if R.nf < 0 then
+                    -- (re)build fields from record
+                    R:split(self)
                 end
                 local val = nil
-                if idx <= R.nf then val = R[idx] or "" end
-                log.trace("    [%s]=%s <record> (field)\n", k, val)
-                return R[idx] or ""
+                if idx <= R.nf then
+                    val = R[idx] or ""
+                end
+                log.trace("    [%s]=%s <record>\n", k, val)
+                return val
             end
             if k == "NF" then
+                if R.nf < 0 then
+                    -- (re)build fields from record
+                    R:split(self)
+                end
                 log.trace("    [%s]=%s <record>\n", k, R.nf)
                 return R.nf
             end
@@ -427,21 +453,26 @@ local function new(obj)
                 log.debug("set [%s]=%s <field>\n", idx, v)
                 v = v ~= nil and tostring(v) or ""
                 if idx == 0 then
-                    R.nf = self.split(v, R, self.FS)
+                    -- invalidate fields
+                    R.nf = -1
                     rawset(R, 0, v)
-                    log.trace("    [*]=%s <rebuilt>\n", R)
                 else
                     R.nf = math.max(idx, R.nf)
                     log.trace("    [%s]=%s <field>\n", idx, v)
                     rawset(R, idx, v)
+                    -- invalidate record
                     log.trace("    [%s]=%s <field>\n", 0, nil)
                     rawset(R, 0, nil)
                 end
             elseif k == "NF" then
                 log.debug("set [%s]=%s <virtual>\n", k, v)
                 local nf = R.nf
+                if nf < 0 then
+                    -- (re)build fields from record
+                    R:split(self)
+                end
                 -- ensure NF is always a number
-                R.nf = math.modf(tonumber(v) or 0)
+                R.nf = math.max(math.modf(tonumber(v) or 0), 0)
                 if nf > R.nf then
                     -- clear fields after NF
                     for i=R.nf+1,nf do
@@ -449,6 +480,7 @@ local function new(obj)
                         R[i] = nil
                     end
                 end
+                -- invalidate record
                 log.trace("    [%s]=%s <field>\n", 0, nil)
                 rawset(R, 0, nil)
             else
