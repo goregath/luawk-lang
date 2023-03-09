@@ -62,6 +62,10 @@ local function help(handle)
 		"	-W flag\n",
 		"	-W var=value\n",
 		"\n",
+		"	-W runtime=module\n",
+		"	-W regex=module\n",
+		"	-W loglevel=level\n",
+		"\n",
 	})
 end
 
