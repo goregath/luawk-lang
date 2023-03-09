@@ -1,3 +1,17 @@
+--- Logging module
+--  @alias log
+--  @module log
+
+--- @function log.error
+
+--- @function log.warn
+
+--- @function log.info
+
+--- @function log.debug
+
+--- @function log.trace
+
 local tblfmt
 local modes = {
 	{ name = "error", color = 31, },
@@ -8,7 +22,11 @@ local modes = {
 }
 
 local log = { _version = "0.1.0" }
+
+--- Enable ANSI colors.
 log.usecolor = true
+
+--- Default log level.
 log.level = "warn"
 
 local levels = {}
