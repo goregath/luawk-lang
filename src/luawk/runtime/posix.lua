@@ -375,7 +375,7 @@ local function new(obj)
     -- @TODO R should use weak references
     local R = { [0] = "", nf = 0 }
     obj = obj or {}
-    return setmetatable({}, {
+    local runtime = setmetatable({}, {
         record = R,
         __index = function(self,k)
             log.debug("get [%s]\n", k)
@@ -389,11 +389,11 @@ local function new(obj)
                 end
                 local val = nil
                 if idx <= R.nf then val = R[idx] or "" end
-                log.debug("    [%s]=%s <record> (field)\n", k, val)
+                log.trace("    [%s]=%s <record> (field)\n", k, val)
                 return R[idx] or ""
             end
             if k == "NF" then
-                log.debug("    [%s]=%s <record>\n", k, R.nf)
+                log.trace("    [%s]=%s <record>\n", k, R.nf)
                 return R.nf
             end
             local val = M[k]
@@ -402,22 +402,22 @@ local function new(obj)
                 local proxy = function(...)
                     return val(self, ...)
                 end
-                log.debug("    [%s]=%s <default> (%s)\n", k, proxy, val)
+                log.trace("    [%s]=%s <default> (%s)\n", k, proxy, val)
                 rawset(self, k, proxy)
                 return proxy
             end
             if val ~= nil then
-                log.debug("    [%s]=%s <default>\n", k, val)
+                log.trace("    [%s]=%s <default>\n", k, val)
                 rawset(self, k, val)
                 return val
             end
             val = obj[k]
             if val ~= nil then
-                log.debug("    [%s]=%s <global>\n", k, val)
+                log.trace("    [%s]=%s <global>\n", k, val)
                 rawset(self, k, val)
                 return val
             end
-            log.debug("    [%s]=nil <not found>\n", k)
+            log.trace("    [%s]=nil <not found>\n", k)
             return nil
         end,
         __newindex = function(self,k,v)
@@ -429,12 +429,12 @@ local function new(obj)
                 if idx == 0 then
                     R.nf = self.split(v, R, self.FS)
                     rawset(R, 0, v)
-                    log.debug("    [*]=%s <rebuilt>\n", R)
+                    log.trace("    [*]=%s <rebuilt>\n", R)
                 else
                     R.nf = math.max(idx, R.nf)
-                    log.debug("    [%s]=%s <field>\n", idx, v)
+                    log.trace("    [%s]=%s <field>\n", idx, v)
                     rawset(R, idx, v)
-                    log.debug("    [%s]=%s <field>\n", 0, nil)
+                    log.trace("    [%s]=%s <field>\n", 0, nil)
                     rawset(R, 0, nil)
                 end
             elseif k == "NF" then
@@ -445,11 +445,11 @@ local function new(obj)
                 if nf > R.nf then
                     -- clear fields after NF
                     for i=R.nf+1,nf do
-                        log.debug("    [%s]=%s <field>\n", i, nil)
+                        log.trace("    [%s]=%s <field>\n", i, nil)
                         R[i] = nil
                     end
                 end
-                log.debug("    [%s]=%s <field>\n", 0, nil)
+                log.trace("    [%s]=%s <field>\n", 0, nil)
                 rawset(R, 0, nil)
             else
                 log.debug("set [%s]=%s <runtime>\n", k, v)
@@ -460,6 +460,24 @@ local function new(obj)
             return R.nf
         end
     })
+    if log.level == "trace" then
+        return setmetatable({}, {
+            __index = function(_,k)
+                log.debug("get [%s]\n", k)
+                local v = rawget(runtime, k)
+                if v ~= nil then
+                    log.trace("    [%s]=%s <cached>\n", k, v)
+                    return v
+                end
+                return runtime[k]
+            end,
+            __newindex = function(_,k,v)
+                log.debug("set [%s]=%s\n", k, v)
+                runtime[k] = v
+            end
+        })
+    end
+    return runtime
 end
 
 return {
