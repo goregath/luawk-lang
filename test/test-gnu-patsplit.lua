@@ -7,8 +7,9 @@ group:setup(function()
 	return require "luawk.runtime.gnu".new()
 end)
 
-group:add("patsplit: fallback to env.FPATH", function(R)
+group:add("patsplit: fallback to FPAT", function(R)
 	local a = {}
+	R.FPAT = "%w+"
 	assert_equal(R.patsplit("a b c", a), 3)
 	assert_equal(table.concat(a, ","), "a,b,c")
 end)
