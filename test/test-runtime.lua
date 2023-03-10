@@ -1,7 +1,7 @@
 -- @Author: goregath
 -- @Date:   2023-01-21 01:18:34
 -- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-03-10 10:06:44
+-- @Last Modified time: 2023-03-10 10:08:54
 
 
 package.path = "src/?.lua;" .. package.path
@@ -90,6 +90,14 @@ do -- set NF=NF and OFS=","
 	R.NF = R.NF
 	R.OFS = ","
 	assert_equal(R[0], "a b c")
+end
+
+do -- set field and OFS=","
+	local R = require("luawk.runtime"):new()
+	R[0] = " a b   c "
+	R[2] = "x"
+	R.OFS = ","
+	assert_equal(R[0], "a x c")
 end
 
 do -- replace last field

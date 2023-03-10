@@ -451,9 +451,8 @@ local function new(obj)
                     R.nf = math.max(idx, R.nf)
                     log.trace("    [%s]=%s <field>\n", idx, v)
                     rawset(R, idx, v)
-                    -- invalidate record
-                    log.trace("    [%s]=%s <field>\n", 0, nil)
-                    rawset(R, 0, nil)
+                    -- (re)build record from fields
+                    R:join(self)
                 end
             elseif k == "NF" then
                 log.debug("set [%s]=%s <virtual>\n", k, v)
