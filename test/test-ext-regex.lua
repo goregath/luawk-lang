@@ -1,22 +1,27 @@
--- @Author: goregath
--- @Date:   2023-01-21 01:18:34
--- @Last Modified by:   goregath
--- @Last Modified time: 2023-03-06 12:45:39
-
-package.path = "src/?.lua;" .. package.path
+package.path = "src/?.lua;test/?.lua;" .. package.path
 
 local relib = require "rex_posix"
+local regex_find = require "luawk.regex".find
 local assert_equal = require "test.utils".assert_equal
+local libutest = require "testgroup"
 
-require "luawk.regex".find = relib.find
-local lib = require "luawk.runtime.gnu".new()
+local group = libutest.new("ext-regex")
 
-do -- patsplit: gawk csv example
+group:setup(function()
+	require "luawk.regex".find = relib.find
+	return require "luawk.runtime.gnu".new()
+end)
+
+group:teardown(function()
+	require "luawk.regex".find = regex_find
+end)
+
+group:add("patsplit: gawk csv example", function(self)
 	-- See https://www.gnu.org/software/gawk/manual/html_node/Splitting-By-Content.html
 	local a, s = {}, {}
 	local input = ',Robbins,,Arnold,"1234 A Pretty Street, NE",MyTown,MyState,12345-6789,USA,,'
 	local fpat = '([^,]*)|("[^"]+")'
-	local n = lib.patsplit(input, a, fpat, s)
+	local n = self.patsplit(input, a, fpat, s)
 	-- print(require'inspect'(a))
 	-- print(require'inspect'(s))
 	assert_equal(n, 11)
@@ -45,14 +50,16 @@ do -- patsplit: gawk csv example
 	assert_equal(s[10], ",")
 	assert_equal(a[11], "")
 	assert_equal(s[11], "")
-end
+end)
 
-do -- patsplit: patterns without delimiter
+group:add("patsplit: patterns without delimiter", function(self)
 	local a = {}
 	local input = 'deadbeef'
 	local fpat = '[a-f][a-f]'
-	local n = lib.patsplit(input, a, fpat)
+	local n = self.patsplit(input, a, fpat)
 	assert_equal(n, 4)
 	assert_equal(#a, 4)
 	assert_equal(table.concat(a, ","), "de,ad,be,ef")
-end
+end)
+
+return group
