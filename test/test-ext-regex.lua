@@ -1,14 +1,13 @@
-package.path = "src/?.lua;test/?.lua;" .. package.path
+package.path = "src/?.lua;test/lua/lib/?.lua;" .. package.path
 
-local relib = require "rex_posix"
+local assert_equal = require "assert".assert_equal
+local group = require "testgroup".new("extended regex (lrexlib)")
+
+local lrexlib = require "rex_posix"
 local regex_find = require "luawk.regex".find
-local assert_equal = require "test.utils".assert_equal
-local libutest = require "testgroup"
-
-local group = libutest.new("ext-regex")
 
 group:setup(function()
-	require "luawk.regex".find = relib.find
+	require "luawk.regex".find = lrexlib.find
 	return require "luawk.runtime.gnu".new()
 end)
 

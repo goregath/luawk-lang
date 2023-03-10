@@ -1,8 +1,7 @@
-package.path = "src/?.lua;test/?.lua;" .. package.path
+package.path = "src/?.lua;test/lua/lib/?.lua;" .. package.path
 
-local assert_equal = require "test.utils".assert_equal
-local libutest = require "testgroup"
-local group = libutest.new("runtime")
+local assert_equal = require "assert".assert_equal
+local group = require "testgroup".new("runtime")
 
 group:setup(function()
 	return require "luawk.runtime".new()
