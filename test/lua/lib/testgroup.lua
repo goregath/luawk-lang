@@ -36,7 +36,8 @@ function M:run()
 		else
 			table.insert(failed, i)
 			io.stdout:write(ansi_red, "not ok", ansi_reset)
-			io.stdout:write(string.format(" %d - %s\n  %s\n", i, test[1], tostring(msg):gsub("\n", "\n  ")))
+			io.stdout:write(string.format(" %d - %s\n  %s\n", i, test[1],
+				tostring(msg):gsub("\n%s*$", ""):gsub("\n", "\n  ")))
 		end
 
 	end
