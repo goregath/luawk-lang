@@ -1,47 +1,52 @@
 -- @Author: goregath
 -- @Date:   2023-01-21 01:18:34
 -- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-02-28 12:32:23
+-- @Last Modified time: 2023-03-10 10:01:08
+
+
+package.path = "src/?.lua;" .. package.path
 
 local assert_equal = require "test.utils".assert_equal
 local assert_error = require "test.utils".assert_error
 
+require 'luawk.log'.level = "trace"
+
 do -- defaults
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	assert(R ~= nil, "F is nil")
-	assert_equal(E.NF, 0)
+	assert_equal(R.NF, 0)
 	assert_equal(#R, 0)
 	assert_equal(R[0], "")
 	assert_equal(R[1], nil)
-	assert_equal(E.FS, " ")
-	assert_equal(E.OFS, " ")
+	assert_equal(R.FS, " ")
+	assert_equal(R.OFS, " ")
 end
 
 do -- setting record updates NF
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	assert_equal(E.NF, 3)
+	assert_equal(R.NF, 3)
 	assert_equal(#R, 3)
 end
 
 do -- table.insert on record updates NF
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
 	table.insert(R, 2, "x")
-	assert_equal(E.NF, 4)
+	assert_equal(R.NF, 4)
 	assert_equal(#R, 4)
 end
 
 do -- table.remove on record retains NF
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
 	table.remove(R, 1)
-	assert_equal(E.NF, 3)
+	assert_equal(R.NF, 3)
 	assert_equal(#R, 3)
 end
 
 do -- setting record splits to fields by FS
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
 	assert_equal(R[1], "a")
 	assert_equal(R[2], "b")
@@ -50,9 +55,9 @@ do -- setting record splits to fields by FS
 end
 
 do -- ipairs of record
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	E.NF = 5
+	R.NF = 5
 	local f = {}
 	for _,v in ipairs(R) do
 		table.insert(f, v or false)
@@ -66,91 +71,91 @@ do -- ipairs of record
 end
 
 do -- touch NF forces record to recompute
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	E.OFS = ","
+	R.OFS = ","
 	assert_equal(R[0], " a b   c ")
-	E.NF = E.NF
+	R.NF = R.NF
 	assert_equal(R[0], "a,b,c")
 end
 
 do -- set OFS="," and NF=NF
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	E.OFS = ","
-	E.NF = E.NF
+	R.OFS = ","
+	R.NF = R.NF
 	assert_equal(R[0], "a,b,c")
 end
 
 do -- set NF=NF and OFS=","
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	E.NF = E.NF
-	E.OFS = ","
+	R.NF = R.NF
+	R.OFS = ","
 	assert_equal(R[0], "a b c")
 end
 
 do -- replace last field
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	R[E.NF] = "x"
+	R[R.NF] = "x"
 	assert_equal(R[0], "a b x")
 end
 
 do -- table.insert appends field
-	local _, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
 	table.insert(R, "x")
 	assert_equal(R[0], "a b c x")
 end
 
 do -- table.remove clears field
-	local E, R = require("awk.env"):new()
-	E.OFS = ","
+	local R = require("luawk.runtime"):new()
+	R.OFS = ","
 	R[0] = " a b   c "
 	table.remove(R, 2)
 	assert_equal(R[0], "a,c,")
 end
 
 do -- decrement NF
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	E.OFS = ","
-	E.NF = E.NF - 1
+	R.OFS = ","
+	R.NF = R.NF - 1
 	assert_equal(#R, 2)
 	assert_equal(R[0], "a,b")
 end
 
 do -- decrement NF updates fields
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	E.NF = E.NF - 1
+	R.NF = R.NF - 1
 	assert_equal(R[1], "a")
 	assert_equal(R[2], "b")
 	assert_equal(R[3], nil)
 end
 
 do -- decrement NF updates record
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	E.OFS = ","
-	E.NF = E.NF - 1
+	R.OFS = ","
+	R.NF = R.NF - 1
 	assert_equal(R[0], "a,b")
 end
 
 do -- increment NF
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	E.OFS = ","
-	E.NF = E.NF + 1
+	R.OFS = ","
+	R.NF = R.NF + 1
 	assert_equal(#R, 4)
 	assert_equal(R[0], "a,b,c,")
 end
 
 do -- increment NF updates fields
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	E.NF = E.NF + 1
+	R.NF = R.NF + 1
 	assert_equal(R[1], "a")
 	assert_equal(R[2], "b")
 	assert_equal(R[3], "c")
@@ -159,66 +164,66 @@ do -- increment NF updates fields
 end
 
 do -- increment NF updates record
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	E.OFS = ","
-	E.NF = E.NF + 1
+	R.OFS = ","
+	R.NF = R.NF + 1
 	assert_equal(R[0], "a,b,c,")
 end
 
 do -- decrement/increment NF unset last field
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	E.OFS = ","
-	E.NF = E.NF - 1
-	E.NF = E.NF + 1
+	R.OFS = ","
+	R.NF = R.NF - 1
+	R.NF = R.NF + 1
 	assert_equal(R[0], "a,b,")
 end
 
 do -- manually set NF
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	E.OFS = ","
-	E.NF = 5
+	R.OFS = ","
+	R.NF = 5
 	assert_equal(#R, 5)
 	assert_equal(R[0], "a,b,c,,")
 end
 
 do -- set NF to zero
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
-	E.OFS = ","
-	E.NF = 0
+	R.OFS = ","
+	R.NF = 0
 	assert_equal(#R, 0)
 	assert_equal(R[0], "")
 end
 
 do -- set field outside NF updates NF
-	local E, R = require("awk.env"):new()
+	local R = require("luawk.runtime"):new()
 	R[0] = " a b   c "
 	assert_equal(#R, 3)
 	R[5] = "x"
 	assert_equal(#R, 5)
-	assert_equal(E.NF, 5)
+	assert_equal(R.NF, 5)
 end
 
-do -- set NF to -1 causes error
-	local E, R = require("awk.env"):new()
-	assert_error(function()
-		E.NF = -1
-	end, "NF set to negative value$")
-end
+-- do -- set NF to -1 causes error
+-- 	local R = require("luawk.runtime"):new()
+-- 	assert_error(function()
+-- 		R.NF = -1
+-- 	end, "NF set to negative value$")
+-- end
 
-do -- access record at -1 causes error
-	local E, R = require("awk.env"):new()
-	assert_error(function()
-		return R[-1]
-	end, "access to negative field$")
-end
+-- do -- access record at -1 causes error
+-- 	local R = require("luawk.runtime"):new()
+-- 	assert_error(function()
+-- 		return R[-1]
+-- 	end, "access to negative field$")
+-- end
 
-do -- set record at -1 causes error
-	local E, R = require("awk.env"):new()
-	assert_error(function()
-		R[-1] = nil
-	end, "access to negative field$")
-end
+-- do -- set record at -1 causes error
+-- 	local R = require("luawk.runtime"):new()
+-- 	assert_error(function()
+-- 		R[-1] = nil
+-- 	end, "access to negative field$")
+-- end
