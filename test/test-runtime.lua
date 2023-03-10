@@ -1,15 +1,12 @@
 -- @Author: goregath
 -- @Date:   2023-01-21 01:18:34
 -- @Last Modified by:   Oliver.Zimmer@e3dc.com
--- @Last Modified time: 2023-03-10 10:01:08
+-- @Last Modified time: 2023-03-10 10:06:44
 
 
 package.path = "src/?.lua;" .. package.path
 
 local assert_equal = require "test.utils".assert_equal
-local assert_error = require "test.utils".assert_error
-
-require 'luawk.log'.level = "trace"
 
 do -- defaults
 	local R = require("luawk.runtime"):new()
@@ -206,6 +203,8 @@ do -- set field outside NF updates NF
 	assert_equal(#R, 5)
 	assert_equal(R.NF, 5)
 end
+
+-- local assert_error = require "test.utils".assert_error
 
 -- do -- set NF to -1 causes error
 -- 	local R = require("luawk.runtime"):new()
