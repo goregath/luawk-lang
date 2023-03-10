@@ -1,7 +1,7 @@
 package.path = "src/?.lua;test/lua/lib/?.lua;" .. package.path
 
 local assert_equal = require "assert".assert_equal
-local group = require "testgroup".new("extended regex (lrexlib)")
+local group = require "testgroup".new("luawk.runtime.gnu patsplit() with extended regex (lrexlib)")
 
 local lrexlib = require "rex_posix"
 local regex_find = require "luawk.regex".find
@@ -15,7 +15,7 @@ group:teardown(function()
 	require "luawk.regex".find = regex_find
 end)
 
-group:add("patsplit: gawk csv example", function(self)
+group:add("gawk csv example", function(self)
 	-- See https://www.gnu.org/software/gawk/manual/html_node/Splitting-By-Content.html
 	local a, s = {}, {}
 	local input = ',Robbins,,Arnold,"1234 A Pretty Street, NE",MyTown,MyState,12345-6789,USA,,'
@@ -51,7 +51,7 @@ group:add("patsplit: gawk csv example", function(self)
 	assert_equal(s[11], "")
 end)
 
-group:add("patsplit: patterns without delimiter", function(self)
+group:add("patterns without delimiter", function(self)
 	local a = {}
 	local input = 'deadbeef'
 	local fpat = '[a-f][a-f]'
