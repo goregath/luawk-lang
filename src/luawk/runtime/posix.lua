@@ -403,10 +403,6 @@ local function new(obj)
                     -- (re)build record from fields
                     R:join(self)
                 end
-                if R.nf < 0 then
-                    -- (re)build fields from record
-                    R:split(self)
-                end
                 local val = nil
                 if idx <= R.nf then
                     val = R[idx] or ""
@@ -415,10 +411,6 @@ local function new(obj)
                 return val
             end
             if k == "NF" then
-                if R.nf < 0 then
-                    -- (re)build fields from record
-                    R:split(self)
-                end
                 log.trace("    [%s]=%s <record>\n", k, R.nf)
                 return R.nf
             end
@@ -453,9 +445,8 @@ local function new(obj)
                 log.debug("set [%s]=%s <field>\n", idx, v)
                 v = v ~= nil and tostring(v) or ""
                 if idx == 0 then
-                    -- invalidate fields
-                    R.nf = -1
                     rawset(R, 0, v)
+                    R:split(self)
                 else
                     R.nf = math.max(idx, R.nf)
                     log.trace("    [%s]=%s <field>\n", idx, v)
@@ -467,10 +458,6 @@ local function new(obj)
             elseif k == "NF" then
                 log.debug("set [%s]=%s <virtual>\n", k, v)
                 local nf = R.nf
-                if nf < 0 then
-                    -- (re)build fields from record
-                    R:split(self)
-                end
                 -- ensure NF is always a number
                 R.nf = math.max(math.modf(tonumber(v) or 0), 0)
                 if nf > R.nf then
@@ -480,9 +467,8 @@ local function new(obj)
                         R[i] = nil
                     end
                 end
-                -- invalidate record
-                log.trace("    [%s]=%s <field>\n", 0, nil)
-                rawset(R, 0, nil)
+                -- (re)build record from fields
+                R:join(self)
             else
                 log.debug("set [%s]=%s <runtime>\n", k, v)
                 rawset(self, k, v)
@@ -506,6 +492,9 @@ local function new(obj)
             __newindex = function(_,k,v)
                 log.debug("set [%s]=%s\n", k, v)
                 runtime[k] = v
+            end,
+            __len = function()
+                return #runtime
             end
         })
     end
