@@ -8,9 +8,6 @@ group:setup(function()
 	return require "luawk.runtime".new()
 end)
 
-group:teardown(function()
-end)
-
 group:add("defaults", function(R)
 	assert(R ~= nil, "F is nil")
 	assert_equal(R.NF, 0)

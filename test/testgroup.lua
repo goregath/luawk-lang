@@ -32,24 +32,15 @@ function M:run()
 		end)
 		if status then
 			io.stdout:write(ansi_green, "ok", ansi_reset)
-			io.stdout:write(string.format(" %d %s\n", i, test[1]))
+			io.stdout:write(string.format(" %d - %s\n", i, test[1]))
 		else
 			table.insert(failed, i)
 			io.stdout:write(ansi_red, "not ok", ansi_reset)
-			io.stdout:write(string.format(" %d %s\n  %s\n", i, test[1], tostring(msg):gsub("\n", "\n  ")))
+			io.stdout:write(string.format(" %d - %s\n  %s\n", i, test[1], tostring(msg):gsub("\n", "\n  ")))
 		end
 
 	end
-	-- if #failed > 0 then
-	-- 	io.stdout:write(ansi_red)
-	-- 	io.stdout:write("FAILED tests ", table.concat(failed, ", "), "\n")
-	-- 	io.stdout:write(string.format(
-	-- 		"Failed %d/%d tests, %.2f%% okay\n",
-	-- 		#failed, #self,
-	-- 		100 - (#self / #failed * 100)
-	-- 	))
-	-- 	io.stdout:write(ansi_reset)
-	-- end
+	return #failed == 0
 end
 
 function M.new(name)
