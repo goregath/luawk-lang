@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 
-local path = debug.getinfo(1, "S").source:sub(2):match(".*/")
+local path = debug.getinfo(1, "S").source:sub(2):match("(.*)/") or "."
 package.path = string.format("%s/../src/?.lua;%s/lua/lib/?.lua;%s", path, path, package.path)
 
 local assert_equal = require "assert".assert_equal
