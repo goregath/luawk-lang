@@ -19,6 +19,7 @@ local libruntime = require 'luawk.runtime'
 local utils = require 'luawk.utils'
 local abort = utils.abort
 local setfenv = utils.setfenv
+local acall = utils.acall
 
 local name = string.gsub(arg[0], "(.*/)(.*)", "%2")
 local runtime = _G
@@ -120,9 +121,8 @@ do
 					package.loaded["luawk.regex"] =
 						utils.requireany(v, "rex_" .. v)
 						or abort('%s: cannot find regex library for %q\n', name, v)
-				elseif k == "loglevel" then
-					-- TODO check for valid name
-					log.level = v
+				elseif k == "log" then
+					acall(log.level, v)
 				else
 					abort('%s: invalid argument: %s\n', name, optarg)
 				end
@@ -171,7 +171,6 @@ do
 		end
 	end
 	-- handle arguments
-	runtime.ARGV[1] = "-"
 	if arg[last_index] == '--' then
 		last_index = last_index + 1
 	end
@@ -185,6 +184,7 @@ do
 		table.insert(sources, { "cmdline", src })
 		last_index = last_index + 1
 	end
+	runtime.ARGV[1] = "-"
 	-- remaining arguments are files
 	for i = last_index, #arg do
 		runtime.ARGV[i-last_index+1] = arg[i]
