@@ -39,6 +39,12 @@ custom_see_handler('^([%w_]+)%((%d)(p?)%)$', function(name,section,subsection)
 	return name, url
 end)
 
+custom_see_handler('^(posix.[%w.]+)$', function(module)
+	local upat = "http://luaposix.github.io/luaposix/modules/%s.html"
+	local url = upat:format(module)
+	return module, url
+end)
+
 custom_display_name_handler = function(item, default_handler)
 	local name = item.name
 	if item.tags.label then
