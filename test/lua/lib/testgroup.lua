@@ -1,6 +1,16 @@
-local ansi_green = "\27[32;1m"
-local ansi_red   = "\27[31;1m"
-local ansi_reset = "\27[0m"
+local getenv = require "posix.stdlib".getenv
+local isatty = require "posix.unistd".isatty
+local term = getenv("TERM")
+
+local ansi_green = ""
+local ansi_red = ""
+local ansi_reset = ""
+
+if isatty(1) and term and term ~= "dumb" then
+	ansi_green = "\27[32;1m"
+	ansi_red   = "\27[31;1m"
+	ansi_reset = "\27[0m"
+end
 
 local M = {}
 
@@ -13,33 +23,46 @@ function M:teardown(teardown)
 end
 
 function M:add(label, test)
-	table.insert(self, table.pack(label, test))
+	local obj = table.pack(label, test)
+	obj.skip = false
+	table.insert(self, obj)
+end
+
+function M:skip(label, test, reason)
+	local obj = table.pack(label, test)
+	obj.skip = true
+	obj.reason = reason
+	table.insert(self, obj)
 end
 
 function M:run()
 	local failed = {}
 	io.stdout:write(ansi_green)
-	io.stdout:write(string.format("1..%d", #self))
+	io.stdout:write(string.format("1..%d\n", #self))
 	io.stdout:write(ansi_reset)
-	io.stdout:write(string.format(" # %s\n", self.name))
+	io.stdout:write(string.format("# %s\n", self.name))
 	self.testsetup = self.testsetup or function() end
 	self.testteardown = self.testteardown or function() end
 	for i,test in ipairs(self) do
-		local status, msg = pcall(function()
-			local env = self:testsetup()
-			test[2](env)
-			self:testteardown(env)
-		end)
-		if status then
+		if test.skip then
 			io.stdout:write(ansi_green, "ok", ansi_reset)
-			io.stdout:write(string.format(" %d - %s\n", i, test[1]))
+			io.stdout:write(string.format(" %d - %s # SKIP %s\n", i, test[1], test.reason or ""))
 		else
-			table.insert(failed, i)
-			io.stdout:write(ansi_red, "not ok", ansi_reset)
-			io.stdout:write(string.format(" %d - %s\n  %s\n", i, test[1],
-				tostring(msg):gsub("\n%s*$", ""):gsub("\n", "\n  ")))
+			local status, msg = pcall(function()
+				local env = self:testsetup()
+				test[2](env)
+				self:testteardown(env)
+			end)
+			if status then
+				io.stdout:write(ansi_green, "ok", ansi_reset)
+				io.stdout:write(string.format(" %d - %s\n", i, test[1]))
+			else
+				table.insert(failed, i)
+				io.stdout:write(ansi_red, "not ok", ansi_reset)
+				io.stdout:write(string.format(" %d - %s\n  %s\n", i, test[1],
+					tostring(msg):gsub("\n%s*$", ""):gsub("\n", "\n  ")))
+			end
 		end
-
 	end
 	return #failed == 0
 end
