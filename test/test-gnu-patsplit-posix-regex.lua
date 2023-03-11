@@ -1,6 +1,7 @@
 #!/usr/bin/env lua
 
-package.path = "src/?.lua;test/lua/lib/?.lua;" .. package.path
+local path = debug.getinfo(1, "S").source:sub(2):match(".*/")
+package.path = string.format("%s/../src/?.lua;%s/lua/lib/?.lua;%s", path, path, package.path)
 
 local assert_equal = require "assert".assert_equal
 local group = require "testgroup".new("luawk.runtime.gnu patsplit() with extended regex (lrexlib)")
