@@ -17,15 +17,6 @@ elseif lua_version == "5.2" then
     M.utf8charpattern = "[\0-\127\194-\244][\128-\191]*"
 end
 
---- Check if argument is indexable.
---  @param a test subject
-function M.isarray(a)
-    local type = type(a)
-    if type == "table" then return true end
-    local mt = getmetatable(a)
-    return mt and mt.__len and mt.__index and true
-end
-
 --- Print arguments to `io.stderr` using `string.format` and call `os.exit`(`1`).
 --  @param ... arguments for `string.format`
 function M.abort(...)
@@ -34,10 +25,30 @@ function M.abort(...)
     os.exit(1)
 end
 
+--- Call function and return its result or abort the callee raises an error.
+--  @param fn  function
+--  @param ... arguments
+function M.acall(fn, ...)
+    local cap = { pcall(fn, ...) }
+    if cap[1] then
+        return select(1, table.unpack(cap))
+    end
+    M.abort("error: %s\n", cap[2])
+end
+
 --- Pass arguments to `error` using `string.format`.
 --  @param ... arguments for `string.format`
 function M.fail(...)
     error(string.format(...), -1)
+end
+
+--- Check if argument is indexable.
+--  @param a test subject
+function M.isarray(a)
+    local type = type(a)
+    if type == "table" then return true end
+    local mt = getmetatable(a)
+    return mt and mt.__len and mt.__index and true
 end
 
 --- Iterates over arguments and returns the first module it could find.
