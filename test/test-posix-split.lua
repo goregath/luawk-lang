@@ -1,3 +1,5 @@
+#!/usr/bin/env lua
+
 package.path = "src/?.lua;test/lua/lib/?.lua;" .. package.path
 
 local assert_equal = require "assert".assert_equal
@@ -50,4 +52,4 @@ group:add("regular expression pattern pattern", function(R)
 	assert_equal(table.concat(a, ","), ",a,b,c,")
 end)
 
-return group
+group:run()

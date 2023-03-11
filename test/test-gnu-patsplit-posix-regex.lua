@@ -1,3 +1,5 @@
+#!/usr/bin/env lua
+
 package.path = "src/?.lua;test/lua/lib/?.lua;" .. package.path
 
 local assert_equal = require "assert".assert_equal
@@ -61,4 +63,4 @@ group:add("patterns without delimiter", function(self)
 	assert_equal(table.concat(a, ","), "de,ad,be,ef")
 end)
 
-return group
+group:run()

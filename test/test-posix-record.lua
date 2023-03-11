@@ -1,3 +1,5 @@
+#!/usr/bin/env lua
+
 package.path = "src/?.lua;test/lua/lib/?.lua;" .. package.path
 
 local assert_equal = require "assert".assert_equal
@@ -211,4 +213,4 @@ end)
 -- 	end, "access to negative field$")
 -- end
 
-return group
+group:run()

@@ -1,3 +1,5 @@
+#!/usr/bin/env lua
+
 package.path = "src/?.lua;test/lua/lib/?.lua;" .. package.path
 
 local assert_equal = require "assert".assert_equal
@@ -56,4 +58,4 @@ group:add("trailing case", function(R)
 	assert_equal(s[2], "qqqqa")
 end)
 
-return group
+group:run()
