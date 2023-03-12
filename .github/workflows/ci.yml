@@ -22,10 +22,18 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+    
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
       - name: Install Lua 5.4.4
         uses: leafo/gh-actions-lua@v10
         with:
           luaVersion: "5.4.4"
+      
       - name: Install LuaRocks
         uses: leafo/gh-actions-luarocks@v4
 
@@ -34,17 +42,7 @@ jobs:
           luarocks install luaposix
           luarocks install lrexlib-posix
       
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      
       # Runs a set of commands using the runners shell
       - name: Test
         run: |
-          /usr/bin/env
-          find /home/runner/work/luawk/luawk/
-          /home/runner/work/luawk/luawk/.lua/bin/lua --help
-          /usr/bin/env lua --help
           prove -v
