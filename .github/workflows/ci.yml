@@ -31,7 +31,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          luarocks install posix
+          luarocks install luaposix
+          luarocks install lrexlib-posix
       
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout repository
