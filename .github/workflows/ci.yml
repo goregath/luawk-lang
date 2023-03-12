@@ -43,6 +43,8 @@ jobs:
       # Runs a set of commands using the runners shell
       - name: Test
         run: |
-          lua --help
+          /usr/bin/env
+          find /home/runner/work/luawk/luawk/
+          /home/runner/work/luawk/luawk/.lua/bin/lua --help
           /usr/bin/env lua --help
           prove -v
