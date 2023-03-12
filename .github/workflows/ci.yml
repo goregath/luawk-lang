@@ -44,4 +44,7 @@ jobs:
       - name: Test
         run: |
           export PATH="$PWD/.lua/bin/lua:$PATH"
+          pwd
+          /usr/bin/env
+          which lua
           prove -v
