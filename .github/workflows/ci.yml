@@ -39,6 +39,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          luarocks install lpeglabel
           luarocks install luaposix
           luarocks install lrexlib-posix
       
