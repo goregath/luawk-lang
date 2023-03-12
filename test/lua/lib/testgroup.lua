@@ -39,8 +39,8 @@ function M:run()
 	local failed = {}
 	io.stdout:write(ansi_green)
 	io.stdout:write(string.format("1..%d\n", #self))
-	io.stdout:write(ansi_reset)
-	io.stdout:write(string.format("# %s\n", self.name))
+	-- io.stdout:write(ansi_reset)
+	-- io.stdout:write(string.format("# %s\n", self.name))
 	self.testsetup = self.testsetup or function() end
 	self.testteardown = self.testteardown or function() end
 	for i,test in ipairs(self) do

@@ -6,10 +6,10 @@ package.path = string.format("%s/../src/?.lua;%s/lua/lib/?.lua;%s", path, path, 
 local assert_equal = require "assert".assert_equal
 local group = require "testgroup".new("luawk.runtime.gnu patsplit() with extended regex (lrexlib)")
 
-local lrexlib = require "rex_posix"
 local regex_find = require "luawk.regex".find
 
 group:setup(function()
+	local lrexlib = require "rex_posix"
 	require "luawk.regex".find = lrexlib.find
 	return require "luawk.runtime.gnu".new()
 end)
