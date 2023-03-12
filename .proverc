@@ -10,13 +10,13 @@
 # TEST FILES
 
 # Unit
-test/test-posix-record.lua
-test/test-posix-split.lua
-test/test-gnu-patsplit.lua
+test/posix-record.lua
+test/posix-split.lua
+test/gnu-patsplit.lua
 
 # Unit / Integration
-test/test-gnu-patsplit-posix-regex.lua
+test/gnu-patsplit-posix-regex.lua
 
 # Functional
-test/test-generic.bats
-test/test-oneliners.bats
+test/generic.bats
+test/oneliners.bats
