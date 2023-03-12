@@ -18,5 +18,17 @@ test/gnu-patsplit.lua
 test/gnu-patsplit-posix-regex.lua
 
 # Functional
+# test/pattern.bats
+# test/action.bats
+# test/begin.bats
+# test/end.bats
+# test/beginfile.bats
+# test/endfile.bats
+# test/close.bats
+test/exit.bats
+# test/getline.bats
+test/next.bats
+test/nextfile.bats
+# test/system.bats
 test/generic.bats
 test/oneliners.bats
