@@ -41,12 +41,12 @@ setup() {
 }
 
 @test "nextfile skips actions" {
-	run luawk '1; { nextfile } { print "unreachable" }' <<-"AWK"
-		line1
-		line2
-	AWK
+	run luawk '1; { nextfile } { print "unreachable" }' \
+		/dev/fd/3 3<<<$'line1\nline2' \
+		/dev/fd/4 4<<<$'line3\nline4'
 	assert_success
 	assert_output - <<-"ASSERT"
 		line1
+		line3
 	ASSERT
 }

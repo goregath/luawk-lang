@@ -20,6 +20,8 @@ test/gnu-patsplit-posix-regex.lua
 # Functional
 # test/pattern.bats
 # test/action.bats
+test/action-special.bats
+# test/dollar-operator.bats
 # test/begin.bats
 # test/end.bats
 # test/beginfile.bats

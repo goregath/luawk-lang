@@ -24,32 +24,9 @@ setup() {
 	assert_output 'a b c'
 }
 
-@test "no action" {
+@test "no action but file argument" {
 	run luawk '' /etc/passwd
 	assert_output ''
-}
-
-@test "special actions (test for correct order)" {
-	run luawk '
-		ENDFILE   { print "ENDFILE" }
-		END       { print "END" }
-		BEGIN     { print "BEGIN" }
-		BEGINFILE { print "BEGINFILE" }
-		1
-	' \
-		/dev/fd/3 3<<<$'a b c' \
-		/dev/fd/4 4<<<$'d e f'
-	
-	assert_output - <<-"EXP"
-		BEGIN
-		BEGINFILE
-		a b c
-		ENDFILE
-		BEGINFILE
-		d e f
-		ENDFILE
-		END
-	EXP
 }
 
 @test "begin action only (no loop)" {

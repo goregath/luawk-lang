@@ -235,7 +235,6 @@ function M:match(...)
     end
     s = s and tostring(s) or ""
     p = p and tostring(p) or ""
-    --- @TODO self.find not part of awk and could be from an external library
     local rstart, rend = regex.find(s,p)
     if rstart then
         self.RSTART = rstart
@@ -257,10 +256,10 @@ end
 --  a numeric string (see Expressions in awk). The effect of a null string
 --  as the value of fs is unspecified.
 --
---  The _null string_ pattern (`""`, `nil`) causes the characters of `s` to be
+--  The _null string_ pattern (`""`) causes the characters of `s` to be
 --  enumerated into `a`.
 --
---  The _literal space_ pattern (`" "`) matches any number of characters
+--  The _literal space_ pattern (`"\x20"`) matches any number of characters
 --  of _space_ (space, tab and newline), leading and trailing spaces are
 --  trimmed from input. Any other single character (e.g. `","`) is treated as
 --  a _literal_ pattern.
@@ -348,10 +347,11 @@ function M:split(...)
     end
 end
 
---- The record.
+--- The record, usually set by `getline`.
 --  @class field
 --  @label virtual
 --  @name 0
+--  @see getline
 
 --- Fields as handled by @{split}() for @{0|$0}.
 --  @usage
