@@ -3,6 +3,7 @@
 # OPTIONS
 
 --comments
+--directives
 --failures
 --ignore-exit
 --merge
@@ -18,7 +19,7 @@ test/gnu-patsplit.lua
 test/gnu-patsplit-posix-regex.lua
 
 # Functional
-# test/pattern.bats
+test/pattern.bats
 # test/action.bats
 test/action-special.bats
 # test/dollar-operator.bats
@@ -31,6 +32,7 @@ test/exit.bats
 # test/getline.bats
 test/next.bats
 test/nextfile.bats
+test/expression.bats
 # test/system.bats
 test/generic.bats
 test/oneliners.bats

@@ -31,7 +31,7 @@ setup() {
 }
 
 @test "nextfile (BEGINFILE)" {
-	run luawk 'BEGINFILE { nextfile }'
+	run luawk 'BEGINFILE { nextfile }' /dev/null
 	assert_failure
 }
 
@@ -49,4 +49,11 @@ setup() {
 		line1
 		line3
 	ASSERT
+}
+
+@test "nextfile-getline bug on same file" {
+	skip
+	run luawk 'FNR==2 { nextfile } 1' /etc/passwd /etc/passwd
+	assert_success
+	assert_equal ${#lines[@]} 2
 }

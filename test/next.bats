@@ -31,7 +31,7 @@ setup() {
 }
 
 @test "next (BEGINFILE)" {
-	run luawk 'BEGINFILE { next }'
+	run luawk 'BEGINFILE { next }' /dev/null
 	assert_failure
 }
 
