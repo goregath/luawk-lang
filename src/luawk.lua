@@ -304,6 +304,11 @@ if not specialaction('BEGIN') then
 	goto END
 end
 
+-- TODO REFACTOR this check breaks the idea of program beeing a callable
+if #program.BEGIN > 0 and #program.main == 0 then
+	goto END
+end
+
 for i=1,runtime.ARGC-1 do
 	runtime.FILENAME = runtime.ARGV[i]
 	if not specialaction('BEGINFILE') then
@@ -355,8 +360,8 @@ for i=1,runtime.ARGC-1 do
 	if not specialaction('ENDFILE') then
 		goto END
 	end
-	-- TODO refactor
-	-- FNR==2 { nextfile } 1' /etc/passwd /etc/passwd -> should print two lines
+	-- TODO REFACTOR
+	-- awk 'FNR==2 { nextfile } 1' /etc/passwd /etc/passwd -> should print two lines
 	-- TODO ?? fileinfo[runtime.FILENAME] = nil
 end
 ::END::
