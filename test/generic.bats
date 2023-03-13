@@ -24,7 +24,7 @@ setup() {
 	assert_output 'a b c'
 }
 
-@test "no action" {
+@test "no action but file argument" {
 	run luawk '' /etc/passwd
 	assert_output ''
 }

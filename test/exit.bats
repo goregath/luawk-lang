@@ -34,6 +34,30 @@ setup() {
 	assert_failure 255
 }
 
+@test "exit returns from action" {
+	run luawk '1; { exit; print "unreachable" } END { print "END" }' <<-"AWK"
+		line1
+		line2
+	AWK
+	assert_success
+	assert_output - <<-"ASSERT"
+		line1
+		END
+	ASSERT
+}
+
+@test "exit skips subsequent actions" {
+	run luawk '1; { exit } { print "unreachable" } END { print "END" }' <<-"AWK"
+		line1
+		line2
+	AWK
+	assert_success
+	assert_output - <<-"ASSERT"
+		line1
+		END
+	ASSERT
+}
+
 @test "exit jumps to END" {
 	run luawk '
 		1;
