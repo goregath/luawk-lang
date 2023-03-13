@@ -33,6 +33,11 @@ local M = {}
 --  @return[2,type=nil]
 --
 --  @function find
+--
+--  @see string.find
+--  @see POSIX.match
+--  @see POSIX.split
+--  @see GNU.patsplit
 M.find = string.find
 
 return M
