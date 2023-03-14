@@ -314,8 +314,24 @@ for i=1,runtime.ARGC-1 do
 	if not specialaction('BEGINFILE') then
 		goto END
 	end
-	-- If the value of a particular element of ARGV is empty (""), awk skips over it.
-	if runtime.FILENAME and runtime.FILENAME ~= "" then
+
+	-- TODO If an argument matches the format of an assignment operand, this
+	-- argument shall be treated as an assignment rather than a file
+	-- argument.
+
+	if runtime.FILENAME == nil or runtime.FILENAME == "" then
+		-- If the value of a particular element of ARGV is empty("", nil),
+		-- skip over it.
+		goto NEXTFILE
+	end
+
+	if runtime.FILENAME:match("=") then
+		local k,v = runtime.FILENAME:match("^(%w+)=?(.*)$")
+		runtime[k] = v
+		goto NEXTFILE
+	end
+
+	do -- process file
 		local runner = coroutine.create(loop)
 		local d0 = nil
 		repeat
