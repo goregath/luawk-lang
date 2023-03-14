@@ -47,4 +47,4 @@ jobs:
       # Runs a set of commands using the runners shell
       - name: Test
         run: |
-          prove
+          prove -v
