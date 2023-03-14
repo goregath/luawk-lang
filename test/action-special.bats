@@ -14,6 +14,46 @@ setup() {
 	load 'bats/bats-assert/load'
 }
 
+@test "FILENAME is undefined in BEGIN" {
+	run luawk 'BEGIN { print type(FILENAME) }'
+	assert_success
+	assert_output 'nil'
+}
+
+@test "NF is zero in BEGIN" {
+	run luawk 'BEGIN { print type(NF), NF }'
+	assert_success
+	assert_output 'number 0'
+}
+
+@test "NR is zero in BEGIN" {
+	run luawk 'BEGIN { print type(NR), NR }'
+	assert_success
+	assert_output 'number 0'
+}
+
+@test "NR is number of last processed record in END" {
+	run luawk 'END { print type(NR), NR }' \
+		/dev/fd/3 3<<<$'a\nb\nc' \
+		/dev/fd/4 4<<<$'d\ne\nf\ng'
+	assert_success
+	assert_output 'number 7'
+}
+
+@test "FNR is zero in BEGIN" {
+	run luawk 'BEGIN { print type(FNR), FNR }'
+	assert_success
+	assert_output 'number 0'
+}
+
+@test "FNR is number of last processed record in the last file END" {
+	run luawk 'END { print type(FNR), FNR }' \
+		/dev/fd/3 3<<<$'a\nb\nc' \
+		/dev/fd/4 4<<<$'d\ne\nf\ng'
+	assert_success
+	assert_output 'number 4'
+}
+
 @test "test for correct order" {
 	run luawk '
 		ENDFILE   { print "ENDFILE" }
