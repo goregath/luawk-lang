@@ -13,6 +13,7 @@
 # Unit
 test/posix-record.lua
 test/posix-split.lua
+test/posix-match.lua
 test/gnu-patsplit.lua
 
 # Unit / Integration
