@@ -33,7 +33,7 @@ test/getline.bats
 test/next.bats
 test/nextfile.bats
 # test/system.bats
-# test/print.bats
+test/print.bats
 # test/printf.bats
 test/expression.bats
 test/generic.bats
