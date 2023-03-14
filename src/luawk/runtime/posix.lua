@@ -9,8 +9,8 @@ local setenv = stdlib.setenv
 local getenv = stdlib.getenv
 
 local regex = require 'luawk.regex'
-local utils = require 'luawk.utils'
 local log = require 'luawk.log'
+local utils = require 'luawk.utils'
 local isarray = utils.isarray
 local trim = utils.trim
 local abort = utils.fail
@@ -62,7 +62,7 @@ M.ENVIRON = setmetatable({}, {
 --- A pathname of the current input file. Inside a _BEGIN_ action the value is
 --  undefined. Inside an _END_ action the value shall be the name of the last
 --  input file processed.
-M.FILENAME = ""
+M.FILENAME = nil
 
 --- The ordinal number of the current record in the current file. Inside a _BEGIN_
 --  action the value shall be zero. Inside an _END_ action the value shall be the
@@ -118,6 +118,21 @@ M.RSTART = 0
 
 local fileinfo = {}
 
+--- Close the file or pipe opened by a `print` or `printf` statement or a call to
+--  `getline` with the same string-valued expression.
+--
+--  @param[type=string] fd  A string representation of the file or pipe.
+--
+--  @return[1,type=true] On success
+--  @return[2,type=nil]
+--  @return[2,type=string] Message describing the error
+--
+--  @function Runtime:close
+function M:close(fd)
+    -- @TODO implement fd cache
+    abort("close: not implemented")
+end
+
 --- Set `var` to the next input record from the current input file. If `var`
 --  is unspecified, set record to @{0|$0}.
 --
@@ -128,7 +143,7 @@ local fileinfo = {}
 --
 --  @return[type=boolean] Shall return true for successful input, false for
 --   end-of-file and raise an error otherwise.
--- @function Runtime:getline
+--  @function Runtime:getline
 function M:getline(var)
     local filename = self.FILENAME
     local rs = self.RS and self.RS:sub(1,1) or ""
