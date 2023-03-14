@@ -29,10 +29,12 @@ test/action-special.bats
 # test/endfile.bats
 # test/close.bats
 test/exit.bats
-# test/getline.bats
+test/getline.bats
 test/next.bats
 test/nextfile.bats
-test/expression.bats
 # test/system.bats
+# test/print.bats
+# test/printf.bats
+test/expression.bats
 test/generic.bats
 test/oneliners.bats
