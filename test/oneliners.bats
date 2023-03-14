@@ -28,3 +28,13 @@ setup() {
 	run luawk -F: '{ print $2 }' <<<$'a:b:c'
 	assert_output 'b'
 }
+
+@test "assinment in parameter list" {
+	run luawk '{ print NF }' /dev/fd/3 FS=, /dev/fd/4 \
+		3<<<'a b c' \
+		4<<<'a,b,c'
+	assert_output - <<-"ASSERT"
+		3
+		3
+	ASSERT
+}
