@@ -38,3 +38,8 @@ setup() {
 	assert_success
 	assert_output $'line1\nline2'
 }
+
+@test "pipe into getline" {
+	skip "not implemented"
+	#  expression | getline [var]
+}
