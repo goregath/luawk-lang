@@ -150,7 +150,7 @@ do
 			runtime.FS = optarg
 		elseif r == 'v' then
 			-- TODO apply after any BEGIN rule(s) have been run
-			local k,v = string.match(optarg, "^(%w+)=(.*)$")
+			local k,v = string.match(optarg, "^([_%a][_%w]*)=(.*)$")
 			if k and v then
 				runtime[k] = v
 			else
@@ -184,6 +184,7 @@ do
 		table.insert(sources, { "cmdline", src })
 		last_index = last_index + 1
 	end
+	-- TODO should fallback to stdin: awk 1 a=1
 	runtime.ARGV[1] = "-"
 	-- remaining arguments are files
 	for i = last_index, #arg do
@@ -315,20 +316,19 @@ for i=1,runtime.ARGC-1 do
 		goto END
 	end
 
-	-- TODO If an argument matches the format of an assignment operand, this
-	-- argument shall be treated as an assignment rather than a file
-	-- argument.
-
 	if runtime.FILENAME == nil or runtime.FILENAME == "" then
-		-- If the value of a particular element of ARGV is empty("", nil),
-		-- skip over it.
+		-- If the value of a particular element of ARGV is empty, skip over it.
 		goto NEXTFILE
 	end
 
-	if runtime.FILENAME:match("=") then
-		local k,v = runtime.FILENAME:match("^(%w+)=?(.*)$")
-		runtime[k] = v
-		goto NEXTFILE
+	if runtime.FILENAME:find("=") then
+		-- If an argument matches the format of an assignment operand, this
+		-- argument shall be treated as an assignment rather than a file argument.
+		local k,v = runtime.FILENAME:match("^([_%a][_%w]*)=(.*)$")
+		if k then
+			runtime[k] = v
+			goto NEXTFILE
+		end
 	end
 
 	do -- process file
