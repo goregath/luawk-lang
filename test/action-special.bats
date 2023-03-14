@@ -26,6 +26,16 @@ setup() {
 	assert_output 'number 0'
 }
 
+@test "NF is retained in END" {
+	run luawk 'END { print NF }' <<-"AWK"
+		a
+		a b
+		a b c
+	AWK
+	assert_success
+	assert_output '3'
+}
+
 @test "NR is zero in BEGIN" {
 	run luawk 'BEGIN { print type(NR), NR }'
 	assert_success
