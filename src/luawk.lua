@@ -71,22 +71,6 @@ local function help(handle)
 end
 
 -- ---------------------------------------------------------
--- AWK FUNCTIONS AND KEYWORDS
--- ---------------------------------------------------------
-
---- @function close
-local function awkclose(...)
-	-- TODO add proper file handling
-	abort("close: not implemented\n")
-end
-
---- @function system
-local function awksystem(...)
-	-- TODO implement
-	abort("system: not implemented\n")
-end
-
--- ---------------------------------------------------------
 -- COMMAND LINE INTERFACE
 -- ---------------------------------------------------------
 
@@ -146,10 +130,8 @@ do
 		end
 		last_index = optind
 		if r == 'F' then
-			-- TODO apply after any BEGIN rule(s) have been run
 			runtime.FS = optarg
 		elseif r == 'v' then
-			-- TODO apply after any BEGIN rule(s) have been run
 			local k,v = string.match(optarg, "^([_%a][_%w]*)=(.*)$")
 			if k and v then
 				runtime[k] = v
@@ -289,7 +271,11 @@ local function specialaction(action)
 		if (not stat) then
 			abort("%s: error: %s\n", name, yield)
 		end
-		if yield == "next" or yield == "nextfile" then
+		if yield == "getline" then
+			-- TODO
+			local fd = nil
+			runtime.getline(fd)
+		elseif yield == "next" or yield == "nextfile" then
 			abort("%s: error: '%s' used in BEGIN action\n", name, yield)
 		elseif yield == "exit" then
 			exitcode = d1 or exitcode
