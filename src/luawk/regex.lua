@@ -1,14 +1,13 @@
 --- Luawk regex functions.
 -- @alias M
 -- @module regex
--- @license MIT
 
 local M = {}
 
 --- Find function used by luawk runtimes (`luawk.runtime.*`).
 --
 --  This function can be used by any luawk `Runtime` function to implement
---  pattern matching facilities like `POSIX.match`, `POSIX.split` or `GNU.patsplit`.
+--  pattern matching facilities like `posix.match`, `posix.split` or `GNU.patsplit`.
 --
 --  By default, this function is an alias for `string.find` and thus uses lua
 --  pattern matching.
@@ -33,11 +32,10 @@ local M = {}
 --  @return[2,type=nil]
 --
 --  @function find
---
 --  @see string.find
---  @see POSIX.match
---  @see POSIX.split
---  @see GNU.patsplit
+--  @see posix.match
+--  @see posix.split
+--  @see gnu.patsplit
 M.find = string.find
 
 return M

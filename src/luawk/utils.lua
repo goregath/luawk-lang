@@ -1,7 +1,6 @@
 --- Luawk utility functions.
 -- @alias M
 -- @module utils
--- @license MIT
 
 local log = require 'luawk.log'
 

@@ -1,7 +1,6 @@
 --- POSIX AWK Runtime.
 -- @usage require("luawk.runtime.posix").new(_G)
--- @runtime POSIX
--- @license MIT
+-- @runtime posix
 -- @see awk(1p)
 
 local stdlib = require 'posix.stdlib'
@@ -17,6 +16,38 @@ local abort = utils.fail
 local utf8charpattern = utils.utf8charpattern
 
 local M = {}
+
+--- Virtual Environment
+-- @section
+
+--- The record, usually set by `getline`.
+--  @class field
+--  @name 0
+--  @see getline
+
+--- Fields as handled by @{split}() for @{0|$0}.
+--  @usage
+--    local F = require 'luawk.runtime.posix':new()
+--    F.OFS = ","
+--    F[0] = "a b c"
+--    F[NF+1] = "d"
+--    -- F.NF = 4
+--    -- F[0] = "a,b,c,d"
+--  @class field
+--  @name 1..NF
+--  @see split
+--  @see NF
+
+--- The number of fields in the current record. Inside a _BEGIN_ action, the use
+--  of @{NF} is undefined unless a getline function without a var argument is
+--  executed previously. Inside an _END_ action, @{NF} shall retain the value it had
+--  for the last record read, unless a subsequent, redirected, getline function
+--  without a var argument is performed prior to entering the _END_ action.
+--  @class field
+--  @name NF
+
+--- Environment
+-- @section
 
 --- The number of elements in the @{ARGV} array.
 M.ARGC = 0
@@ -50,7 +81,6 @@ M.CONVFMT = "%.6g"
 --  environment at the time awk began executing; it is implementation-defined
 --  whether any modification of @{ENVIRON} affects this environment.
 --  @table ENVIRON
---  @label virtual
 --  @see getenv(3)
 --  @see setenv(3)
 M.ENVIRON = setmetatable({}, {
@@ -72,15 +102,6 @@ M.FNR = 0
 --- Input field separator regular expression; a _space_ by default.
 --  @see split
 M.FS = '\32'
-
---- The number of fields in the current record. Inside a _BEGIN_ action, the use
---  of @{NF} is undefined unless a getline function without a var argument is
---  executed previously. Inside an _END_ action, @{NF} shall retain the value it had
---  for the last record read, unless a subsequent, redirected, getline function
---  without a var argument is performed prior to entering the _END_ action.
---  @class field
---  @label virtual
---  @name NF
 
 --- The ordinal number of the current record from the start of input. Inside a
 --  _BEGIN_ action the value shall be zero. Inside an _END_ action the value shall
@@ -116,6 +137,9 @@ M.RS = '\n'
 --  function.
 M.RSTART = 0
 
+--- Methods
+-- @section
+
 local fileinfo = {}
 
 --- Close the file or pipe opened by a `print` or `printf` statement or a call to
@@ -127,9 +151,9 @@ local fileinfo = {}
 --  @return[2,type=nil]
 --  @return[2,type=string] Message describing the error
 --
---  @function Runtime:close
+--  @function posix:close
 function M:close(fd)
-    -- @TODO implement fd cache
+    -- TODO implement fd cache
     abort("close: not implemented")
 end
 
@@ -143,7 +167,7 @@ end
 --
 --  @return[type=boolean] Shall return true for successful input, false for
 --   end-of-file and raise an error otherwise.
---  @function Runtime:getline
+--  @function posix:getline
 function M:getline(var)
     local filename = self.FILENAME
     local rs = self.RS and self.RS:sub(1,1) or ""
@@ -203,7 +227,7 @@ end
 --- Print arguments to `io.stdout` delimited by `OFS` using `tostring`. If no arguments are
 --  given, the record value @{0|$0} is printed.
 --  @param ... the arguments
---  @function Runtime:print
+--  @function posix:print
 function M:print(...)
     local ofs = tostring(self.OFS)
     local ors = tostring(self.ORS)
@@ -222,7 +246,7 @@ end
 
 --- Prints to `io.stdout` by passing the arguments to `string.format`.
 --  @param ... the arguments
---  @function Runtime:printf
+--  @function posix:printf
 function M:printf(...)
     io.stdout:write(string.format(...))
 end
@@ -240,13 +264,16 @@ end
 --
 --  @see RSTART
 --  @see RLENGTH
---  @see regex.find
---  @function Runtime:match
+--  @depends regex.find
+--  @function posix:match
 function M:match(...)
     local argc, s, p = select('#', ...), ...
-    --- @TODO fix description
+    -- TODO fix description
     if not self then
-        abort("split: self expected, got: %s\n", type(self))
+        abort("match: self expected, got: %s\n", type(self))
+    end
+    if argc < 2 then
+        abort("match: invalid number of arguments\n")
     end
     s = s and tostring(s) or ""
     p = p and tostring(p) or ""
@@ -295,8 +322,9 @@ end
 --  @return[type=number]  number of fields
 --
 --  @see FS
---  @see regex.find
---  @function Runtime:split
+--  @depends regex.find
+--  @class function
+--  @name posix:split
 function M:split(...)
     -- TODO Seps is a gawk extension, with seps[i] being the separator string
     -- between array[i] and array[i+1]. If fieldsep is a single space, then any
@@ -362,26 +390,6 @@ function M:split(...)
     end
 end
 
---- The record, usually set by `getline`.
---  @class field
---  @label virtual
---  @name 0
---  @see getline
-
---- Fields as handled by @{split}() for @{0|$0}.
---  @usage
---    local F = require 'luawk.runtime.posix':new()
---    F.OFS = ","
---    F[0] = "a b c"
---    F[NF+1] = "d"
---    -- F.NF = 4
---    -- F[0] = "a,b,c,d"
---  @class field
---  @label virtual
---  @name 1..NF
---  @see split
---  @see NF
-
 local function splitR(R, self)
     R.nf = self.split(R[0], R, self.FS)
     log.trace("    [*]=%s <rebuilt>\n", R)
@@ -394,11 +402,16 @@ local function joinR(R, self)
     log.trace("    [0]=%s <rebuilt>\n", R[0])
 end
 
+--- Constructors
+-- @section
+
 --- Create a new object.
 --  @param[type=table,opt] obj
 --  @return[type=Runtime]
---  @function new
-local function new(obj)
+--  @class function
+--  @name new
+
+function M.new(obj)
     -- @TODO R should use weak references
     local R = {
         [0] = "",
@@ -515,6 +528,4 @@ local function new(obj)
     return runtime
 end
 
-return {
-    new = new
-}
+return M

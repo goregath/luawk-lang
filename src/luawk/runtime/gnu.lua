@@ -1,10 +1,9 @@
 --- GNU AWK Runtime Environment.
 --
--- Extends the @{POSIX|POSIX (Runtime)} environment.
--- @runtime GNU
+-- Extends the @{posix|posix (Runtime)} environment.
+-- @runtime gnu
 --
 -- @usage require("luawk.runtime.gnu").new(_G)
--- @license GPLv3
 -- @see gawk(1)
 
 local libawk = require 'luawk.runtime.posix'
@@ -17,16 +16,16 @@ local M = {}
 
 --- A regular expression (as a string) that is used to split text into fields
 --  that match the regular expresson. Assigning a value to @{FPAT} overrides
---  the use of @{POSIX.FS} and @{FIELDWIDTHS} for field splitting.
+--  the use of @{posix.FS} and @{FIELDWIDTHS} for field splitting.
 --  @see patsplit
---  @see POSIX.FS
+--  @see posix.FS
 M.FPAT = ''
 
 --- The index in ARGV of the current file being processed.
 --  https://www.gnu.org/software/gawk/manual/html_node/POSIX_002fGNU.html
 M.ARGIND = ''
 
---- On non-POSIX systems, this variable specifies use of binary mode for all I/O.
+--- On non-posix systems, this variable specifies use of binary mode for all I/O.
 --  https://www.gnu.org/software/gawk/manual/html_node/POSIX_002fGNU.html
 M.BINMODE = ''
 
@@ -78,9 +77,9 @@ M.TEXTDOMAIN = ''
 --  @return[type=number] number of fields
 --  @return[type=...] indices of fields in s
 --
---  @see POSIX
+--  @see posix
 --  @see FPAT
---  @see regex.find
+--  @depends regex.find
 --  @function Runtime:patsplit
 function M:patsplit(...)
     local argc, s,a,fp,seps = select('#', ...), ...
@@ -172,7 +171,7 @@ end
 --  @param[type=table,opt] obj
 --  @return[type=Runtime]
 --  @function new
-local function new(obj)
+function M.new(obj)
     obj = libawk.new(obj)
     local mt = getmetatable(obj)
     local index = mt.__index
@@ -191,6 +190,4 @@ local function new(obj)
     return setmetatable(obj,mt)
 end
 
-return {
-    new = new
-}
+return M

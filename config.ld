@@ -8,11 +8,6 @@ sort = true
 format = "markdown"
 no_space_before_args = true
 
-custom_tags = {
-	{ "runtime", title = "Runtimes" },
-	{ "constructor", title = "Constructors" }
-}
-
 kind_names={
 	script = 'Program'
 }
@@ -29,7 +24,8 @@ alias("BUG","fixme")
 new_type("runtime", "Runtimes", true)
 
 custom_tags = {
-	{ "label", hidden = true }
+	{ "label", hidden = true },
+	{ "depends", title = "Depends" },
 }
 
 custom_see_handler('^([%w_]+)%((%d)(p?)%)$', function(name,section,subsection)
@@ -39,9 +35,7 @@ custom_see_handler('^([%w_]+)%((%d)(p?)%)$', function(name,section,subsection)
 	return name, url
 end)
 
-custom_see_handler('^(posix.[%w.]+)$', function(module)
-	local upat = "http://luaposix.github.io/luaposix/modules/%s.html"
-	local url = upat:format(module)
+custom_see_handler('^([%w.]+)%s+(.*)$', function(module, url)
 	return module, url
 end)
 

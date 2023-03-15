@@ -49,8 +49,8 @@ log._level = "warn"
 --  @see isatty(3)
 --  @see getenv(3)
 --  @see strcmp(3)
---  @see posix.unistd
---  @see posix.stdlib
+--  @see posix.unistd http://luaposix.github.io/luaposix/modules/posix.unistd
+--  @see posix.stdlib http://luaposix.github.io/luaposix/modules/posix.stdlib
 function log.colorsupport()
     local term = getenv("TERM")
     return isatty(1) and term and term ~= "dumb"
