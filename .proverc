@@ -11,6 +11,7 @@
 # TEST FILES
 
 # Unit
+test/runtime.lua
 test/posix-record.lua
 test/posix-split.lua
 test/posix-match.lua
