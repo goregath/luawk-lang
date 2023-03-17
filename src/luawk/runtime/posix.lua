@@ -1,5 +1,7 @@
 --- POSIX AWK Runtime.
--- @usage require("luawk.runtime.posix").new(_G)
+-- @usage
+--     local libruntime = require("luawk.runtime.posix")
+--     local runtime = libruntime.new(_G)
 -- @runtime posix
 -- @see awk(1p)
 
@@ -15,380 +17,11 @@ local trim = utils.trim
 local abort = utils.fail
 local utf8charpattern = utils.utf8charpattern
 
-local M = {}
+--- The runtime class
+local class = {}
 
---- Virtual Environment
+--- Constructors
 -- @section
-
---- The record, usually set by `getline`.
---  @class field
---  @name 0
---  @see getline
-
---- Fields as handled by @{split}() for @{0|$0}.
---  @usage
---    local F = require 'luawk.runtime.posix':new()
---    F.OFS = ","
---    F[0] = "a b c"
---    F[NF+1] = "d"
---    -- F.NF = 4
---    -- F[0] = "a,b,c,d"
---  @class field
---  @name 1..NF
---  @see split
---  @see NF
-
---- The number of fields in the current record. Inside a _BEGIN_ action, the use
---  of @{NF} is undefined unless a getline function without a var argument is
---  executed previously. Inside an _END_ action, @{NF} shall retain the value it had
---  for the last record read, unless a subsequent, redirected, getline function
---  without a var argument is performed prior to entering the _END_ action.
---  @class field
---  @name NF
-
---- Environment
--- @section
-
---- The number of elements in the @{ARGV} array.
-M.ARGC = 0
-
---- An array of command line arguments, excluding options and the program
---  argument, numbered from zero to @{ARGC}-1. The arguments in @{ARGV} can be
---  modified or added to; @{ARGC} can be altered. As each input file ends, awk
---  shall treat the next non-null element of @{ARGV}, up to the current value of
---  @{ARGC}-1, inclusive, as the name of the next input file. Thus, setting an
---  element of @{ARGV} to null means that it shall not be treated as an input
---  file. The name `'-'` indicates the standard input. If an argument matches the
---  format of an assignment operand, this argument shall be treated as an
---  assignment rather than a file argument.
-M.ARGV = {}
-
---- The printf format for converting numbers to strings (except for output
---  statements, where @{OFMT} is used); `"%.6g"` by default.
-M.CONVFMT = "%.6g"
-
---- An array representing the value of the environment, as described in the exec
---  functions defined in the System Interfaces volume of POSIX.1-2017. The
---  indices of the array shall be strings consisting of the names of the
---  environment variables, and the value of each array element shall be a
---  string consisting of the value of that variable. If appropriate, the
---  environment variable shall be considered a numeric string (see Expressions
---  in awk); the array element shall also have its numeric value. In all cases
---  where the behavior of awk is affected by environment variables
---  (including the environment of any commands that awk executes via the system
---  function or via pipeline redirections with the print statement, the printf
---  statement, or the getline function), the environment used shall be the
---  environment at the time awk began executing; it is implementation-defined
---  whether any modification of @{ENVIRON} affects this environment.
---  @table ENVIRON
---  @see getenv(3)
---  @see setenv(3)
-M.ENVIRON = setmetatable({}, {
-    __index = function(_, k) return os.getenv(k) end,
-    __newindex = function(_,k,v) setenv(k,v) end,
-    __pairs = function() return pairs(getenv()) end,
-})
-
---- A pathname of the current input file. Inside a _BEGIN_ action the value is
---  undefined. Inside an _END_ action the value shall be the name of the last
---  input file processed.
-M.FILENAME = nil
-
---- The ordinal number of the current record in the current file. Inside a _BEGIN_
---  action the value shall be zero. Inside an _END_ action the value shall be the
---  number of the last record processed in the last file processed.
-M.FNR = 0
-
---- Input field separator regular expression; a _space_ by default.
---  @see split
-M.FS = '\32'
-
---- The ordinal number of the current record from the start of input. Inside a
---  _BEGIN_ action the value shall be zero. Inside an _END_ action the value shall
---  be the number of the last record processed.
-M.NR = 0
-
---- The printf format for converting numbers to strings in output statements
---  (see Output Statements); `"%.6g"` by default. The result of the conversion is
---  unspecified if the value of @{OFMT} is not a floating-point format
---  specification.
-M.OFMT = "%.6g"
-
---- The print statement output field separator; _space_ by default.
-M.OFS = '\32'
-
---- The print statement output record separator; a _newline_ by default.
-M.ORS = '\n'
-
---- The length of the string matched by the match function.
-M.RLENGTH = 0
-
---- The first character of the string value of @{RS} shall be the input record
---  separator; a _newline_ by default. If @{RS} contains more than one character,
---  the results are unspecified. If @{RS} is null, then records are separated by
---  sequences consisting of a _newline_ plus one or more blank lines, leading
---  or trailing blank lines shall not result in empty records at the beginning
---  or end of the input, and a _newline_ shall always be a field separator, no
---  matter what the value of @{FS} is.
-M.RS = '\n'
-
---- The starting position of the string matched by the match function, numbering
---  from 1. This shall always be equivalent to the return value of the match
---  function.
-M.RSTART = 0
-
---- Methods
--- @section
-
-local fileinfo = {}
-
---- Close the file or pipe opened by a `print` or `printf` statement or a call to
---  `getline` with the same string-valued expression.
---
---  @param[type=string] fd  A string representation of the file or pipe.
---
---  @return[1,type=true] On success
---  @return[2,type=nil]
---  @return[2,type=string] Message describing the error
---
---  @function posix:close
-function M:close(fd)
-    -- TODO implement fd cache
-    abort("close: not implemented")
-end
-
---- Set `var` to the next input record from the current input file. If `var`
---  is unspecified, set record to @{0|$0}.
---
---  This form of getline should update the values of `NF`, `NR`, and `FNR`.
---
---  @param[type=string,opt] var  Set variable var to the next input
---   record from the current input file.
---
---  @return[type=boolean] Shall return true for successful input, false for
---   end-of-file and raise an error otherwise.
---  @function posix:getline
-function M:getline(var)
-    local filename = self.FILENAME
-    local rs = self.RS and self.RS:sub(1,1) or ""
-    local info = fileinfo[filename]
-    if filename == "-" then
-        filename = "/dev/stdin"
-    end
-    if info == nil then
-        -- TODO check for file type
-        local handle, msg = io.open(filename)
-        if handle == nil then
-            abort("getline: %s\n", msg)
-        end
-        info = {
-            handle = handle,
-            nr = 0
-        }
-        fileinfo[self.FILENAME] = info
-    end
-    -- TODO read record delimited by RS
-    -- TODO The first character of the string value of RS shall be
-    --      the input record separator; a <newline> by default.
-    --      If RS contains more than one character, the results
-    --      are unspecified.
-    -- TODO If RS is null, then records are separated by sequences
-    --      consisting of a <newline> plus one or more blank lines,
-    --      leading or trailing blank lines shall not result in empty
-    --      records at the beginning or end of the input, and a
-    --      <newline> shall always be a field separator, no matter
-    --      what the value of FS is.
-    local rec
-    if rs == "\n" then
-        rec = info.handle:read()
-    elseif rs == "" then
-        abort("getline: empty RS not implemented\n")
-    else
-        abort("getline: non-standard RS not implemented\n")
-    end
-    if rec == nil then
-        fileinfo[filename] = nil
-        local s, msg = pcall(io.close, info.handle)
-        if not s then
-            error(msg, -1)
-        end
-        return false
-    elseif var then
-        self[var] = rec
-    else
-        self[0] = rec
-    end
-    info.nr = info.nr + 1
-    self.FNR = info.nr
-    self.NR = self.NR + 1
-    return true
-end
-
---- Print arguments to `io.stdout` delimited by `OFS` using `tostring`. If no arguments are
---  given, the record value @{0|$0} is printed.
---  @param ... the arguments
---  @function posix:print
-function M:print(...)
-    local ofs = tostring(self.OFS)
-    local ors = tostring(self.ORS)
-    if select('#', ...) > 0 then
-        -- FIXME implementation far from optimal
-        local args = {...}
-        local stab = setmetatable({}, {
-            __index = function(_,k) return args[k] and tostring(args[k]) or "" end,
-            __len = function() return #args end
-        })
-        io.stdout:write(table.concat(stab, ofs), ors)
-    else
-        io.stdout:write(self[0], ors)
-    end
-end
-
---- Prints to `io.stdout` by passing the arguments to `string.format`.
---  @param ... the arguments
---  @function posix:printf
-function M:printf(...)
-    io.stdout:write(string.format(...))
-end
-
---- Return the position, in characters, numbering from 1, in string `s` where
---  the extended regular expression `p` occurs, or zero if it does not occur
---  at all. @{RSTART} shall be set to the starting position
---  (which is the same as the returned value), zero if no match is found;
---  @{RLENGTH} shall be set to the length of the matched
---  string, -1 if no match is found.
---
---  @param[type=string] s  input string
---  @param[type=string] p  pattern
---  @return[type=number] position of first match, or nil
---
---  @see RSTART
---  @see RLENGTH
---  @depends regex.find
---  @function posix:match
-function M:match(...)
-    local argc, s, p = select('#', ...), ...
-    -- TODO fix description
-    if not self then
-        abort("match: self expected, got: %s\n", type(self))
-    end
-    if argc < 2 then
-        abort("match: invalid number of arguments\n")
-    end
-    s = s and tostring(s) or ""
-    p = p and tostring(p) or ""
-    local rstart, rend = regex.find(s,p)
-    if rstart then
-        self.RSTART = rstart
-        self.RLENGTH = rend - rstart + 1
-        return rstart
-    else
-        self.RSTART = 0
-        self.RLENGTH = -1
-    end
-    return nil
-end
-
---- Split string `s` into array `a` by `fs` and return `n`.
---
---  All elements of the array shall be deleted before the split is performed.
---  The separation shall be done with the ERE fs or with the field separator
---  @{FS} if fs is not given. Each array element shall have a string value
---  when created and, if appropriate, the array element shall be considered
---  a numeric string (see Expressions in awk). The effect of a null string
---  as the value of fs is unspecified.
---
---  The _null string_ pattern (`""`) causes the characters of `s` to be
---  enumerated into `a`.
---
---  The _literal space_ pattern (`"\x20"`) matches any number of characters
---  of _space_ (space, tab and newline), leading and trailing spaces are
---  trimmed from input. Any other single character (e.g. `","`) is treated as
---  a _literal_ pattern.
---
---  Any other pattern is considered as regex pattern in the domain of lua.
---
---  @usage
---    local F = require "luawk.runtime.posix":new()
---    local n = F:split "a b c"
---    --    n = 3
---    -- F[1] = "a"
---    -- F[2] = "b"
---    -- F[3] = "c"
---
---  @param[type=string] s  input string
---  @param[type=table,opt=self] a  split into array
---  @param[type=string,opt=self.FS] fs  field separator
---  @return[type=number]  number of fields
---
---  @see FS
---  @depends regex.find
---  @class function
---  @name posix:split
-function M:split(...)
-    -- TODO Seps is a gawk extension, with seps[i] being the separator string
-    -- between array[i] and array[i+1]. If fieldsep is a single space, then any
-    -- leading whitespace goes into seps[0] and any trailing whitespace goes
-    -- into seps[n], where n is the return value of split() (i.e., the number of
-    -- elements in array).
-    -- TODO If RS is null, then records are separated by sequences consisting of
-    -- a <newline> plus one or more blank lines, leading or trailing blank lines
-    -- shall not result in empty records at the beginning or end of the input,
-    -- and a <newline> shall always be a field separator, no matter what the
-    -- value of FS is.
-    local argc, s, a, fs = select('#', ...), ...
-    if not self then
-        abort("split: self expected, got: %s\n", type(self))
-    end
-    if argc == 0 then
-        abort("split: first argument is mandatory\n")
-    end
-    if argc > 1 and not isarray(a) then
-        abort("split: second argument is not an array\n")
-    end
-    s = s ~= nil and tostring(s) or ""
-    a = a or self
-    fs = fs ~= nil and tostring(fs) or (self.FS or '\32')
-    -- special mode
-    if fs == '\32' then
-        s = trim(s)
-        fs = '[\32\t\n]+'
-    end
-    -- clear array
-    if a == self then
-        self[0] = ""
-    else
-        for i in ipairs(a) do
-            a[i] = nil
-        end
-    end
-    if s == "" then
-        -- nothing to do
-        return 0
-    end
-    if fs == "" then
-        -- special null string mode
-        -- empty field separator, split to characters
-        local i = 1
-        for c in string.gmatch(s, utf8charpattern) do
-            a[i] = c
-            i = i + 1
-        end
-        return #a
-    else
-        -- standard regex mode
-        local i, j = 1, 1
-        local b, c = regex.find(s, fs, j)
-        while b do
-            a[i] = string.sub(s, j, b - 1)
-            j = c + 1
-            i = i + 1
-            b, c = regex.find(s, fs, j)
-        end
-        a[i] = string.sub(s, j)
-        return #a
-    end
-end
 
 local function splitR(R, self)
     R.nf = self.split(R[0], R, self.FS)
@@ -402,16 +35,10 @@ local function joinR(R, self)
     log.trace("    [0]=%s <rebuilt>\n", R[0])
 end
 
---- Constructors
--- @section
-
---- Create a new object.
---  @param[type=table,opt] obj
---  @return[type=Runtime]
---  @class function
---  @name new
-
-function M.new(obj)
+--- Create a new new instance of `posix.class`.
+--  @param[type=table,opt] obj a backing table
+--  @return[type=posix.class] A new instance of `posix.class`
+local function new(obj)
     -- @TODO R should use weak references
     local R = {
         [0] = "",
@@ -442,7 +69,7 @@ function M.new(obj)
                 log.trace("    [%s]=%s <record>\n", k, R.nf)
                 return R.nf
             end
-            local val = M[k]
+            local val = class[k]
             if type(val) == "function" then
                 -- wrap function self
                 local proxy = function(...)
@@ -528,4 +155,389 @@ function M.new(obj)
     return runtime
 end
 
-return M
+--- Object Fields
+-- @section
+
+--- The record, usually set by `getline`.
+--  @class field
+--  @name 0
+--  @fieldof obj
+--  @see getline
+
+--- Fields as handled by @{split}() for @{0|$0}.
+--  @usage
+--    local F = require 'luawk.runtime.posix':new()
+--    F.OFS = ","
+--    F[0] = "a b c"
+--    F[NF+1] = "d"
+--    -- F.NF = 4
+--    -- F[0] = "a,b,c,d"
+--  @class field
+--  @name 1..NF
+--  @fieldof obj
+--  @see split
+--  @see NF
+
+--- The number of fields in the current record. Inside a _BEGIN_ action, the use
+--  of @{NF} is undefined unless a getline function without a var argument is
+--  executed previously. Inside an _END_ action, @{NF} shall retain the value it had
+--  for the last record read, unless a subsequent, redirected, getline function
+--  without a var argument is performed prior to entering the _END_ action.
+--  @class field
+--  @name obj.NF
+
+--- Class Fields
+-- @section
+
+--- The number of elements in the @{ARGV} array.
+class.ARGC = 0
+
+--- An array of command line arguments, excluding options and the program
+--  argument, numbered from zero to @{ARGC}-1. The arguments in @{ARGV} can be
+--  modified or added to; @{ARGC} can be altered. As each input file ends, awk
+--  shall treat the next non-null element of @{ARGV}, up to the current value of
+--  @{ARGC}-1, inclusive, as the name of the next input file. Thus, setting an
+--  element of @{ARGV} to null means that it shall not be treated as an input
+--  file. The name `'-'` indicates the standard input. If an argument matches the
+--  format of an assignment operand, this argument shall be treated as an
+--  assignment rather than a file argument.
+class.ARGV = {}
+
+--- The printf format for converting numbers to strings (except for output
+--  statements, where @{OFMT} is used); `"%.6g"` by default.
+class.CONVFMT = "%.6g"
+
+--- An array representing the value of the environment, as described in the exec
+--  functions defined in the System Interfaces volume of POSIX.1-2017. The
+--  indices of the array shall be strings consisting of the names of the
+--  environment variables, and the value of each array element shall be a
+--  string consisting of the value of that variable. If appropriate, the
+--  environment variable shall be considered a numeric string (see Expressions
+--  in awk); the array element shall also have its numeric value. In all cases
+--  where the behavior of awk is affected by environment variables
+--  (including the environment of any commands that awk executes via the system
+--  function or via pipeline redirections with the print statement, the printf
+--  statement, or the getline function), the environment used shall be the
+--  environment at the time awk began executing; it is implementation-defined
+--  whether any modification of @{ENVIRON} affects this environment.
+--  @table class.ENVIRON
+--  @see getenv(3)
+--  @see setenv(3)
+class.ENVIRON = setmetatable({}, {
+    __index = function(_, k) return os.getenv(k) end,
+    __newindex = function(_,k,v) setenv(k,v) end,
+    __pairs = function() return pairs(getenv()) end,
+})
+
+--- A pathname of the current input file. Inside a _BEGIN_ action the value is
+--  undefined. Inside an _END_ action the value shall be the name of the last
+--  input file processed.
+class.FILENAME = nil
+
+--- The ordinal number of the current record in the current file. Inside a _BEGIN_
+--  action the value shall be zero. Inside an _END_ action the value shall be the
+--  number of the last record processed in the last file processed.
+class.FNR = 0
+
+--- Input field separator regular expression; a _space_ by default.
+--  @see split
+class.FS = '\32'
+
+--- The ordinal number of the current record from the start of input. Inside a
+--  _BEGIN_ action the value shall be zero. Inside an _END_ action the value shall
+--  be the number of the last record processed.
+class.NR = 0
+
+--- The printf format for converting numbers to strings in output statements
+--  (see Output Statements); `"%.6g"` by default. The result of the conversion is
+--  unspecified if the value of @{OFMT} is not a floating-point format
+--  specification.
+class.OFMT = "%.6g"
+
+--- The print statement output field separator; _space_ by default.
+class.OFS = '\32'
+
+--- The print statement output record separator; a _newline_ by default.
+class.ORS = '\n'
+
+--- The length of the string matched by the match function.
+class.RLENGTH = 0
+
+--- The first character of the string value of @{RS} shall be the input record
+--  separator; a _newline_ by default. If @{RS} contains more than one character,
+--  the results are unspecified. If @{RS} is null, then records are separated by
+--  sequences consisting of a _newline_ plus one or more blank lines, leading
+--  or trailing blank lines shall not result in empty records at the beginning
+--  or end of the input, and a _newline_ shall always be a field separator, no
+--  matter what the value of @{FS} is.
+class.RS = '\n'
+
+--- The starting position of the string matched by the match function, numbering
+--  from 1. This shall always be equivalent to the return value of the match
+--  function.
+class.RSTART = 0
+
+--- Methods
+-- @section
+
+local fileinfo = {}
+
+--- Close the file or pipe opened by a `print` or `printf` statement or a call to
+--  `getline` with the same string-valued expression.
+--
+--  @param[type=string] fd  A string representation of the file or pipe.
+--
+--  @return[1,type=true] On success
+--  @return[2,type=nil]
+--  @return[2,type=string] Message describing the error
+--
+--  @class function
+--  @name class:close
+function class:close(fd)
+    -- TODO implement fd cache
+    abort("close: not implemented")
+end
+
+--- Set `var` to the next input record from the current input file. If `var`
+--  is unspecified, set record to @{0|$0}.
+--
+--  This form of getline should update the values of `NF`, `NR`, and `FNR`.
+--
+--  @param[type=string,opt] var  Set variable var to the next input
+--   record from the current input file.
+--
+--  @return[type=boolean] Shall return true for successful input, false for
+--   end-of-file and raise an error otherwise.
+--
+--  @class function
+--  @name class:getline
+function class:getline(var)
+    local filename = self.FILENAME
+    local rs = self.RS and self.RS:sub(1,1) or ""
+    local info = fileinfo[filename]
+    if filename == "-" then
+        filename = "/dev/stdin"
+    end
+    if info == nil then
+        -- TODO check for file type
+        local handle, msg = io.open(filename)
+        if handle == nil then
+            abort("getline: %s\n", msg)
+        end
+        info = {
+            handle = handle,
+            nr = 0
+        }
+        fileinfo[self.FILENAME] = info
+    end
+    -- TODO read record delimited by RS
+    -- TODO The first character of the string value of RS shall be
+    --      the input record separator; a <newline> by default.
+    --      If RS contains more than one character, the results
+    --      are unspecified.
+    -- TODO If RS is null, then records are separated by sequences
+    --      consisting of a <newline> plus one or more blank lines,
+    --      leading or trailing blank lines shall not result in empty
+    --      records at the beginning or end of the input, and a
+    --      <newline> shall always be a field separator, no matter
+    --      what the value of FS is.
+    local rec
+    if rs == "\n" then
+        rec = info.handle:read()
+    elseif rs == "" then
+        abort("getline: empty RS not implemented\n")
+    else
+        abort("getline: non-standard RS not implemented\n")
+    end
+    if rec == nil then
+        fileinfo[filename] = nil
+        local s, msg = pcall(io.close, info.handle)
+        if not s then
+            error(msg, -1)
+        end
+        return false
+    elseif var then
+        self[var] = rec
+    else
+        self[0] = rec
+    end
+    info.nr = info.nr + 1
+    self.FNR = info.nr
+    self.NR = self.NR + 1
+    return true
+end
+
+--- Print arguments to `io.stdout` delimited by `OFS` using `tostring`. If no arguments are
+--  given, the record value @{0|$0} is printed.
+--  @param ... the arguments
+--  @class function
+--  @name class:print
+function class:print(...)
+    local ofs = tostring(self.OFS)
+    local ors = tostring(self.ORS)
+    if select('#', ...) > 0 then
+        -- FIXME implementation far from optimal
+        local args = {...}
+        local stab = setmetatable({}, {
+            __index = function(_,k) return args[k] and tostring(args[k]) or "" end,
+            __len = function() return #args end
+        })
+        io.stdout:write(table.concat(stab, ofs), ors)
+    else
+        io.stdout:write(self[0], ors)
+    end
+end
+
+--- Prints to `io.stdout` by passing the arguments to `string.format`.
+--  @param ... the arguments
+--  @class function
+--  @name class:printf
+function class:printf(...)
+    io.stdout:write(string.format(...))
+end
+
+--- Return the position, in characters, numbering from 1, in string `s` where
+--  the extended regular expression `p` occurs, or zero if it does not occur
+--  at all. @{RSTART} shall be set to the starting position
+--  (which is the same as the returned value), zero if no match is found;
+--  @{RLENGTH} shall be set to the length of the matched
+--  string, -1 if no match is found.
+--
+--  @param[type=string] s  input string
+--  @param[type=string] p  pattern
+--  @return[type=number] position of first match, or nil
+--
+--  @see RSTART
+--  @see RLENGTH
+--  @depends regex.find
+--  @class function
+--  @name class:match
+function class:match(...)
+    local argc, s, p = select('#', ...), ...
+    -- TODO fix description
+    if not self then
+        abort("match: self expected, got: %s\n", type(self))
+    end
+    if argc < 2 then
+        abort("match: invalid number of arguments\n")
+    end
+    s = s and tostring(s) or ""
+    p = p and tostring(p) or ""
+    local rstart, rend = regex.find(s,p)
+    if rstart then
+        self.RSTART = rstart
+        self.RLENGTH = rend - rstart + 1
+        return rstart
+    else
+        self.RSTART = 0
+        self.RLENGTH = -1
+    end
+    return nil
+end
+
+--- Split string `s` into array `a` by `fs` and return `n`.
+--
+--  All elements of the array shall be deleted before the split is performed.
+--  The separation shall be done with the ERE fs or with the field separator
+--  @{FS} if fs is not given. Each array element shall have a string value
+--  when created and, if appropriate, the array element shall be considered
+--  a numeric string (see Expressions in awk). The effect of a null string
+--  as the value of fs is unspecified.
+--
+--  The _null string_ pattern (`""`) causes the characters of `s` to be
+--  enumerated into `a`.
+--
+--  The _literal space_ pattern (`"\x20"`) matches any number of characters
+--  of _space_ (space, tab and newline), leading and trailing spaces are
+--  trimmed from input. Any other single character (e.g. `","`) is treated as
+--  a _literal_ pattern.
+--
+--  Any other pattern is considered as regex pattern in the domain of lua.
+--
+--  @usage
+--    local F = require "luawk.runtime.posix":new()
+--    local n = F:split "a b c"
+--    --    n = 3
+--    -- F[1] = "a"
+--    -- F[2] = "b"
+--    -- F[3] = "c"
+--
+--  @param[type=string] s  input string
+--  @param[type=table,opt=self] a  split into array
+--  @param[type=string,opt=self.FS] fs  field separator
+--  @return[type=number]  number of fields
+--
+--  @see FS
+--  @depends regex.find
+--  @class function
+--  @name class:split
+function class:split(...)
+    -- TODO Seps is a gawk extension, with seps[i] being the separator string
+    -- between array[i] and array[i+1]. If fieldsep is a single space, then any
+    -- leading whitespace goes into seps[0] and any trailing whitespace goes
+    -- into seps[n], where n is the return value of split() (i.e., the number of
+    -- elements in array).
+    -- TODO If RS is null, then records are separated by sequences consisting of
+    -- a <newline> plus one or more blank lines, leading or trailing blank lines
+    -- shall not result in empty records at the beginning or end of the input,
+    -- and a <newline> shall always be a field separator, no matter what the
+    -- value of FS is.
+    local argc, s, a, fs = select('#', ...), ...
+    if not self then
+        abort("split: self expected, got: %s\n", type(self))
+    end
+    if argc == 0 then
+        abort("split: first argument is mandatory\n")
+    end
+    if argc > 1 and not isarray(a) then
+        abort("split: second argument is not an array\n")
+    end
+    s = s ~= nil and tostring(s) or ""
+    a = a or self
+    fs = fs ~= nil and tostring(fs) or (self.FS or '\32')
+    -- special mode
+    if fs == '\32' then
+        s = trim(s)
+        fs = '[\32\t\n]+'
+    end
+    -- clear array
+    if a == self then
+        self[0] = ""
+    else
+        for i in ipairs(a) do
+            a[i] = nil
+        end
+    end
+    if s == "" then
+        -- nothing to do
+        return 0
+    end
+    if fs == "" then
+        -- special null string mode
+        -- empty field separator, split to characters
+        local i = 1
+        for c in string.gmatch(s, utf8charpattern) do
+            a[i] = c
+            i = i + 1
+        end
+        return #a
+    else
+        -- standard regex mode
+        local i, j = 1, 1
+        local b, c = regex.find(s, fs, j)
+        while b do
+            a[i] = string.sub(s, j, b - 1)
+            j = c + 1
+            i = i + 1
+            b, c = regex.find(s, fs, j)
+        end
+        a[i] = string.sub(s, j)
+        return #a
+    end
+end
+
+--- @export
+return {
+    class = class,
+    new = new,
+}

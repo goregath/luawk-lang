@@ -24,7 +24,9 @@ alias("BUG","fixme")
 new_type("runtime", "Runtimes", true)
 
 custom_tags = {
-	{ "label", hidden = true },
+	-- { "label", hidden = true },
+	-- { "methodof", hidden = true },
+	{ "fieldof", hidden = true },
 	{ "depends", title = "Depends" },
 }
 
@@ -41,13 +43,23 @@ end)
 
 custom_display_name_handler = function(item, default_handler)
 	local name = item.name
-	if item.tags.label then
-		name = name .. " <sup>("
-		for _,label in ipairs(item.tags.label) do
-			name = name .. label .. ", "
+	-- if item.tags.methodof then
+	-- 	name = ("<code>%s</code>:%s"):format(item.tags.methodof[1] or "???", name)
+	-- end
+	if item.tags.fieldof then
+		name = ("<code>%s[</code>%s<code>]</code>"):format(item.tags.fieldof[1] or "???", name)
+	elseif item.type == "field" or item.type == "function" or item.type == "table" then
+		if name:find("[.:]") then
+			name = ("<code>%s</code>%s%s"):format(name:match("(.*)([.:])(.*)"))
 		end
-		name = name:sub(1,-3) .. ")</sup>"
 	end
+	-- if item.tags.label then
+	-- 	name = name .. " <sup>("
+	-- 	for _,label in ipairs(item.tags.label) do
+	-- 		name = name .. label .. ", "
+	-- 	end
+	-- 	name = name:sub(1,-3) .. ")</sup>"
+	-- end
 	if name ~= item.name then
 		return name
 	end
