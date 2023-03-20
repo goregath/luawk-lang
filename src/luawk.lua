@@ -359,6 +359,12 @@ for i=1,runtime.ARGC-1 do
 		until coroutine.status(runner) == "dead"
 	end
 	::NEXTFILE::
+	-- TODO nextfile
+	-- Stop  processing the current input file.
+	-- The next input record read comes from the next input file.
+	-- FILENAME and ARGIND are updated, FNR is reset to 1, and
+	-- processing starts over with the first pattern in the AWK program.
+	-- Upon reaching the end of the input data, gawk executes any END rule(s).
 	if not specialaction('ENDFILE') then
 		goto END
 	end
