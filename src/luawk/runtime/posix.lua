@@ -155,48 +155,7 @@ local function new(lower)
     return upper
 end
 
---- Object Fields
--- @section
-
---- The record, usually set by `getline`.
---  @class field
---  @name 0
---  @fieldof obj
---  @see getline
---  @default `""` (_nullstring_)
-
---- Fields as handled by @{split}() for @{0|$0}.
---  @usage
---    local F = require 'luawk.runtime.posix':new()
---    F.OFS = ","
---    F[0] = "a b c"
---    F[NF+1] = "d"
---    -- F.NF = 4
---    -- F[0] = "a,b,c,d"
---  @class field
---  @name 1..NF
---  @fieldof obj
---  @see split
---  @see NF
---  @default `nil` (when @{0|obj[0]} is the _nullstring_)
-
---- A pathname of the current input file. Inside a _BEGIN_ action the value is
---  undefined. Inside an _END_ action the value shall be the name of the last
---  input file processed.
---  @class field
---  @name obj.FILENAME
---  @default <code>nil</code> (unset)
-
---- The number of fields in the current record. Inside a _BEGIN_ action, the use
---  of @{NF} is undefined unless a getline function without a var argument is
---  executed previously. Inside an _END_ action, @{NF} shall retain the value it had
---  for the last record read, unless a subsequent, redirected, getline function
---  without a var argument is performed prior to entering the _END_ action.
---  @class field
---  @name obj.NF
---  @default <code>0</code> (when @{0|obj[0]} is the nullstring)
-
---- Class Fields
+--- Class Fields.
 -- @section
 
 --- The number of elements in the @{ARGV} array.
@@ -293,6 +252,51 @@ class.RS = '\n'
 --  function.
 --  @default <code>0</code>
 class.RSTART = 0
+
+--- Object Fields.
+-- @section
+
+--- The record, usually set by `getline`.
+--  @class field
+--  @name 0
+--  @fieldof obj
+--  @see getline
+--  @default `""` (_nullstring_)
+
+--- Fields as handled by @{split}() for @{0|$0}.
+--  @usage
+--    local F = require 'luawk.runtime.posix':new()
+--    F.OFS = ","
+--    F[0] = "a b c"
+--    F[NF+1] = "d"
+--    -- F.NF = 4
+--    -- F[0] = "a,b,c,d"
+--  @class field
+--  @name 1..NF
+--  @fieldof obj
+--  @see split
+--  @see NF
+--  @default `nil` (when index not `[1,NF]`, `string` otherwise)
+
+--- The number of fields in the current record. Inside a _BEGIN_ action, the use
+--  of @{NF} is undefined unless a getline function without a var argument is
+--  executed previously. Inside an _END_ action, @{NF} shall retain the value it had
+--  for the last record read, unless a subsequent, redirected, getline function
+--  without a var argument is performed prior to entering the _END_ action.
+--  @class field
+--  @name obj.NF
+--  @default <code>0</code> (when @{0|obj[0]} is the nullstring)
+
+--- Reserved Fields.
+--  Variables reserved by an awk-compliant runtime.
+--  @section reserved
+
+--- A pathname of the current input file. Inside a _BEGIN_ action the value is
+--  undefined. Inside an _END_ action the value shall be the name of the last
+--  input file processed.
+--  @class field
+--  @name obj.FILENAME
+--  @default <code>nil</code> (unset)
 
 --- Methods
 -- @section
