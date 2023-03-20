@@ -37,8 +37,8 @@ end
 
 --- Create a new new instance of `posix.class`.
 --  @param[type=table,opt] obj a backing table
---  @return[type=posix.class] A new instance of `posix.class`
-local function new(obj)
+--  @return A new instance of `posix.class`
+local function new(lower)
     -- @TODO R should use weak references
     local R = {
         [0] = "",
@@ -46,8 +46,8 @@ local function new(obj)
         split = splitR,
         join = joinR,
     }
-    obj = obj or {}
-    local runtime = setmetatable({}, {
+    lower = lower or {}
+    local upper = setmetatable({}, {
         record = R,
         __index = function(self,k)
             log.debug("get [%s]\n", k)
@@ -84,7 +84,7 @@ local function new(obj)
                 rawset(self, k, val)
                 return val
             end
-            val = obj[k]
+            val = lower[k]
             if val ~= nil then
                 log.trace("    [%s]=%s <global>\n", k, val)
                 rawset(self, k, val)
@@ -124,7 +124,7 @@ local function new(obj)
                 -- (re)build record from fields
                 R:join(self)
             else
-                log.debug("set [%s]=%s <runtime>\n", k, v)
+                log.debug("set [%s]=%s <upper>\n", k, v)
                 rawset(self, k, v)
             end
         end,
@@ -136,23 +136,23 @@ local function new(obj)
         return setmetatable({}, {
             __index = function(_,k)
                 log.debug("get [%s]\n", k)
-                local v = rawget(runtime, k)
+                local v = rawget(upper, k)
                 if v ~= nil then
                     log.trace("    [%s]=%s <cached>\n", k, v)
                     return v
                 end
-                return runtime[k]
+                return upper[k]
             end,
             __newindex = function(_,k,v)
                 log.debug("set [%s]=%s\n", k, v)
-                runtime[k] = v
+                upper[k] = v
             end,
             __len = function()
-                return #runtime
+                return #upper
             end
         })
     end
-    return runtime
+    return upper
 end
 
 --- Object Fields
@@ -163,6 +163,7 @@ end
 --  @name 0
 --  @fieldof obj
 --  @see getline
+--  @default `""` (_nullstring_)
 
 --- Fields as handled by @{split}() for @{0|$0}.
 --  @usage
@@ -177,6 +178,14 @@ end
 --  @fieldof obj
 --  @see split
 --  @see NF
+--  @default `nil` (when @{0|obj[0]} is the _nullstring_)
+
+--- A pathname of the current input file. Inside a _BEGIN_ action the value is
+--  undefined. Inside an _END_ action the value shall be the name of the last
+--  input file processed.
+--  @class field
+--  @name obj.FILENAME
+--  @default <code>nil</code> (unset)
 
 --- The number of fields in the current record. Inside a _BEGIN_ action, the use
 --  of @{NF} is undefined unless a getline function without a var argument is
@@ -185,11 +194,13 @@ end
 --  without a var argument is performed prior to entering the _END_ action.
 --  @class field
 --  @name obj.NF
+--  @default <code>0</code> (when @{0|obj[0]} is the nullstring)
 
 --- Class Fields
 -- @section
 
 --- The number of elements in the @{ARGV} array.
+--  @default <code>0</code>
 class.ARGC = 0
 
 --- An array of command line arguments, excluding options and the program
@@ -201,10 +212,12 @@ class.ARGC = 0
 --  file. The name `'-'` indicates the standard input. If an argument matches the
 --  format of an assignment operand, this argument shall be treated as an
 --  assignment rather than a file argument.
+--  @default `{}`
 class.ARGV = {}
 
 --- The printf format for converting numbers to strings (except for output
 --  statements, where @{OFMT} is used); `"%.6g"` by default.
+--  @default `"%.6g"`
 class.CONVFMT = "%.6g"
 
 --- An array representing the value of the environment, as described in the exec
@@ -229,38 +242,40 @@ class.ENVIRON = setmetatable({}, {
     __pairs = function() return pairs(getenv()) end,
 })
 
---- A pathname of the current input file. Inside a _BEGIN_ action the value is
---  undefined. Inside an _END_ action the value shall be the name of the last
---  input file processed.
-class.FILENAME = nil
-
 --- The ordinal number of the current record in the current file. Inside a _BEGIN_
 --  action the value shall be zero. Inside an _END_ action the value shall be the
 --  number of the last record processed in the last file processed.
+--  @default <code>0</code>
 class.FNR = 0
 
 --- Input field separator regular expression; a _space_ by default.
 --  @see split
+--  @default `"\32"` (blank)
 class.FS = '\32'
 
 --- The ordinal number of the current record from the start of input. Inside a
 --  _BEGIN_ action the value shall be zero. Inside an _END_ action the value shall
 --  be the number of the last record processed.
+--  @default <code>0</code>
 class.NR = 0
 
 --- The printf format for converting numbers to strings in output statements
 --  (see Output Statements); `"%.6g"` by default. The result of the conversion is
 --  unspecified if the value of @{OFMT} is not a floating-point format
 --  specification.
+--  @default `"%.6g"`
 class.OFMT = "%.6g"
 
 --- The print statement output field separator; _space_ by default.
+--  @default `"\32"` (blank)
 class.OFS = '\32'
 
 --- The print statement output record separator; a _newline_ by default.
+--  @default `"\n"` (newline)
 class.ORS = '\n'
 
 --- The length of the string matched by the match function.
+--  @default <code>0</code>
 class.RLENGTH = 0
 
 --- The first character of the string value of @{RS} shall be the input record
@@ -270,11 +285,13 @@ class.RLENGTH = 0
 --  or trailing blank lines shall not result in empty records at the beginning
 --  or end of the input, and a _newline_ shall always be a field separator, no
 --  matter what the value of @{FS} is.
+--  @default `"\n"` (newline)
 class.RS = '\n'
 
 --- The starting position of the string matched by the match function, numbering
 --  from 1. This shall always be equivalent to the return value of the match
 --  function.
+--  @default <code>0</code>
 class.RSTART = 0
 
 --- Methods

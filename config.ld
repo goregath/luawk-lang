@@ -3,6 +3,7 @@ project = "AWK for Lua"
 package = "luawk"
 file = "src"
 readme = "README.md"
+style = true
 
 sort = true
 format = "markdown"
@@ -27,6 +28,7 @@ custom_tags = {
 	-- { "label", hidden = true },
 	-- { "methodof", hidden = true },
 	{ "fieldof", hidden = true },
+	{ "default", hidden = false },
 	{ "depends", title = "Depends" },
 }
 
@@ -42,10 +44,14 @@ custom_see_handler('^([%w.]+)%s+(.*)$', function(module, url)
 end)
 
 custom_display_name_handler = function(item, default_handler)
-	local name = item.name
-	-- if item.tags.methodof then
-	-- 	name = ("<code>%s</code>:%s"):format(item.tags.methodof[1] or "???", name)
+	-- if item.usage then
+	-- 	for i,usage in ipairs(item.usage) do
+	-- 		if usage:match("^%$") then
+	-- 			item.usage[i] = io.popen(usage)
+	-- 		end
+	-- 	end
 	-- end
+	local name = item.name
 	if item.tags.fieldof then
 		name = ("<code>%s[</code>%s<code>]</code>"):format(item.tags.fieldof[1] or "???", name)
 	elseif item.type == "field" or item.type == "function" or item.type == "table" then
@@ -53,12 +59,8 @@ custom_display_name_handler = function(item, default_handler)
 			name = ("<code>%s</code>%s%s"):format(name:match("(.*)([.:])(.*)"))
 		end
 	end
-	-- if item.tags.label then
-	-- 	name = name .. " <sup>("
-	-- 	for _,label in ipairs(item.tags.label) do
-	-- 		name = name .. label .. ", "
-	-- 	end
-	-- 	name = name:sub(1,-3) .. ")</sup>"
+	-- if item.tags.default then
+	-- 	name = ("%s<small> = %s</small>"):format(name, item.tags.default[1]:match("%W*(%S+)"))
 	-- end
 	if name ~= item.name then
 		return name
