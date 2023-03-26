@@ -345,6 +345,17 @@ end
 
 --- Print arguments to `io.stdout` delimited by `OFS` using `tostring`. If no arguments are
 --  given, the record value @{0|$0} is printed.
+--
+--  @usage
+--    local F = require "luawk.runtime.posix".new()
+--    F[0] = "a b c"
+--    F.print()
+--    -- a b c
+--    F.OFS = ","
+--    F.print(1, nil, true)
+--    -- 1,,true
+--
+--  @see OFS
 --  @param ... the arguments
 --  @class function
 --  @name class:print
@@ -431,7 +442,7 @@ end
 --  Any other pattern is considered as regex pattern in the domain of lua.
 --
 --  @usage
---    local F = require "luawk.runtime.posix":new()
+--    local F = require "luawk.runtime.posix".new()
 --    local n = F:split "a b c"
 --    --    n = 3
 --    -- F[1] = "a"
