@@ -241,24 +241,21 @@ do
 end
 
 -- ---------------------------------------------------------
--- SETUP
--- ---------------------------------------------------------
-
--- runtime.close = awkclose
--- runtime.system = awksystem
-
--- ---------------------------------------------------------
 -- MAIN LOOP
 -- ---------------------------------------------------------
 
+local streamimpl = require "luawk.stream.generic"
 local exitcode = 0
 
 local function singlerun(section)
 	program(section)
 end
 
-local function loop()
-	while runtime.getline() do
+local function loop(stream)
+	runtime.FNR = 0
+	while stream:getline(runtime) do
+		runtime.NR = runtime.NR + 1
+		runtime.FNR = runtime.FNR + 1
 		program('main')
 	end
 	coroutine.yield("nextfile")
@@ -297,29 +294,38 @@ if #program.BEGIN > 0 and #program.main == 0 then
 end
 
 for i=1,runtime.ARGC-1 do
-	runtime.FILENAME = runtime.ARGV[i]
+	local handle, msg
+	local filename = runtime.ARGV[i]
+
 	if not specialaction('BEGINFILE') then
 		goto END
 	end
 
-	if runtime.FILENAME == nil or runtime.FILENAME == "" then
+	if filename == nil or filename == "" then
 		-- If the value of a particular element of ARGV is empty, skip over it.
 		goto NEXTFILE
 	end
 
-	if runtime.FILENAME:find("=") then
+	if filename:find("=") then
 		-- If an argument matches the format of an assignment operand, this
 		-- argument shall be treated as an assignment rather than a file argument.
-		local k,v = runtime.FILENAME:match("^([_%a][_%w]*)=(.*)$")
+		local k,v = filename:match("^([_%a][_%w]*)=(.*)$")
 		if k then
 			runtime[k] = v
 			goto NEXTFILE
 		end
 	end
 
+	handle, msg = io.open(filename:gsub("^-$", "/dev/stdin"), "r")
+	if not handle then
+		abort("%s: error: %s\n", name, msg)
+	end
+
 	do -- process file
+		local stream = streamimpl.new(handle)
 		local runner = coroutine.create(loop)
-		local d0 = nil
+		local d0 = stream
+		runtime.FILENAME = filename
 		repeat
 			local stat, yield, d1, d2, d3 = coroutine.resume(runner, d0)
 			d0 = nil
@@ -359,6 +365,7 @@ for i=1,runtime.ARGC-1 do
 		until coroutine.status(runner) == "dead"
 	end
 	::NEXTFILE::
+	handle.close()
 	-- TODO nextfile
 	-- Stop  processing the current input file.
 	-- The next input record read comes from the next input file.
@@ -370,7 +377,7 @@ for i=1,runtime.ARGC-1 do
 	end
 	-- TODO REFACTOR
 	-- awk 'FNR==2 { nextfile } 1' /etc/passwd /etc/passwd -> should print two lines
-	-- TODO ?? fileinfo[runtime.FILENAME] = nil
+	-- TODO ?? fileinfo[filename] = nil
 end
 ::END::
 
