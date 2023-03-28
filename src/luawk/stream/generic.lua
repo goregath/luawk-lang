@@ -1,5 +1,5 @@
 --- Generic stream object.
--- @class generic
+-- @classmod generic
 
 local M = {}
 
@@ -46,7 +46,18 @@ function M:getline(env)
 end
 
 local function new(handle)
-	return setmetatable(handle, { __index = M })
+	return setmetatable({
+        read = function(_, ...)
+            return handle:read(...)
+        end,
+        close = function()
+            return handle:close()
+        end
+    }, {
+        __index = function(_,k)
+            return handle[k] or M[k]
+        end
+    })
 end
 
 return {
