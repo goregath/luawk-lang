@@ -1,18 +1,69 @@
 #!/usr/bin/env -S luawk -f
 
--- read /etc/passwd and print user with login shell
+-- Synopsis
+-- ========
+--
+-- Read file of
+-- [passwd(5)](http://www.kernel.org/doc/man-pages/online/pages/man5/passwd.5.html)
+-- and print users with a login shell.
+--
+-- File Format
+-- -----------
+-- The _passwd_ file contains one line for each user account, with seven fields delimited by colons.
+--
+-- 1. Login name
+-- 2. Optional encrypted password
+-- 3. Numerical user ID
+-- 4. Numerical group ID
+-- 5. User name or comment field
+-- 6. User home directory
+-- 7. Optional user command interpreter
+--
+-- This file also demonstrates how we can extend the runtime of _luawk_ to use a
+-- different implementation for matching operations.
+--
 
+-- Program
+-- ========
+
+-- User Functions
+-- ---------------
+
+-- Redefine [match](../runtimes/posix.html#class:match) function at runtime.
+-- This allows us to dynamically redefine the definition of what a pattern actually is.
+-- For our example we define a pattern to match as a [glob(7)](http://www.kernel.org/doc/man-pages/online/pages/man7/glob.7.html)
+-- using [fnmatch(3)](http://www.kernel.org/doc/man-pages/online/pages/man3/fnmatch.3.html)
+-- provided by the lua _posix_ library.
 function match(s,p)
 	local posix = require("posix.fnmatch")
 	return 0 == posix.fnmatch(p, s, posix.FNM_PATHNAME)
 end
 
+-- Special Actions
+-- ---------------
+
+-- The special action _BEGIN_ is run before any files are processed.
 BEGIN {
+	-- Records of _/etc/passwd_ are delimited by colons (`:`).
+	-- By setting _FS_ we get the same result as specifying `-F` on command line `luawk -F: '..'`.
+	FS = ":"
+	-- By setting _ARGV[1]_ we override the first non-option argument (the first file),
+	-- this is equivalent to the command line `luawk '..' /etc/passwd`.  
+	-- By setting _ARGC_ to 2 we define _luawk_ to run with one non-option argument.
 	ARGV[1] = "/etc/passwd"
 	ARGC = 2
-	FS = ":"
 }
 
+-- Actions
+-- -------
+-- Actions are run for each record of a file.
+
+-- Match `$7` against the the expression `/bin/*sh`.
 $7 ~ "/bin/*sh" {
+
+	-- Print the _login name_ (`$1`) and the associated _command interpreter_ (`$7`).
+	-- The record is splitted into the following fields:
+	--
+
 	printf "%s (%s)\n", $1, $7
 }
