@@ -13,9 +13,10 @@ kind_names={
 	script = 'Program'
 }
 
-examples = {
-	"examples/plugins"
-}
+-- pretty = 'pycco'
+-- examples = {
+-- 	"examples/plugins/",
+-- }
 
 alias("TODO","todo")
 alias("FIXME","fixme")
@@ -53,10 +54,12 @@ custom_display_name_handler = function(item, default_handler)
 	-- end
 	local name = item.name
 	if item.tags.fieldof then
+		name = default_handler(item)
 		name = ("<code>%s[</code>%s<code>]</code>"):format(item.tags.fieldof[1] or "???", name)
 	elseif item.type == "field" or item.type == "function" or item.type == "table" then
+		name = default_handler(item)
 		if name:find("[.:]") then
-			name = ("<code>%s</code>%s%s"):format(name:match("(.*)([.:])(.*)"))
+			name = ("<code>%s</code>%s%s"):format(name:match("([^.:]*)([.:])(.*)"))
 		end
 	end
 	-- if item.tags.default then
