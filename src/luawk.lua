@@ -365,7 +365,7 @@ for i=1,runtime.ARGC-1 do
 		until coroutine.status(runner) == "dead"
 	end
 	::NEXTFILE::
-	handle.close()
+	handle:close()
 	-- TODO nextfile
 	-- Stop  processing the current input file.
 	-- The next input record read comes from the next input file.
