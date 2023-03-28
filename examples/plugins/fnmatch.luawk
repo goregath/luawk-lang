@@ -9,7 +9,7 @@
 --
 -- File Format
 -- -----------
--- The _passwd_ file contains one line for each user account, with seven fields delimited by colons.
+-- The _passwd_ file contains one line for each user account, with up to seven fields delimited by colons.
 --
 -- 1. Login name
 -- 2. Optional encrypted password
@@ -19,20 +19,27 @@
 -- 6. User home directory
 -- 7. Optional user command interpreter
 --
--- This file also demonstrates how we can extend the runtime of _luawk_ to use a
--- different implementation for matching operations.
+-- This example also demonstrates how we can extend the runtime of _luawk_ to
+-- use a different implementation for matching operations.
 --
 
 -- Program
 -- ========
 
--- User Functions
+-- User Defined Functions
 -- ---------------
+-- This section can contain user defined function definitions with a global scope.
+-- With _luawk_ it is permitted to override builtin functions, like
+-- [print()](../runtimes/posix.html#class:print), 
+-- [match()](../runtimes/posix.html#class:match) or
+-- [split()](../runtimes/posix.html#class:split). 
 
--- Redefine [match](../runtimes/posix.html#class:match) function at runtime.
--- This allows us to dynamically redefine the definition of what a pattern actually is.
--- For our example we define a pattern to match as a [glob(7)](http://www.kernel.org/doc/man-pages/online/pages/man7/glob.7.html)
--- using [fnmatch(3)](http://www.kernel.org/doc/man-pages/online/pages/man3/fnmatch.3.html)
+-- ### Override the [match()](../runtimes/posix.html#class:match) builtin function
+--
+-- This allows us to dynamically redefine the definition of what a pattern
+-- actually is. For our example we define a pattern to match as a
+-- [glob(7)](http://www.kernel.org/doc/man-pages/online/pages/man7/glob.7.html) pattern using
+-- [fnmatch(3)](http://www.kernel.org/doc/man-pages/online/pages/man3/fnmatch.3.html)
 -- provided by the lua _posix_ library.
 function match(s,p)
 	local posix = require("posix.fnmatch")
@@ -41,29 +48,39 @@ end
 
 -- Special Actions
 -- ---------------
+-- Special actions are executed depending on the current state of execution.
+-- They are any of _BEGIN_, _END_, _BEGINFILE_ and _ENDFILE_.
 
+-- ### Setup the program
 -- The special action _BEGIN_ is run before any files are processed.
+-- We can make use of this to setup our program environment.
 BEGIN {
-	-- Records of _/etc/passwd_ are delimited by colons (`:`).
-	-- By setting _FS_ we get the same result as specifying `-F` on command line `luawk -F: '..'`.
+	-- #### Change the default field separator
+	-- Records of _/etc/passwd_ are delimited by colons.
+	-- By setting _FS_ we get the same result as specifying `-F` on command line.
+	--     luawk -F: '..'
 	FS = ":"
-	-- By setting _ARGV[1]_ we override the first non-option argument (the first file),
-	-- this is equivalent to the command line `luawk '..' /etc/passwd`.  
-	-- By setting _ARGC_ to 2 we define _luawk_ to run with one non-option argument.
-	ARGV[1] = "/etc/passwd"
+	-- #### Override command line arguments
+	-- 
+	-- By setting _ARGV[1]_ we override the first non-option argument
+	-- (the first file), this is equivalent to specifying a single input file
+	-- on command line.
+	--     luawk '..' /etc/passwd
+	-- The _ARGV_ varibale is zero-based with _ARGV[0]_ set to the program
+	-- path. By setting _ARGC_ we make sure to run with one non-option
+	-- argument, regardless what has been defined on command line.
 	ARGC = 2
+	ARGV[1] = "/etc/passwd"
 }
 
--- Actions
--- -------
+-- Patterns & Actions
+-- ------------------
 -- Actions are run for each record of a file.
 
--- Match `$7` against the the expression `/bin/*sh`.
+-- ### Define a pattern-action pair
+-- Enter action block if the field `$7` matches against the pattern `/bin/*sh`.
 $7 ~ "/bin/*sh" {
-
-	-- Print the _login name_ (`$1`) and the associated _command interpreter_ (`$7`).
-	-- The record is splitted into the following fields:
-	--
-
+	-- #### Print a formatted concatenation of fields
+	-- Print the _login name_ (`$1`) and the associated _command interpreter_ (`$7`) to stdout.
 	printf "%s (%s)\n", $1, $7
 }
