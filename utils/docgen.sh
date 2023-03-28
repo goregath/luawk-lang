@@ -8,7 +8,7 @@ mkdir -p doc/
 rm -rf doc/*
 
 ldoc .
-pycco -d doc/examples -l lua examples/**/*.luawk
 
-# disable error highlighting
-sed -e '/^body .err/ s#^#/*#' -i doc/examples/pycco.css
+mkdir -p doc/examples
+cd doc/examples
+../../utils/locco/locco.lua ../../examples/**/*.luawk
