@@ -306,35 +306,11 @@ function class:getline(...)
         -- long. gawk attempts to avoid this problem, but currently, there’s
         -- no guarantee that this will never happen.
         -- usage: lua -l P=luawk.runtime.posix -e 'p=P.new()' -e 'for l in p.getline("-") do print(l) end'
-        local B = setmetatable({
-            s = handle,
-            b = ""
-        }, {
-            __call = function(self, find, ...)
-                print "next"
-                while self.s do
-                    local i,j = find(self.b, ...)
-                    print(string.format("%q,%s,%s", self.b:gsub("%c", "?"), i, j))
-                    if i and j < #self.b then
-                        local rc = self.b:sub(1,i-1)
-                        local rt = self.b:sub(i,j)
-                        self.b = self.b:sub(j+1)
-                        print(string.format("=> %q%q(%q)", rc:gsub("%c", "?"), rt:gsub("%c", "?"), self.b:gsub("%c", "?")))
-                        return rc, rt
-                    end
-                    local s = self.s:read(1)
-                    if not s then
-                        local rc = self.b
-                        self.s = nil
-                        self.b = nil
-                        return rc, nil
-                    end
-                    self.b = self.b .. s
-                end
-            end
-        })
-        -- local buffer = {}
+        local buf, eof = "", false
         return function()
+            if eof then
+                return nil
+            end
             local rs = self.RS and tostring(self.RS) or ""
             -- TODO GNU extension, RS can be a pattern
             -- TODO Read record delimited by RS
@@ -354,15 +330,27 @@ function class:getline(...)
             -- else
             if rs == "" then
                 error("getline: empty RS not implemented")
-            elseif rs:len() == 1 then
-                -- literal mode
-                -- error("getline: literal RS not implemented")
-                -- TODO use string.find (plain-mode)
-                return B(string.find, rs, 1, true)
-            else
-                -- pattern mode
-                -- error("getline: pattern RS not implemented")
-                return B(regex.find, rs)
+            end
+            local find, plain = string.find, true
+            if rs:len() > 1 then
+                find, plain = regex.find, false
+            end
+            local found, i, j = false, 1, 0
+            repeat
+                local dat = handle:read(1)
+                if dat then
+                    buf = buf .. dat
+                    i,j = find(buf, rs, 1, plain)
+                    found = i and j < buf:len()
+                else
+                    eof = true
+                end
+            until eof or found
+            if found then
+                local rc = buf:sub(1,i-1)
+                local rt = buf:sub(i,j)
+                buf = buf:sub(j+1)
+                return rc, rt
             end
             return nil
         end
