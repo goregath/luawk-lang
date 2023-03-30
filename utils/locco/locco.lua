@@ -76,7 +76,8 @@ end
 -- be highlighted.
 local keywords = { 'break', 'do', 'else', 'elseif', 'end', 'false', 'for',
                    'function', 'if', 'in', 'local', 'nil', 'repeat', 'return',
-                   'then', 'true', 'until', 'while' }
+                   'then', 'true', 'until', 'while',
+                   'BEGIN', 'END', 'BEGINFILE', 'ENDFILE' }
 local functions = { 'assert', 'collectgarbage', 'dofile', 'error', 'getfenv',
                     'getmetatable', 'ipairs', 'load', 'loadfile', 'loadstring',
                     'module', 'next', 'pairs', 'pcall', 'print', 'rawequal',
