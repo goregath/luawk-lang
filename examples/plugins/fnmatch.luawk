@@ -7,6 +7,9 @@
 -- [passwd(5)](http://www.kernel.org/doc/man-pages/online/pages/man5/passwd.5.html)
 -- and print users with a login shell.
 --
+-- This example also demonstrates how we can extend the runtime of _luawk_ to
+-- use a different implementation for matching operations.
+--
 -- File Format
 -- -----------
 -- The _passwd_ file contains one line for each user account, with up to seven fields delimited by colons.
@@ -19,9 +22,16 @@
 -- 6. User home directory
 -- 7. Optional user command interpreter
 --
--- This example also demonstrates how we can extend the runtime of _luawk_ to
--- use a different implementation for matching operations.
+-- A _passwd_ file may look like this:
 --
+-- <pre>
+-- <code><b>root</b>:x:0:0:root:/root:/bin/bash</code>
+-- <code><b>daemon</b>:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin</code>
+-- <code><b>mail</b>:x:8:8:mail:/var/mail:/usr/sbin/nologin</code>
+-- <code><b>news</b>:x:9:9:news:/var/spool/news:/usr/sbin/nologin</code>
+-- <code><b>www-data</b>:x:33:33:www-data:/var/www:/usr/sbin/nologin</code>
+-- <code><b>user</b>:x:1000:1000:user:/home/user:/bin/bash</code>
+-- </pre>
 
 -- Program
 -- ========
@@ -58,14 +68,16 @@ BEGIN {
 	-- #### Change the default field separator
 	-- Records of _/etc/passwd_ are delimited by colons.
 	-- By setting _FS_ we get the same result as specifying `-F` on command line.
-	--     luawk -F: '..'
+	-- <pre><code> <span class="gp">$</span> <span class="nt">luawk</span> <span class="nf">-F:</span> <span class="s">'..'</span></code></pre>
 	FS = ":"
 	-- #### Override command line arguments
 	-- 
 	-- By setting _ARGV[1]_ we override the first non-option argument
 	-- (the first file), this is equivalent to specifying a single input file
 	-- on command line.
-	--     luawk '..' /etc/passwd
+	--
+	-- <pre><code> <span class="gp">$</span> <span class="nt">luawk</span> <span class="s">'..'</span> <span class="s">/etc/passwd</span></code></pre>
+	--
 	-- The _ARGV_ varibale is zero-based with _ARGV[0]_ set to the program
 	-- path. By setting _ARGC_ we make sure to run with one non-option
 	-- argument, regardless what has been defined on command line.
