@@ -272,6 +272,61 @@ function class:close(fd)
     abort("close: not implemented")
 end
 
+--- Return a getline iterator function.
+--
+--  @param[type=string] filename  A string representation of the file or pipe.
+--
+--  @return[1,type=function] iterator
+--  @return[1] state
+--  @return[1] var
+--  @return[2,type=nil]
+--  @return[2,type=string] Message describing the error
+--
+--  @class function
+--  @name class:getline
+function class:getline(...)
+    local argc, filename = select('#', ...), ...
+    if not self then
+        abort("getline: self expected, got: %s\n", type(self))
+    end
+    if argc == 0 then
+        abort("getline: first argument is mandatory\n")
+    end
+    if type(filename) ~= "string" then
+        filename = tostring(filename)
+    end
+    local handle, msg = io.open(filename:gsub("^-$", "/dev/stdin"), "r")
+    if handle then
+        handle:setvbuf("full")
+        return function()
+            local rs = self.RS and string.sub(tostring(self.RS),1,1) or ""
+            -- TODO GNU extension, RS can be a pattern
+            -- TODO Read record delimited by RS
+            -- TODO The first character of the string value of RS shall be
+            --      the input record separator; a <newline> by default.
+            --      If RS contains more than one character, the results
+            --      are unspecified.
+            -- TODO If RS is null, then records are separated by sequences
+            --      consisting of a <newline> plus one or more blank lines,
+            --      leading or trailing blank lines shall not result in empty
+            --      records at the beginning or end of the input, and a
+            --      <newline> shall always be a field separator, no matter
+            --      what the value of FS is.
+            local rec
+            if rs == "\n" then
+                rec = handle:read()
+            elseif rs == "" then
+                error("getline: empty RS not implemented")
+            else
+                error("getline: non-standard RS not implemented")
+            end
+            return rec
+        end
+    else
+        return nil, msg
+    end
+end
+
 --- Print arguments to `io.stdout` delimited by `OFS` using `tostring`. If no arguments are
 --  given, the record value @{0|$0} is printed.
 --
