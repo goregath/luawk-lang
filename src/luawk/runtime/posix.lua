@@ -298,8 +298,12 @@ function class:getline(...)
     local handle, msg = io.open(filename:gsub("^-$", "/dev/stdin"), "r")
     if handle then
         handle:setvbuf("full")
+        -- local function dynfind(stream, find, ...)
+        --     local s, a, b
+        -- end
+        -- local buffer = {}
         return function()
-            local rs = self.RS and string.sub(tostring(self.RS),1,1) or ""
+            local rs = self.RS and tostring(self.RS) or ""
             -- TODO GNU extension, RS can be a pattern
             -- TODO Read record delimited by RS
             -- TODO The first character of the string value of RS shall be
@@ -313,12 +317,21 @@ function class:getline(...)
             --      <newline> shall always be a field separator, no matter
             --      what the value of FS is.
             local rec
-            if rs == "\n" then
+            if rs == '\10' then
+                -- most efficient solution
                 rec = handle:read()
             elseif rs == "" then
                 error("getline: empty RS not implemented")
+            elseif rs:len() == 1 then
+                -- literal mode
+                error("getline: literal RS not implemented")
+            elseif rs:len() > 1 then
+                -- pattern mode
+                error("getline: pattern RS not implemented")
+                -- TODO use string.find (plain-mode)
             else
                 error("getline: non-standard RS not implemented")
+                -- TODO use regex.find
             end
             return rec
         end
@@ -493,7 +506,7 @@ function class:split(...)
         end
         return #a
     else
-        -- standard regex mode
+        -- pattern mode
         local i, j = 1, 1
         local b, c = regex.find(s, fs, j)
         while b do
