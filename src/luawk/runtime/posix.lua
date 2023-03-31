@@ -297,7 +297,15 @@ function class:getline(...)
     end
     local handle, msg = io.open(filename:gsub("^-$", "/dev/stdin"), "r")
     if handle then
-        handle:setvbuf("full")
+        local fileno = require "posix.stdio".fileno
+        local isatty = require "posix.unistd".isatty
+        local blksz = 256
+        if isatty(fileno(handle)) then
+            blksz = 1
+            handle:setvbuf("no")
+        else
+            handle:setvbuf("full", blksz)
+        end
         -- If you set RS to a regular expression that allows optional trailing
         -- text, such as ‘RS = "abc(XYZ)?"’, it is possible, due to
         -- implementation constraints, that gawk may match the leading part
@@ -308,6 +316,7 @@ function class:getline(...)
         -- usage: lua -l P=luawk.runtime.posix -e 'p=P.new()' -e 'for l in p.getline("-") do print(l) end'
         local buf, eof = "", false
         return function()
+            -- print("getline")
             if eof then
                 return nil
             end
@@ -335,24 +344,36 @@ function class:getline(...)
             if rs:len() > 1 then
                 find, plain = regex.find, false
             end
-            local found, i, j = false, 1, 0
+            local found, i, j -- = false, 1, 0
             repeat
-                local dat = handle:read(1)
-                if dat then
-                    buf = buf .. dat
-                    i,j = find(buf, rs, 1, plain)
-                    found = i and j < buf:len()
-                else
-                    eof = true
+                i,j = find(buf, rs, 1, plain)
+                found = i and (plain or j < buf:len())
+                -- print(i,j,buf:len(),found)
+                if not found and not eof then
+                    local dat = handle:read(blksz)
+                    if dat then
+                        -- print(string.format("read(%d)", blksz))
+                        buf = buf .. dat
+                    else
+                        eof = true
+                        i,j = find(buf, rs, 1, plain)
+                        found = i
+                    end
                 end
+                -- print(eof, found)
             until eof or found
+            local rc, rt
             if found then
-                local rc = buf:sub(1,i-1)
-                local rt = buf:sub(i,j)
+                rc = buf:sub(1,i-1)
+                rt = buf:sub(i,j)
                 buf = buf:sub(j+1)
-                return rc, rt
+            elseif eof then
+                rc = buf
+                rt = ""
+                buf = nil
             end
-            return nil
+            -- print(string.format("=> %q %q%q",(rc or""):gsub("%c","?"),(rt or""):gsub("%c","?"),(buf or""):gsub("%c","?")))
+            return rc, rt
         end
     else
         return nil, msg
