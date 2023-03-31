@@ -237,14 +237,9 @@ class.ORS = '\n'
 --  @default <code>0</code>
 class.RLENGTH = 0
 
---- The first character of the string value of @{RS} shall be the input record
---  separator; a _newline_ by default. If @{RS} contains more than one character,
---  the results are unspecified. If @{RS} is null, then records are separated by
---  sequences consisting of a _newline_ plus one or more blank lines, leading
---  or trailing blank lines shall not result in empty records at the beginning
---  or end of the input, and a _newline_ shall always be a field separator, no
---  matter what the value of @{FS} is.
+--- The record separator string, its value is interpreted by @{getline}.
 --  @default `"\n"` (newline)
+--  @see getline
 class.RS = '\n'
 
 --- The starting position of the string matched by the match function, numbering
@@ -272,14 +267,21 @@ function class:close(fd)
     abort("close: not implemented")
 end
 
---- Return a getline iterator function.
+--- Return a new @{_getline} iterator function with the opened file handle as upvalue.
 --
---  @param[type=string] filename  A string representation of the file or pipe.
+--  @usage
+--    local F = require "luawk.runtime.posix".new()
+--    F.RS = "\n"
+--    for record, rt in F.getline("-") do
+--      print(record)
+--    end
 --
---  @return[1,type=function] iterator
---  @return[1] state
---  @return[1] var
---  @return[2,type=nil]
+--  @param[type=string] filename
+--
+--  @return[1,type=function] @{_getline}
+--  @return[1,type=nil] state
+--  @return[1,type=nil] var
+--  @return[2,type=nil] In case `filename` could not be opened for reading
 --  @return[2,type=string] Message describing the error
 --
 --  @class function
@@ -560,8 +562,39 @@ function class:split(...)
     end
 end
 
---- Object Fields.
+--- Iterators
 -- @section
+
+--- A stateful iterator function returned by @{getline}.
+--
+--  This functions splits the contents of a file (upvalue from @{getline}) based
+--  on the value of the record seperator variable @{RS}.
+--
+--  If @{RS} contains more than one character, its value is interpreted as a
+--  pattern under the domain of @{regex.find}.
+--
+--  If @{RS} is null, then records are separated by sequences consisting of a
+--  _newline_ plus one or more blank lines, leading or trailing blank lines shall
+--  not result in empty records at the beginning or end of the input, and a
+--  _newline_ shall always be a field separator, no matter what the value of
+--  @{FS} is.
+--
+--  @param state The iterator state
+--  @param ctrl The control variable (not used)
+--
+--  @return[1,type=string] Record string (match until @{RS})
+--  @return[1,type=string] Record terminator (match of @{RS})
+--  @return[2,type=fail] If an error occured or end of file has been reached
+--
+--  @field function
+--  @name _getline
+--  @see RS
+--  @see getline
+--  @see regex.find
+
+
+--- Object Fields.
+--  @section
 
 --- The record, usually set by `getline`.
 --  @class field
