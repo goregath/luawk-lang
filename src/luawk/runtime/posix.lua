@@ -319,17 +319,28 @@ function class:getline(...)
                 return nil
             end
             local rs = self.RS and tostring(self.RS) or ""
-            -- TODO If RS is null, then records are separated by sequences
-            --      consisting of a <newline> plus one or more blank lines,
-            --      leading or trailing blank lines shall not result in empty
-            --      records at the beginning or end of the input, and a
-            --      <newline> shall always be a field separator, no matter
-            --      what the value of FS is.
-            if rs == "" then
-                error("getline: empty RS not implemented")
-            end
+            -- TODO AWK: If RS is null, then records are separated by sequences
+            -- consisting of a <newline> plus one or more blank lines, leading
+            -- or trailing blank lines shall not result in empty records at the
+            -- beginning or end of the input, and a <newline> shall always be a
+            -- field separator, no matter what the value of FS is.
+            -- TODO GAWK: The empty string "" (a string without any characters)
+            -- has a special meaning as the value of RS. It means that records
+            -- are separated by one or more blank lines and nothing else. See
+            -- Multiple-Line Records for more details.
+            -- if rs == "" then
+            --     error("getline: empty RS not implemented")
+            -- end
             local find, plain = string.find, true
-            if rs:len() > 1 then
+            if rs == "" then
+                -- GAWK: However, there is an important difference between ‘RS = ""’ and
+                -- ‘RS = "\n\n+"’. In the first case, leading newlines in the input
+                -- data file are ignored, and if a file ends without extra blank
+                -- lines after the last record, the final newline is removed from
+                -- the record. In the second case, this special processing is not
+                -- done.
+                find, rs, plain = string.find, "\n\n+", false
+            elseif rs:len() > 1 then
                 find, plain = regex.find, false
             end
             local found, i, j
@@ -351,11 +362,12 @@ function class:getline(...)
                 rc = buf:sub(1,i-1)
                 rt = buf:sub(i,j)
                 buf = buf:sub(j+1)
-            elseif eof then
+            elseif eof and buf ~= "" then
                 rc = buf
                 rt = ""
                 buf = nil
             end
+            -- print(string.format("=> %q %q%q",(rc or""):gsub("%c","?"),(rt or""):gsub("%c","?"),(buf or""):gsub("%c","?")))
             return rc, rt
         end
     else
@@ -484,11 +496,14 @@ function class:split(...)
     -- leading whitespace goes into seps[0] and any trailing whitespace goes
     -- into seps[n], where n is the return value of split() (i.e., the number of
     -- elements in array).
-    -- TODO If RS is null, then records are separated by sequences consisting of
+    -- TODO WRITE TEST: If RS is null, then records are separated by sequences consisting of
     -- a <newline> plus one or more blank lines, leading or trailing blank lines
     -- shall not result in empty records at the beginning or end of the input,
     -- and a <newline> shall always be a field separator, no matter what the
     -- value of FS is.
+    -- TODO WRITE TEST: When RS is set to the empty string and FS is set to a single
+    -- character, the newline character always acts as a field separator. This
+    -- is in addition to whatever field separations result from FS.
     local argc, s, a, fs = select('#', ...), ...
     if not self then
         abort("split: self expected, got: %s\n", type(self))
