@@ -313,30 +313,18 @@ function class:getline(...)
         -- if the input text that could match the trailing part is fairly
         -- long. gawk attempts to avoid this problem, but currently, there’s
         -- no guarantee that this will never happen.
-        -- usage: lua -l P=luawk.runtime.posix -e 'p=P.new()' -e 'for l in p.getline("-") do print(l) end'
         local buf, eof = "", false
         return function()
-            -- print("getline")
             if eof then
                 return nil
             end
             local rs = self.RS and tostring(self.RS) or ""
-            -- TODO GNU extension, RS can be a pattern
-            -- TODO Read record delimited by RS
-            -- TODO The first character of the string value of RS shall be
-            --      the input record separator; a <newline> by default.
-            --      If RS contains more than one character, the results
-            --      are unspecified.
             -- TODO If RS is null, then records are separated by sequences
             --      consisting of a <newline> plus one or more blank lines,
             --      leading or trailing blank lines shall not result in empty
             --      records at the beginning or end of the input, and a
             --      <newline> shall always be a field separator, no matter
             --      what the value of FS is.
-            -- if rs == '\10' then
-            --     -- most efficient solution
-            --     rec = handle:read()
-            -- else
             if rs == "" then
                 error("getline: empty RS not implemented")
             end
@@ -344,23 +332,19 @@ function class:getline(...)
             if rs:len() > 1 then
                 find, plain = regex.find, false
             end
-            local found, i, j -- = false, 1, 0
+            local found, i, j
             repeat
                 i,j = find(buf, rs, 1, plain)
                 found = i and (plain or j < buf:len())
-                -- print(i,j,buf:len(),found)
                 if not found and not eof then
                     local dat = handle:read(blksz)
                     if dat then
-                        -- print(string.format("read(%d)", blksz))
                         buf = buf .. dat
                     else
-                        eof = true
-                        i,j = find(buf, rs, 1, plain)
+                        eof, i, j = true, find(buf, rs, 1, plain)
                         found = i
                     end
                 end
-                -- print(eof, found)
             until eof or found
             local rc, rt
             if found then
@@ -372,7 +356,6 @@ function class:getline(...)
                 rt = ""
                 buf = nil
             end
-            -- print(string.format("=> %q %q%q",(rc or""):gsub("%c","?"),(rt or""):gsub("%c","?"),(buf or""):gsub("%c","?")))
             return rc, rt
         end
     else
