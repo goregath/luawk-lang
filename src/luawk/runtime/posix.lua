@@ -328,10 +328,7 @@ function class:getline(...)
             -- has a special meaning as the value of RS. It means that records
             -- are separated by one or more blank lines and nothing else. See
             -- Multiple-Line Records for more details.
-            -- if rs == "" then
-            --     error("getline: empty RS not implemented")
-            -- end
-            local find, plain = string.find, true
+            local find, plain, strip = string.find, true, false
             if rs == "" then
                 -- GAWK: However, there is an important difference between ‘RS = ""’ and
                 -- ‘RS = "\n\n+"’. In the first case, leading newlines in the input
@@ -339,12 +336,15 @@ function class:getline(...)
                 -- lines after the last record, the final newline is removed from
                 -- the record. In the second case, this special processing is not
                 -- done.
-                find, rs, plain = string.find, "\n\n+", false
+                find, rs, plain, strip = string.find, "\n\n+", false, true
             elseif rs:len() > 1 then
                 find, plain = regex.find, false
             end
             local found, i, j
             repeat
+                if strip then
+                    buf = string.match(buf, "\n*(.*)")
+                end
                 i,j = find(buf, rs, 1, plain)
                 found = i and (plain or j < buf:len())
                 if not found and not eof then
@@ -359,15 +359,17 @@ function class:getline(...)
             until eof or found
             local rc, rt
             if found then
-                rc = buf:sub(1,i-1)
-                rt = buf:sub(i,j)
-                buf = buf:sub(j+1)
+                rc, rt = string.sub(buf,1,i-1), string.sub(buf,i,j)
+                buf = string.sub(buf,j+1)
             elseif eof and buf ~= "" then
-                rc = buf
-                rt = ""
+                if strip then
+                    rc, rt = string.match(buf, "(.*[^\n])(\n*)$")
+                else
+                    rc, rt = buf, ""
+                end
                 buf = nil
             end
-            -- print(string.format("=> %q %q%q",(rc or""):gsub("%c","?"),(rt or""):gsub("%c","?"),(buf or""):gsub("%c","?")))
+            -- print(string.format("=> %q %q %q",(rc or""):gsub("%c","?"),(rt or""):gsub("%c","?"),(buf or""):gsub("%c","?")))
             return rc, rt
         end
     else
