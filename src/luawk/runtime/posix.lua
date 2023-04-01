@@ -35,6 +35,8 @@ local function joinR(R, self)
     log.trace("    [0]=%s <rebuilt>\n", R[0])
 end
 
+local next
+
 --- Create a new new instance of `posix.class`.
 --  @param[type=table,opt] obj a backing table
 --  @return A new instance of `posix.class`
@@ -267,7 +269,7 @@ function class:close(fd)
     abort("close: not implemented")
 end
 
---- Return a new @{_getline} iterator function with the opened file handle as upvalue.
+--- Return a new iterator function of @{next} with the opened file handle.
 --
 --  @usage
 --    local F = require "luawk.runtime.posix".new()
@@ -278,8 +280,8 @@ end
 --
 --  @param[type=string] filename
 --
---  @return[1,type=function] @{_getline}
---  @return[1,type=nil] state
+--  @return[1,type=next] iterator
+--  @return[1,type=table] state
 --  @return[1,type=nil] var
 --  @return[2,type=nil] In case `filename` could not be opened for reading
 --  @return[2,type=string] Message describing the error
@@ -288,6 +290,7 @@ end
 --  @name class:getline
 function class:getline(...)
     local argc, filename = select('#', ...), ...
+    local msg
     if not self then
         abort("getline: self expected, got: %s\n", type(self))
     end
@@ -297,16 +300,18 @@ function class:getline(...)
     if type(filename) ~= "string" then
         filename = tostring(filename)
     end
-    local handle, msg = io.open(filename:gsub("^-$", "/dev/stdin"), "r")
-    if handle then
+    local state = {}
+    state.buffer = ""
+    state.handle, msg = io.open(filename:gsub("^-$", "/dev/stdin"), "r")
+    if state.handle then
         local fileno = require "posix.stdio".fileno
         local isatty = require "posix.unistd".isatty
-        local blksz = 256
-        if isatty(fileno(handle)) then
-            blksz = 1
-            handle:setvbuf("no")
+        state.pagesize = 256
+        if isatty(fileno(state.handle)) then
+            state.pagesize = 1
+            state.handle:setvbuf("no")
         else
-            handle:setvbuf("full", blksz)
+            state.handle:setvbuf("full", state.pagesize)
         end
         -- If you set RS to a regular expression that allows optional trailing
         -- text, such as ‘RS = "abc(XYZ)?"’, it is possible, due to
@@ -315,65 +320,7 @@ function class:getline(...)
         -- if the input text that could match the trailing part is fairly
         -- long. gawk attempts to avoid this problem, but currently, there’s
         -- no guarantee that this will never happen.
-        local buf, eof = "", false
-        return function()
-            if eof then
-                return nil
-            end
-            local rs = self.RS and tostring(self.RS) or ""
-            -- TODO AWK: If RS is null, then records are separated by sequences
-            -- consisting of a <newline> plus one or more blank lines, leading
-            -- or trailing blank lines shall not result in empty records at the
-            -- beginning or end of the input, and a <newline> shall always be a
-            -- field separator, no matter what the value of FS is.
-            -- TODO GAWK: The empty string "" (a string without any characters)
-            -- has a special meaning as the value of RS. It means that records
-            -- are separated by one or more blank lines and nothing else. See
-            -- Multiple-Line Records for more details.
-            local find, plain, strip = string.find, true, false
-            if rs == "" then
-                -- GAWK: However, there is an important difference between ‘RS = ""’ and
-                -- ‘RS = "\n\n+"’. In the first case, leading newlines in the input
-                -- data file are ignored, and if a file ends without extra blank
-                -- lines after the last record, the final newline is removed from
-                -- the record. In the second case, this special processing is not
-                -- done.
-                find, rs, plain, strip = string.find, "\n\n+", false, true
-            elseif rs:len() > 1 then
-                find, plain = regex.find, false
-            end
-            local found, i, j
-            repeat
-                if strip then
-                    buf = string.match(buf, "\n*(.*)")
-                end
-                i,j = find(buf, rs, 1, plain)
-                found = i and (plain or j < buf:len())
-                if not found and not eof then
-                    local dat = handle:read(blksz)
-                    if dat then
-                        buf = buf .. dat
-                    else
-                        eof, i, j = true, find(buf, rs, 1, plain)
-                        found = i
-                    end
-                end
-            until eof or found
-            local rc, rt
-            if found then
-                rc, rt = string.sub(buf,1,i-1), string.sub(buf,i,j)
-                buf = string.sub(buf,j+1)
-            elseif eof and buf ~= "" then
-                if strip then
-                    rc, rt = string.match(buf, "(.*[^\n])(\n*)$")
-                else
-                    rc, rt = buf, ""
-                end
-                buf = nil
-            end
-            -- print(string.format("=> %q %q %q",(rc or""):gsub("%c","?"),(rt or""):gsub("%c","?"),(buf or""):gsub("%c","?")))
-            return rc, rt
-        end
+        return next, setmetatable(state, { __index = self }), nil
     else
         return nil, msg
     end
@@ -562,37 +509,6 @@ function class:split(...)
     end
 end
 
---- Iterators
--- @section
-
---- A stateful iterator function returned by @{getline}.
---
---  This functions splits the contents of a file (upvalue from @{getline}) based
---  on the value of the record seperator variable @{RS}.
---
---  If @{RS} contains more than one character, its value is interpreted as a
---  pattern under the domain of @{regex.find}.
---
---  If @{RS} is null, then records are separated by sequences consisting of a
---  _newline_ plus one or more blank lines, leading or trailing blank lines shall
---  not result in empty records at the beginning or end of the input, and a
---  _newline_ shall always be a field separator, no matter what the value of
---  @{FS} is.
---
---  @param state The iterator state
---  @param ctrl The control variable (not used)
---
---  @return[1,type=string] Record string (match until @{RS})
---  @return[1,type=string] Record terminator (match of @{RS})
---  @return[2,type=fail] If an error occured or end of file has been reached
---
---  @field function
---  @name _getline
---  @see RS
---  @see getline
---  @see regex.find
-
-
 --- Object Fields.
 --  @section
 
@@ -637,6 +553,94 @@ end
 --  @class field
 --  @name obj.FILENAME
 --  @default <code>nil</code> (unset)
+
+--- Iterators
+-- @section
+
+--- A stateful iterator function returned by @{getline}.
+--
+--  This functions splits the contents of a file (`state.handle`) based
+--  on the value of the record seperator variable @{RS|state.RS}.
+--
+--  If @{RS} contains more than one character, its value is interpreted as a
+--  pattern under the domain of @{regex.find}.
+--
+--  If @{RS} is null, then records are separated by sequences consisting of a
+--  _newline_ plus one or more blank lines, leading or trailing blank lines shall
+--  not result in empty records at the beginning or end of the input, and a
+--  _newline_ shall always be a field separator, no matter what the value of
+--  @{FS} is.
+--
+--  @param[type=table] state The iterator state
+--  @param ctrl The control variable (not used)
+--
+--  @return[1,type=string] Record string (match until @{RS})
+--  @return[1,type=string] Record terminator (match of @{RS})
+--  @return[2,type=fail] If an error occured or end of file has been reached
+--
+--  @field function
+--  @name next
+--  @see RS
+--  @see getline
+--  @see regex.find
+function next(state)
+    if state.eof then
+        return nil
+    end
+    local rs = state.RS and tostring(state.RS) or ""
+    -- TODO AWK: If RS is null, then records are separated by sequences
+    -- consisting of a <newline> plus one or more blank lines, leading
+    -- or trailing blank lines shall not result in empty records at the
+    -- beginning or end of the input, and a <newline> shall always be a
+    -- field separator, no matter what the value of FS is.
+    -- TODO GAWK: The empty string "" (a string without any characters)
+    -- has a special meaning as the value of RS. It means that records
+    -- are separated by one or more blank lines and nothing else. See
+    -- Multiple-Line Records for more details.
+    local find, plain, strip = string.find, true, false
+    if rs == "" then
+        -- GAWK: However, there is an important difference between ‘RS = ""’ and
+        -- ‘RS = "\n\n+"’. In the first case, leading newlines in the input
+        -- data file are ignored, and if a file ends without extra blank
+        -- lines after the last record, the final newline is removed from
+        -- the record. In the second case, this special processing is not
+        -- done.
+        find, rs, plain, strip = string.find, "\n\n+", false, true
+    elseif rs:len() > 1 then
+        find, plain = regex.find, false
+    end
+    local found, i, j
+    repeat
+        if strip then
+            state.buffer = string.match(state.buffer, "\n*(.*)")
+        end
+        i,j = find(state.buffer, rs, 1, plain)
+        found = i and (plain or j < state.buffer:len())
+        if not found and not state.eof then
+            local dat = state.handle:read(state.pagesize)
+            if dat then
+                state.buffer = state.buffer .. dat
+            else
+                state.eof, i, j = true, find(state.buffer, rs, 1, plain)
+                found = i
+            end
+        end
+    until state.eof or found
+    local rc, rt
+    if found then
+        rc, rt = string.sub(state.buffer,1,i-1), string.sub(state.buffer,i,j)
+        state.buffer = string.sub(state.buffer,j+1)
+    elseif state.eof and state.buffer ~= "" then
+        if strip then
+            rc, rt = string.match(state.buffer, "(.*[^\n])(\n*)$")
+        else
+            rc, rt = state.buffer, ""
+        end
+        state.buffer = nil
+    end
+    -- print(string.format("=> %q %q %q",(rc or""):gsub("%c","?"),(rt or""):gsub("%c","?"),(state.buffer or""):gsub("%c","?")))
+    return rc, rt
+end
 
 --- @export
 return {
