@@ -244,61 +244,39 @@ end
 -- MAIN LOOP
 -- ---------------------------------------------------------
 
-local streamimpl = require "luawk.stream.generic"
-local exitcode = 0
+local function atoi(v) return tonumber(v) or 0 end
+local function incr(v) return atoi(v) + 1 end
 
-local function singlerun(section)
-	program(section)
-end
+local status = nil
 
-local function loop(stream)
-	runtime.FNR = 0
-	while stream:getline(runtime) do
-		runtime.NR = runtime.NR + 1
-		runtime.FNR = runtime.FNR + 1
-		program('main')
+-- BEGIN
+for _, action in ipairs(program.BEGIN) do
+	status = action()
+	if type(status) == "number" then goto END
+	elseif status ~= nil then
+		log.warn("unknown status: %s\n", status)
 	end
-	coroutine.yield("nextfile")
 end
 
-local function specialaction(action)
-	local runner = coroutine.create(singlerun)
-	repeat
-		local stat, yield, d1, d2, d3 = coroutine.resume(runner, action)
-		if (not stat) then
-			abort("%s: error: %s\n", name, yield)
-		end
-		if yield == "getline" then
-			-- TODO
-			local fd = nil
-			runtime.getline(fd)
-		elseif yield == "next" or yield == "nextfile" then
-			abort("%s: error: '%s' used in BEGIN action\n", name, yield)
-		elseif yield == "exit" then
-			exitcode = d1 or exitcode
-			return false
-		elseif yield ~= nil then
-			log.warn("unknown yield value: %s (%s,%s,%s)", yield, d1, d2, d3)
-		end
-	until coroutine.status(runner) == "dead"
-	return true
-end
-
-if not specialaction('BEGIN') then
-	goto END
-end
+if #program.main == 0 then goto END end
 
 -- TODO REFACTOR this check breaks the idea of program beeing a callable
-if #program.BEGIN > 0 and #program.main == 0 then
-	goto END
-end
+-- if #program.BEGIN > 0 and #program.main == 0 then
+-- 	goto END
+-- end
 
-for i=1,runtime.ARGC-1 do
-	local handle, msg
+for i=1,atoi(runtime.ARGC)-1 do
+	local getline, state
 	local filename = runtime.ARGV[i]
+	runtime.ARGIND = i
 
-	if not specialaction('BEGINFILE') then
-		goto END
+	-- BEGINFILE
+	for _, action in ipairs(program.BEGINFILE) do
+		status = action()
+		if type(status) == "number" then goto END
+		elseif status ~= nil then
+			log.warn("unknown status: %s\n", status)
+		end
 	end
 
 	if filename == nil or filename == "" then
@@ -316,70 +294,47 @@ for i=1,runtime.ARGC-1 do
 		end
 	end
 
-	handle, msg = io.open(filename:gsub("^-$", "/dev/stdin"), "r")
-	if not handle then
-		abort("%s: error: %s\n", name, msg)
+	getline, state = runtime.getline(filename)
+	if not getline then
+		abort("%s: error: %s\n", name, state)
 	end
 
-	do -- process file
-		local stream = streamimpl.new(handle)
-		local runner = coroutine.create(loop)
-		local d0 = stream
-		runtime.FILENAME = filename
-		repeat
-			local stat, yield, d1, d2, d3 = coroutine.resume(runner, d0)
-			d0 = nil
-			if (not stat) then
-				abort("%s: error: %s\n", name, yield)
+	runtime.FNR = 0
+	runtime.FILENAME = filename
+	for record in getline, state do
+		runtime[0] = record
+		runtime.NR = incr(runtime.NR)
+		runtime.FNR = incr(runtime.FNR)
+		for _, action in ipairs(program.main) do
+			status = action(record)
+			if type(status) == "number" then goto END
+			elseif status == "next"     then goto NEXT
+			elseif status == "nextfile" then goto NEXTFILE
+			elseif status ~= nil then
+				log.warn("unknown status: %s\n", status)
 			end
-			if yield == "next" then
-				runner = coroutine.create(loop)
-				goto NEXT
-			elseif yield == "nextfile" then
-				goto NEXTFILE
-			elseif yield == "exit" then
-				exitcode = d1 or exitcode
-				goto END
-			elseif yield == "x-range-on" then
-				d0 = rangestate[d1]
-				-- FIXME range not handled properly
-				-- $ printf '%s\n' {1..9} > seq.txt
-				-- $ awk '/9/,/1/' seq.txt seq.txt
-				-- 9
-				-- 1
-				-- 9
-				-- $ luawk '/9/,/1/' seq.txt seq.txt
-				-- 9
-				-- 9
-				if d0 == true then
-					if d3 then d0 = false end
-				end
-				if d0 == false then
-					if d2 then d0 = true end
-				end
-				rangestate[d1] = d0
-			elseif yield ~= nil then
-				log.warn("unknown yield value: %s (%s,%s,%s)", yield, d1, d2, d3)
-			end
-			::NEXT::
-		until coroutine.status(runner) == "dead"
+		end
+		::NEXT::
 	end
 	::NEXTFILE::
-	handle:close()
-	-- TODO nextfile
-	-- Stop  processing the current input file.
-	-- The next input record read comes from the next input file.
-	-- FILENAME and ARGIND are updated, FNR is reset to 1, and
-	-- processing starts over with the first pattern in the AWK program.
-	-- Upon reaching the end of the input data, gawk executes any END rule(s).
-	if not specialaction('ENDFILE') then
-		goto END
+
+	-- ENDFILE
+	for _, action in ipairs(program.ENDFILE) do
+		status = action()
+		if type(status) == "number" then goto END
+		elseif status ~= nil then
+			log.warn("unknown status: %s\n", status)
+		end
 	end
-	-- TODO REFACTOR
-	-- awk 'FNR==2 { nextfile } 1' /etc/passwd /etc/passwd -> should print two lines
-	-- TODO ?? fileinfo[filename] = nil
 end
 ::END::
 
-specialaction('END')
-os.exit(tonumber(exitcode) or 1)
+-- END
+for _, action in ipairs(program.END) do
+	status = action() or atoi(status)
+	if type(status) ~= "number" then
+		log.warn("unknown status: %s\n", status)
+	end
+end
+
+os.exit(atoi(status))
