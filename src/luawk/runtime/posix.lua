@@ -584,6 +584,12 @@ end
 --  @see getline
 --  @see regex.find
 function next(state)
+    -- TODO lua -lP=luawk.runtime.posix -e'p=P.new() p.RS="\n\n+" for l,r in p.getline("-") do print(l) end' <<<$'\n\na\n\nb\n'
+    --      CORRECT => 0a 61 0a 62 0a |.a.b.|
+    -- TODO awk -vRS="\n\n+" 1 <<<$'\n\na\n\nb\n'
+    --      CORRECT => 0a 61 0a 62 0a |.a.b.|
+    -- TODO ./luawk.lua -vRS="\n\n+" 1 <<<$'\n\na\n\nb\n'
+    --      WRONG => 0a 0a 61 0a 0a 62 0a 0a  0a |..a..b...|
     if state.eof then
         return nil
     end
