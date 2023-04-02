@@ -246,38 +246,31 @@ end
 
 local function atoi(v) return tonumber(v) or 0 end
 local function incr(v) return atoi(v) + 1 end
+local function isinf(v) return v == math.huge or v == -math.huge end
+local function isnan(v) return v ~= v end
 
-local status = nil
+
+local status
 
 -- BEGIN
 for _, action in ipairs(program.BEGIN) do
-	status = action()
-	if type(status) == "number" then goto END
-	elseif status ~= nil then
-		log.warn("unknown status: %s\n", status)
+	local ps, _status = pcall(action)
+	if not ps then
+		abort("%s: error: %s\n", name, _status)
+	end
+	if _status ~= nil then
+		status = _status
+		goto END
 	end
 end
 
-if #program.main == 0 then goto END end
-
--- TODO REFACTOR this check breaks the idea of program beeing a callable
--- if #program.BEGIN > 0 and #program.main == 0 then
--- 	goto END
--- end
+-- TODO ugly
+if #program.BEGINFILE + #program.main + #program.ENDFILE + #program.END == 0 then goto END end
 
 for i=1,atoi(runtime.ARGC)-1 do
 	local getline, state
 	local filename = runtime.ARGV[i]
 	runtime.ARGIND = i
-
-	-- BEGINFILE
-	for _, action in ipairs(program.BEGINFILE) do
-		status = action()
-		if type(status) == "number" then goto END
-		elseif status ~= nil then
-			log.warn("unknown status: %s\n", status)
-		end
-	end
 
 	if filename == nil or filename == "" then
 		-- If the value of a particular element of ARGV is empty, skip over it.
@@ -294,24 +287,40 @@ for i=1,atoi(runtime.ARGC)-1 do
 		end
 	end
 
+	runtime.FNR = 0
+	runtime.FILENAME = filename
+
+	-- BEGINFILE
+	for _, action in ipairs(program.BEGINFILE) do
+		local ps, _status = pcall(action)
+		if not ps then
+			abort("%s: error: %s\n", name, _status)
+		end
+		if _status ~= nil then
+			status = _status
+			goto END
+		end
+	end
+
 	getline, state = runtime.getline(filename)
 	if not getline then
 		abort("%s: error: %s\n", name, state)
 	end
 
-	runtime.FNR = 0
-	runtime.FILENAME = filename
 	for record in getline, state do
 		runtime[0] = record
 		runtime.NR = incr(runtime.NR)
 		runtime.FNR = incr(runtime.FNR)
 		for _, action in ipairs(program.main) do
-			status = action(record)
-			if type(status) == "number" then goto END
-			elseif status == "next"     then goto NEXT
-			elseif status == "nextfile" then goto NEXTFILE
-			elseif status ~= nil then
-				log.warn("unknown status: %s\n", status)
+			local ps, _status = pcall(action)
+			if not ps then
+				abort("%s: error: %s\n", name, _status)
+			end
+			if     _status == "next"     then goto NEXT
+			elseif _status == "nextfile" then goto NEXTFILE
+			elseif _status ~= nil then
+				status = _status
+				goto END
 			end
 		end
 		::NEXT::
@@ -320,10 +329,13 @@ for i=1,atoi(runtime.ARGC)-1 do
 
 	-- ENDFILE
 	for _, action in ipairs(program.ENDFILE) do
-		status = action()
-		if type(status) == "number" then goto END
-		elseif status ~= nil then
-			log.warn("unknown status: %s\n", status)
+		local ps, _status = pcall(action)
+		if not ps then
+			abort("%s: error: %s\n", name, _status)
+		end
+		if _status ~= nil then
+			status = _status
+			goto END
 		end
 	end
 end
@@ -331,10 +343,27 @@ end
 
 -- END
 for _, action in ipairs(program.END) do
-	status = action() or atoi(status)
-	if type(status) ~= "number" then
-		log.warn("unknown status: %s\n", status)
+	local ps, _status = pcall(action)
+	if not ps then
+		abort("%s: error: %s\n", name, _status)
+	end
+	if _status ~= nil then
+		status = _status
+		break
 	end
 end
 
-os.exit(atoi(status))
+-- expect nil, false or number
+if status and type(status) ~= "number" then
+	log.warn("unexpected status: %s\n", status)
+end
+
+-- coerce status to integer representation
+if     status == nil             then status = 0
+elseif type(status) == "boolean" then status = status and 0 or 1
+elseif type(status) ~= "number"  then status = math.modf(atoi(status))
+elseif isnan(status)             then status = -1
+elseif isinf(status)             then status = -1
+end
+
+os.exit(status)
