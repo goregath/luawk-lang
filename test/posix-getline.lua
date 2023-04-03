@@ -31,7 +31,7 @@ group:add('getline from file handle', function(R)
 end)
 
 group:add('getline from function', function(R)
-	local data = { "record", ":eof" }
+	local data = { "rec", "ord:eof" }
 	local function read()
 		return table.remove(data, 1)
 	end
@@ -44,7 +44,7 @@ group:add('getline from function', function(R)
 end)
 
 group:add('getline from coroutine', function(R)
-	local data = { "record", ":eof" }
+	local data = { "rec", "ord:eof" }
 	local read = coroutine.wrap(function()
 		for _, record in ipairs(data) do
 			coroutine.yield(record)
@@ -58,7 +58,7 @@ group:add('getline from coroutine', function(R)
 end)
 
 group:add('getline from stringio', function(R)
-	local data = { "record", ":eof" }
+	local data = { "rec", "ord:eof" }
 	function data:read()
 		return table.remove(self, 1)
 	end
