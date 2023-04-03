@@ -49,9 +49,9 @@ function M:run()
 			io.stdout:write(string.format(" %d - %s # SKIP %s\n", i, test[1], test.reason or ""))
 		else
 			local status, msg = pcall(function()
-				local env = self:testsetup()
-				test[2](env)
-				self:testteardown(env)
+				local env = table.pack(self:testsetup())
+				test[2](table.unpack(env))
+				self:testteardown(table.unpack(env))
 			end)
 			if status then
 				io.stdout:write(ansi_green, "ok", ansi_reset)
