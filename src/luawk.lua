@@ -253,7 +253,6 @@ local function incr(v) return atoi(v) + 1 end
 local function isinf(v) return v == math.huge or v == -math.huge end
 local function isnan(v) return v ~= v end
 
-
 local status
 
 -- BEGIN
@@ -358,16 +357,16 @@ for _, action in ipairs(program.END) do
 end
 
 -- expect nil, false or number
-if status and type(status) ~= "number" then
+if status and type(status) ~= "number" or isnan(status) or isinf(status) then
     log.warn("unexpected status: %s\n", status)
 end
 
--- coerce status to integer representation
+-- coerce status to exit code
 if     status == nil             then status = 0
 elseif type(status) == "boolean" then status = status and 0 or 1
-elseif type(status) ~= "number"  then status = math.modf(atoi(status))
-elseif isnan(status)             then status = -1
-elseif isinf(status)             then status = -1
+elseif type(status) ~= "number"  then status = math.modf(tonumber(status) or 1)
+elseif isnan(status)             then status = 128
+elseif isinf(status)             then status = 255
 end
 
 os.exit(status)
