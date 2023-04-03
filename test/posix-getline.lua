@@ -14,6 +14,7 @@ end)
 
 group:add('getline from path', function(R)
 	local getline, state = R.getline(arg[0])
+	R.RS = "\n"
 	assert_type(getline, "function")
 	assert_type(state, "table")
 	assert_true(getline(state))
@@ -23,44 +24,50 @@ group:add('getline from file handle', function(R)
 	local file = io.open(arg[0])
 	local record = file:read('l') file:seek('set')
 	local getline, state = R.getline(file)
+	R.RS = "\n"
 	assert_type(getline, "function")
 	assert_type(state, "table")
 	assert_equal(getline(state), record)
 end)
 
 group:add('getline from function', function(R)
-	local data = { "record", "\neof" }
+	local data = { "record", ":eof" }
 	local function read()
 		return table.remove(data, 1)
 	end
 	local getline, state = R.getline(read)
+	R.RS = ":"
 	assert_type(getline, "function")
 	assert_type(state, "table")
 	assert_equal(getline(state), "record")
+	assert_equal(#data, 0)
 end)
 
 group:add('getline from coroutine', function(R)
-	local data = { "record", "\neof" }
+	local data = { "record", ":eof" }
 	local read = coroutine.wrap(function()
 		for _, record in ipairs(data) do
 			coroutine.yield(record)
 		end
 	end)
 	local getline, state = R.getline(read)
+	R.RS = ":"
 	assert_type(getline, "function")
 	assert_type(state, "table")
 	assert_equal(getline(state), "record" )
 end)
 
 group:add('getline from stringio', function(R)
-	local data = { "record", "\neof" }
+	local data = { "record", ":eof" }
 	function data:read()
 		return table.remove(self, 1)
 	end
 	local getline, state = R.getline(data)
+	R.RS = ":"
 	assert_type(getline, "function")
 	assert_type(state, "table")
 	assert_equal(getline(state), "record")
+	assert_equal(#data, 0)
 end)
 
 group:add('cat file', function(R)
