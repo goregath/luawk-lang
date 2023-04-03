@@ -23,7 +23,6 @@ local acall = utils.acall
 
 local name = string.gsub(arg[0], "(.*/)(.*)", "%2")
 local runtime = _G
-local rangestate = {}
 local program = {
     BEGIN = {},
     END = {},
@@ -102,9 +101,14 @@ do
                         utils.requireany(v, "luawk.runtime." .. v)
                         or abort('%s: cannot find runtime for %q\n', name, v)
                 elseif k == "regex" then
-                    package.loaded["luawk.regex"] =
+                    -- TODO refactor
+                    local relib =
                         utils.requireany(v, "rex_" .. v)
                         or abort('%s: cannot find regex library for %q\n', name, v)
+                    require("luawk.regex").find = relib.find
+                    -- package.loaded["luawk.regex"] =
+                    --     utils.requireany(v, "rex_" .. v)
+                    --     or abort('%s: cannot find regex library for %q\n', name, v)
                 elseif k == "log" then
                     acall(log.level, v)
                 else
