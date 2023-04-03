@@ -297,7 +297,7 @@ function class:getline(...)
     if argc == 0 then
         abort("getline: first argument is mandatory\n")
     end
-    local state = {}
+    local state = { "" }
     if type(obj) == "table" or type(obj) == "userdata" and type(obj.read) == "function" then
         state.read = function(sz) return obj:read(sz or pagesize) end
     elseif type(obj) == "function" then
@@ -622,31 +622,31 @@ function next(state)
     local found, i, j
     repeat
         if strip then
-            state[0] = string.match(state[0], "\n*(.*)")
+            state[1] = string.match(state[1], "\n*(.*)")
         end
-        i,j = find(state[0], rs, 1, plain)
-        found = i and (plain or j < state[0]:len())
+        i,j = find(state[1], rs, 1, plain)
+        found = i and (plain or j < state[1]:len())
         if not found and not state.eof then
             local dat = state.read()
             if dat then
-                state[0] = state[0] .. dat
+                state[1] = state[1] .. dat
             else
-                state.eof, i, j = true, find(state[0], rs, 1, plain)
+                state.eof, i, j = true, find(state[1], rs, 1, plain)
                 found = i
             end
         end
     until state.eof or found
     local rc, rt
     if found then
-        rc, rt = string.sub(state[0],1,i-1), string.sub(state[0],i,j)
-        state[0] = string.sub(state[0],j+1)
-    elseif state.eof and state[0] ~= "" then
+        rc, rt = string.sub(state[1],1,i-1), string.sub(state[1],i,j)
+        state[1] = string.sub(state[1],j+1)
+    elseif state.eof and state[1] ~= "" then
         if strip then
-            rc, rt = string.match(state[0], "(.*[^\n])(\n*)$")
+            rc, rt = string.match(state[1], "(.*[^\n])(\n*)$")
         else
-            rc, rt = state[0], ""
+            rc, rt = state[1], ""
         end
-        state[0] = nil
+        state[1] = nil
     end
     -- print(string.format("=> %q %q %q (%q)",(rc or""):gsub("%c","?"),(rt or""):gsub("%c","?"),(state.buffer or""):gsub("%c","?"), rs:gsub("%c","?")))
     return rc, rt
