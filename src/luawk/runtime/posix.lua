@@ -588,6 +588,8 @@ function next(state)
     --      CORRECT => 0a 61 0a 62 0a |.a.b.|
     -- TODO awk -vRS="\n\n+" 1 <<<$'\n\na\n\nb\n'
     --      CORRECT => 0a 61 0a 62 0a |.a.b.|
+    -- TODO ./luawk.lua -vRS=$'\n\n+' 1 <<<$'\n\na\n\nb\n'
+    --      CORRECT => 0a 61 0a 62 0a |.a.b.|
     -- TODO ./luawk.lua -vRS="\n\n+" 1 <<<$'\n\na\n\nb\n'
     --      WRONG => 0a 0a 61 0a 0a 62 0a 0a  0a |..a..b...|
     if state.eof then
@@ -613,7 +615,7 @@ function next(state)
         -- done.
         find, rs, plain, strip = string.find, "\n\n+", false, true
     elseif rs:len() > 1 then
-        find, plain = regex.find, false
+        find, plain = regex.find, nil
     end
     local found, i, j
     repeat
@@ -644,7 +646,7 @@ function next(state)
         end
         state.buffer = nil
     end
-    -- print(string.format("=> %q %q %q",(rc or""):gsub("%c","?"),(rt or""):gsub("%c","?"),(state.buffer or""):gsub("%c","?")))
+    -- print(string.format("=> %q %q %q (%q)",(rc or""):gsub("%c","?"),(rt or""):gsub("%c","?"),(state.buffer or""):gsub("%c","?"), rs:gsub("%c","?")))
     return rc, rt
 end
 
