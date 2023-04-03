@@ -278,18 +278,18 @@ end
 --      print(record)
 --    end
 --
---  @param[type=string] filename
+--  @param file A filename or opened handle
 --
 --  @return[1,type=next] iterator
 --  @return[1,type=table] state
 --  @return[1,type=nil] var
---  @return[2,type=nil] In case `filename` could not be opened for reading
+--  @return[2,type=nil] In case `file` is not a valid file handle and could not be opened for reading
 --  @return[2,type=string] Message describing the error
 --
 --  @class function
 --  @name class:getline
 function class:getline(...)
-    local argc, filename = select('#', ...), ...
+    local argc, file = select('#', ...), ...
     local msg
     if not self then
         abort("getline: self expected, got: %s\n", type(self))
@@ -297,12 +297,14 @@ function class:getline(...)
     if argc == 0 then
         abort("getline: first argument is mandatory\n")
     end
-    if type(filename) ~= "string" then
-        filename = tostring(filename)
-    end
     local state = {}
     state.buffer = ""
-    state.handle, msg = io.open(filename:gsub("^-$", "/dev/stdin"), "r")
+    if io.type(file) then
+        state.handle = file
+    else
+        file = tostring(file)
+        state.handle, msg = io.open(file:gsub("^-$", "/dev/stdin"), "r")
+    end
     if state.handle then
         local fileno = require "posix.stdio".fileno
         local isatty = require "posix.unistd".isatty
@@ -313,13 +315,6 @@ function class:getline(...)
         else
             state.handle:setvbuf("full", state.pagesize)
         end
-        -- If you set RS to a regular expression that allows optional trailing
-        -- text, such as ‘RS = "abc(XYZ)?"’, it is possible, due to
-        -- implementation constraints, that gawk may match the leading part
-        -- of the regular expression, but not the trailing part, particularly
-        -- if the input text that could match the trailing part is fairly
-        -- long. gawk attempts to avoid this problem, but currently, there’s
-        -- no guarantee that this will never happen.
         return next, setmetatable(state, { __index = self }), nil
     else
         return nil, msg
@@ -615,6 +610,13 @@ function next(state)
         -- done.
         find, rs, plain, strip = string.find, "\n\n+", false, true
     elseif rs:len() > 1 then
+        -- GAWK: If you set RS to a regular expression that allows optional
+        -- trailing text, such as ‘RS = "abc(XYZ)?"’, it is possible, due to
+        -- implementation constraints, that gawk may match the leading part
+        -- of the regular expression, but not the trailing part, particularly
+        -- if the input text that could match the trailing part is fairly
+        -- long. gawk attempts to avoid this problem, but currently, there’s
+        -- no guarantee that this will never happen.
         find, plain = regex.find, nil
     end
     local found, i, j
