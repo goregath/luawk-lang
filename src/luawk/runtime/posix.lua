@@ -289,8 +289,8 @@ end
 --  @class function
 --  @name class:getline
 function class:getline(...)
-    local argc, file = select('#', ...), ...
-    local msg
+    local pagesize = 256
+    local argc, obj = select('#', ...), ...
     if not self then
         abort("getline: self expected, got: %s\n", type(self))
     end
@@ -298,27 +298,27 @@ function class:getline(...)
         abort("getline: first argument is mandatory\n")
     end
     local state = {}
-    state.buffer = ""
-    if io.type(file) then
-        state.handle = file
+    if type(obj) == "table" or type(obj) == "userdata" and type(obj.read) == "function" then
+        state.read = function(sz) return obj:read(sz or pagesize) end
+    elseif type(obj) == "function" then
+        state.read = obj
     else
-        file = tostring(file)
-        state.handle, msg = io.open(file:gsub("^-$", "/dev/stdin"), "r")
-    end
-    if state.handle then
+        obj = tostring(obj)
+        local handle, msg = io.open(obj:gsub("^-$", "/dev/stdin"), "r")
+        if not handle then
+            return nil, msg
+        end
         local fileno = require "posix.stdio".fileno
         local isatty = require "posix.unistd".isatty
-        state.pagesize = 256
-        if isatty(fileno(state.handle)) then
-            state.pagesize = 1
-            state.handle:setvbuf("no")
+        if isatty(fileno(handle)) then
+            pagesize = 1
+            handle:setvbuf("no")
         else
-            state.handle:setvbuf("full", state.pagesize)
+            handle:setvbuf("full", pagesize)
         end
-        return next, setmetatable(state, { __index = self }), nil
-    else
-        return nil, msg
+        state.read = function(sz) return handle:read(sz or pagesize) end
     end
+    return next, setmetatable(state, { __index = self }), nil
 end
 
 --- Print arguments to `io.stdout` delimited by `OFS` using `tostring`. If no arguments are
@@ -622,31 +622,31 @@ function next(state)
     local found, i, j
     repeat
         if strip then
-            state.buffer = string.match(state.buffer, "\n*(.*)")
+            state[0] = string.match(state[0], "\n*(.*)")
         end
-        i,j = find(state.buffer, rs, 1, plain)
-        found = i and (plain or j < state.buffer:len())
+        i,j = find(state[0], rs, 1, plain)
+        found = i and (plain or j < state[0]:len())
         if not found and not state.eof then
-            local dat = state.handle:read(state.pagesize)
+            local dat = state.read()
             if dat then
-                state.buffer = state.buffer .. dat
+                state[0] = state[0] .. dat
             else
-                state.eof, i, j = true, find(state.buffer, rs, 1, plain)
+                state.eof, i, j = true, find(state[0], rs, 1, plain)
                 found = i
             end
         end
     until state.eof or found
     local rc, rt
     if found then
-        rc, rt = string.sub(state.buffer,1,i-1), string.sub(state.buffer,i,j)
-        state.buffer = string.sub(state.buffer,j+1)
-    elseif state.eof and state.buffer ~= "" then
+        rc, rt = string.sub(state[0],1,i-1), string.sub(state[0],i,j)
+        state[0] = string.sub(state[0],j+1)
+    elseif state.eof and state[0] ~= "" then
         if strip then
-            rc, rt = string.match(state.buffer, "(.*[^\n])(\n*)$")
+            rc, rt = string.match(state[0], "(.*[^\n])(\n*)$")
         else
-            rc, rt = state.buffer, ""
+            rc, rt = state[0], ""
         end
-        state.buffer = nil
+        state[0] = nil
     end
     -- print(string.format("=> %q %q %q (%q)",(rc or""):gsub("%c","?"),(rt or""):gsub("%c","?"),(state.buffer or""):gsub("%c","?"), rs:gsub("%c","?")))
     return rc, rt
