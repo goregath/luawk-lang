@@ -219,11 +219,12 @@ do
                         -- pattern, pattern, action
                         -- FIXME
                         -- TODO refactor, matching twice could be expensive
-                        rangestate[at] = false
-                        list[at] = compile(string.format(
-                            'if coroutine.yield("x-range-on",%d,%s,%s) then %s end',
-                            at, table.unpack(src)
-                        ), "range-pattern-action")
+                        abort("%s: range pattern not implemented\n", name)
+                        -- rangestate[at] = false
+                        -- list[at] = compile(string.format(
+                        --     'if coroutine.yield("x-range-on",%d,%s,%s) then %s end',
+                        --     at, table.unpack(src)
+                        -- ), "range-pattern-action")
                     else
                         abort('%s: invalid pattern or action\n', name)
                     end
@@ -271,7 +272,6 @@ end
 if #program.BEGINFILE + #program.main + #program.ENDFILE + #program.END == 0 then goto END end
 
 for i=1,atoi(runtime.ARGC)-1 do
-    local getline, state
     local filename = runtime.ARGV[i]
     runtime.ARGIND = i
 
@@ -280,7 +280,7 @@ for i=1,atoi(runtime.ARGC)-1 do
         goto NEXTFILE
     end
 
-    if filename:find("=") then
+    if type(filename) == "string" and filename:find("=") then
         -- If an argument matches the format of an assignment operand, this
         -- argument shall be treated as an assignment rather than a file argument.
         local k,v = filename:match("^([_%a][_%w]*)=(.*)$")
@@ -305,12 +305,12 @@ for i=1,atoi(runtime.ARGC)-1 do
         end
     end
 
-    getline, state = runtime.getline(filename)
+    local getline, state, var = runtime.getline(filename)
     if not getline then
         abort("%s: error: %s\n", name, state)
     end
 
-    for record in getline, state do
+    for record in getline, state, var do
         runtime[0] = record
         runtime.NR = incr(runtime.NR)
         runtime.FNR = incr(runtime.FNR)
