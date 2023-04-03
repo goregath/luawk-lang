@@ -85,10 +85,10 @@ group:add('set RS="" (special mode)', function(R)
 		"ghi\n",
 		"\n",
 		"\n",
-		["read"] = function(self)
-			return table.remove(self, 1)
-		end,
 	}
+	function data:read()
+		return table.remove(self, 1)
+	end
 	R.RS = ""
 	for record in R.getline(data) do
 		table.insert(records, record)
@@ -110,10 +110,10 @@ local records = {}
 		"ghi\n",
 		"\n",
 		"\n",
-		["read"] = function(self)
-			return table.remove(self, 1)
-		end,
 	}
+	function data:read()
+		return table.remove(self, 1)
+	end
 	R.RS = "\n\n+"
 	for record in R.getline(data) do
 		table.insert(records, record)
