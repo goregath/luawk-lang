@@ -254,6 +254,20 @@ local function incr(v) return atoi(v) + 1 end
 local function isinf(v) return v == math.huge or v == -math.huge end
 local function isnan(v) return v ~= v end
 
+local function failfast(...)
+    local r = { pcall(...) }
+    if not r[1] then
+        abort("%s: error: %s\n", name, r[2])
+    end
+    return table.unpack(r, 2)
+end
+
+local function wrapfail(fn)
+    return function(...)
+        return failfast(fn, ...)
+    end
+end
+
 local status
 
 -- BEGIN
@@ -272,6 +286,7 @@ end
 if #program.BEGINFILE + #program.main + #program.ENDFILE + #program.END == 0 then goto END end
 
 for i=1,atoi(runtime.ARGC)-1 do
+    local getline, state, var
     local filename = runtime.ARGV[i]
     runtime.ARGIND = i
 
@@ -305,12 +320,12 @@ for i=1,atoi(runtime.ARGC)-1 do
         end
     end
 
-    local getline, state, var = runtime.getline(filename)
+    getline, state, var = failfast(runtime.getline, filename)
     if not getline then
         abort("%s: error: %s\n", name, state)
     end
 
-    for record in getline, state, var do
+    for record in wrapfail(getline), state, var do
         runtime[0] = record
         runtime.NR = incr(runtime.NR)
         runtime.FNR = incr(runtime.FNR)
