@@ -1,5 +1,17 @@
 local M = {}
 
+function M.assert_true(test)
+	if not test then
+		error(string.format("assert_equal: expected true, was %q", test), 2)
+	end
+end
+
+function M.assert_type(test, expected)
+	if type(test) ~= expected then
+		error(string.format("assert_equal: expected %q, was %q", expected, test), 2)
+	end
+end
+
 function M.assert_equal(test, expected)
 	if test ~= expected then
 		error(string.format("assert_equal: expected %q, was %q", expected, test), 2)
