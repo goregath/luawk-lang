@@ -107,6 +107,7 @@ local grammar = {
 
 	-- AWK grammar
 
+	-- TODO FIXME object is preserved between multiple lpeg.match
 	newobj = Cg(Cc({
 		BEGIN = {},
 		END = {},
