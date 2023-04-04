@@ -1,7 +1,7 @@
 BEGIN {
 	local _getline = getline
 	function getline(file)
-		if file:match("%.gz$") then
+		if type(file) == "string" and file:match("%.gz$") then
 			file = io.popen("gzip -dc " .. file:gsub("%W", "\\%0"))
 		end
 		return _getline(file)
