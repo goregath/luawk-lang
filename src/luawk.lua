@@ -325,8 +325,9 @@ for i=1,atoi(runtime.ARGC)-1 do
         abort("%s: error: %s\n", name, state)
     end
 
-    for record in wrapfail(getline), state, var do
+    for record, rt in wrapfail(getline), state, var do
         runtime[0] = record
+        runtime.RT = rt
         runtime.NR = incr(runtime.NR)
         runtime.FNR = incr(runtime.FNR)
         for _, action in ipairs(program.main) do
