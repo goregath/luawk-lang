@@ -1,0 +1,4 @@
+BEGIN {
+	local cmd = "gzip -c"
+	io.stdout = io.popen(cmd, "w")
+}
