@@ -7,6 +7,15 @@ local assert_equal = require "assert".assert_equal
 local assert_true = require "assert".assert_true
 local assert_type = require "assert".assert_type
 local group = require "testgroup".new("luawk.runtime.posix getline()")
+local stringio = {}
+
+function stringio:read()
+	return table.remove(self, 1)
+end
+
+function stringio.open(tbl)
+	return setmetatable(tbl, { __index = stringio })
+end
 
 group:setup(function()
 	return require "luawk.runtime.posix".new()
@@ -67,10 +76,7 @@ group:add('getline from coroutine', function(R)
 end)
 
 group:add('getline from stringio', function(R)
-	local data = { "rec", "ord:eof" }
-	function data:read()
-		return table.remove(self, 1)
-	end
+	local data = stringio.open { "rec", "ord:eof" }
 	local getline, state = R.getline(data)
 	R.RS = ":"
 	assert_type(getline, "function")
@@ -91,7 +97,7 @@ end)
 
 group:add('set RS="" (special mode)', function(R)
 	local records = {}
-	local data = {
+	local data = stringio.open {
 		"\n",
 		"\n",
 		"abc\n",
@@ -102,9 +108,6 @@ group:add('set RS="" (special mode)', function(R)
 		"\n",
 		"\n",
 	}
-	function data:read()
-		return table.remove(self, 1)
-	end
 	R.RS = ""
 	for record in R.getline(data) do
 		table.insert(records, record)
@@ -116,7 +119,7 @@ end)
 
 group:add('set RS="\\n\\n+"', function(R)
 local records = {}
-	local data = {
+	local data = stringio.open {
 		"\n",
 		"\n",
 		"abc\n",
@@ -127,9 +130,6 @@ local records = {}
 		"\n",
 		"\n",
 	}
-	function data:read()
-		return table.remove(self, 1)
-	end
 	R.RS = "\n\n+"
 	for record in R.getline(data) do
 		table.insert(records, record)
@@ -138,6 +138,27 @@ local records = {}
 	assert_equal(records[1], "")
 	assert_equal(records[2], "abc\ndef")
 	assert_equal(records[3], "ghi")
+end)
+
+group:add('set RS="" (FS always matches "\\n")', function(R)
+	local data = stringio.open {
+		"a,b,c\n",
+		"d,e,f\n",
+		"\n",
+		"x\n",
+		"y\n",
+		"z\n",
+	}
+	local getline, state = R.getline(data)
+	R.RS = ""
+	R.FS = ","
+	R[0] = getline(state)
+	assert_equal(#R, 6)
+	assert_equal(table.concat(R), "abcdef")
+	R[0] = getline(state)
+	assert_equal(#R, 3)
+	assert_equal(table.concat(R), "xyz")
+	assert_equal(getline(state), nil)
 end)
 
 group:run()
