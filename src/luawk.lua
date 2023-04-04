@@ -43,7 +43,7 @@ local program_mt = {
 -- UTILITIES
 -- ---------------------------------------------------------
 
-local optstring = ':hf:F:v:W:'
+local optstring = ':he:f:F:v:W:'
 
 local function usage(handle)
     handle:write(table.concat {
@@ -154,6 +154,9 @@ do
             if not stat then
                 abort('%s: %s\n', name, msg)
             end
+        elseif r == 'e' then
+            -- TODO add to usage string
+            table.insert(sources, { "cmdline", optarg })
         end
     end
     -- handle arguments
@@ -176,11 +179,13 @@ do
     for i = last_index, #arg do
         runtime.ARGV[i-last_index+1] = arg[i]
     end
-    local awkgrammar = require 'luawk.lang.grammar'
     -- compile sources
     for _,srcobj in ipairs(sources) do
+        local awkgrammar = require 'luawk.lang.grammar'
         local label, source = table.unpack(srcobj)
         local parsed, msg, _, lineno, col = awkgrammar.parse(source)
+        -- TODO see FIXME in grammar
+        package.loaded['luawk.lang.grammar'] = nil
         if not parsed then
             if parsed == false then
                 local line
