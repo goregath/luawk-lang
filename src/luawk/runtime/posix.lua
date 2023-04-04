@@ -451,6 +451,7 @@ function class:split(...)
     -- character, the newline character always acts as a field separator. This
     -- is in addition to whatever field separations result from FS.
     local argc, s, a, fs = select('#', ...), ...
+    local rsmode = self.RS == nil or tostring(self.RS) == ""
     if not self then
         abort("split: self expected, got: %s\n", type(self))
     end
@@ -490,14 +491,24 @@ function class:split(...)
         end
         return #a
     else
+        -- GAWK: If RS is null, […] a <newline> shall always be a field
+        -- separator, no matter what the value of FS is.
+        local find = not rsmode and regex.find or function(c, p, i)
+            local m, n = regex.find(c, p, i)
+            local x, y = string.find(c, '\n', i, true)
+            if not m or x and x < m then
+                return x, y
+            end
+            return m, n
+        end
         -- pattern mode
         local i, j = 1, 1
-        local b, c = regex.find(s, fs, j)
+        local b, c = find(s, fs, j)
         while b do
             a[i] = string.sub(s, j, b - 1)
             j = c + 1
             i = i + 1
-            b, c = regex.find(s, fs, j)
+            b, c = find(s, fs, j)
         end
         a[i] = string.sub(s, j)
         return #a
