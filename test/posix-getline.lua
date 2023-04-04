@@ -30,6 +30,15 @@ group:add('getline from file handle', function(R)
 	assert_equal(getline(state), record)
 end)
 
+group:add('getline from process handle', function(R)
+	local file = io.popen("echo 'record:eof'")
+	local getline, state = R.getline(file)
+	R.RS = ":"
+	assert_type(getline, "function")
+	assert_type(state, "table")
+	assert_equal(getline(state), "record")
+end)
+
 group:add('getline from function', function(R)
 	local data = { "rec", "ord:eof" }
 	local function read()
