@@ -321,7 +321,7 @@ function class:getline(...)
     return next, setmetatable(state, { __index = self }), nil
 end
 
---- Print arguments to `io.stdout` delimited by `OFS` using `tostring`. If no arguments are
+--- Print arguments to `io.stdout` delimited by `ORS` using `tostring`. If no arguments are
 --  given, the record value @{0|$0} is printed.
 --
 --  @usage
@@ -333,7 +333,7 @@ end
 --    F.print(1, nil, true)
 --    -- 1,,true
 --
---  @see OFS
+--  @see ORS
 --  @param ... the arguments
 --  @class function
 --  @name class:print
