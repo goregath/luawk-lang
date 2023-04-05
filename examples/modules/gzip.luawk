@@ -14,7 +14,7 @@
 -- shell you could define the _zcat_ command to be an alias to _luawk_. You
 -- could add the following lines to your `~/.profile` to enable the alias.
 --     export LUAWK_PATH=~/.local/lib/luawk/?.luawk
---     alias zcat="luawk -l gzip '{ ORS=RT } 1' --"
+--     alias zcat="luawk -l gzip '{ ORS=RT } 1'"
 -- A call to _zcat_ would then expand to our _luawk_ command.
 --     zcat /var/log/*.gz
 -- The `LUAWK_PATH` is a search path (similar to `LUA_PATH`) for _luawk modules_.
@@ -48,11 +48,11 @@ BEGIN {
 	function getline(file)
 		-- The _getline_ function accepts a variety of types for _file_. If
 		-- the type is _string_, _getline_ interprets _file_ as a path. This
-		-- is the default case if getline is called by the _luawk_ main loop.
+		-- is the default case if _getline_ is called by the _luawk_ main loop.
 		-- With this in mind, we can safely check if _file_ ends with a certain
-		-- extension, e.g. `.gzip`, and install out custom handler.
+		-- extension, e.g. `.gzip`, and install a custom handler.
 		if type(file) == "string" and file:match("%.gz$") then
-			-- There are several ways we can implement a gzip reader. The
+			-- There are several ways we can implement a _gzip_ reader. The
 			-- following approach starts the system command _gzip_ in a separate
 			-- process and captures the output from a handle. It also is
 			-- advisable to properly escape any arguments passed to the subshell
@@ -60,14 +60,16 @@ BEGIN {
 			-- _file_ argument to escape all non-alphanumeric characters:
 			--     path with spaces.gz
 			--     path\ with\ spaces\.gz
+			-- *Caution: This method, yet simple and effective, has some major
+			-- drawbacks and should not be used in real applications.*
 			local template = "gzip -dc %s"
 			local filename = file:gsub("%W", "\\%0")
 			local cmdline = string.format(template, filename)
 			-- Finally we can replace the _file_ path with the process handle
-			-- (pipe) we received from _io.popen_. A call to _io.popen_ may
-			-- fail in several ways though and in this case, _nil_ is
-			-- returned. We just pass the value along to let _getline_
-			-- eventually handle any error for us.
+			-- (which is a _pipe_) we received from _io.popen_. A call
+			-- to _io.popen_ may fail in several ways though and in this
+			-- case, _nil_ is returned. We just pass the value along to
+			-- let _getline_ eventually handle any error for us.
 			file = io.popen(cmdline, 'r')
 		end
 		-- Here we let _getline_ do the hard work of handling the stream.
