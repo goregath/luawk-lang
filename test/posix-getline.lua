@@ -7,14 +7,14 @@ local assert_equal = require "assert".assert_equal
 local assert_true = require "assert".assert_true
 local assert_type = require "assert".assert_type
 local group = require "testgroup".new("luawk.runtime.posix getline()")
-local stringio = {}
+local iomock = {}
 
-function stringio:read()
-	return table.remove(self, 1)
+function iomock.open(tbl)
+	return setmetatable(tbl, { __index = iomock })
 end
 
-function stringio.open(tbl)
-	return setmetatable(tbl, { __index = stringio })
+function iomock:read()
+	return table.remove(self, 1)
 end
 
 group:setup(function()
@@ -75,8 +75,8 @@ group:add('getline from coroutine', function(R)
 	assert_equal(getline(state), "record" )
 end)
 
-group:add('getline from stringio', function(R)
-	local data = stringio.open { "rec", "ord:eof" }
+group:add('getline from mocked file object', function(R)
+	local data = iomock.open { "rec", "ord:eof" }
 	local getline, state = R.getline(data)
 	R.RS = ":"
 	assert_type(getline, "function")
@@ -97,7 +97,7 @@ end)
 
 group:add('set RS="" (special mode)', function(R)
 	local records = {}
-	local data = stringio.open {
+	local data = iomock.open {
 		"\n",
 		"\n",
 		"abc\n",
@@ -119,7 +119,7 @@ end)
 
 group:add('set RS="\\n\\n+"', function(R)
 local records = {}
-	local data = stringio.open {
+	local data = iomock.open {
 		"\n",
 		"\n",
 		"abc\n",
@@ -141,9 +141,9 @@ local records = {}
 end)
 
 group:add('set RS="" (FS always matches "\\n")', function(R)
-	local data = stringio.open {
+	local data = iomock.open {
 		"a,b,c\n",
-		"d,e,f\n",
+		"d, e, f\n",
 		"\n",
 		"x\n",
 		"y\n",
@@ -151,7 +151,7 @@ group:add('set RS="" (FS always matches "\\n")', function(R)
 	}
 	local getline, state = R.getline(data)
 	R.RS = ""
-	R.FS = ","
+	R.FS = "[ ,]+"
 	R[0] = getline(state)
 	assert_equal(#R, 6)
 	assert_equal(table.concat(R), "abcdef")
