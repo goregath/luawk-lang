@@ -1,8 +1,42 @@
+#!/usr/bin/env -S luawk -f
+
+-- Synopsis
+-- ========
+--
+-- This extension qualifies luawk to parse compressed text files alongside
+-- uncompressed ones.
+--
+-- A program like _zcat_ could be written like this (if using bash):
+--
+--     alias zcat="luawk -f gzip.luawk -e '{ ORS=RT } 1' --"
+--
+-- Source
+-- ------
 BEGIN {
+	-- Store the current implementation of `getline()` as an upvalue for our wrapper.
 	local _getline = getline
+	-- We can override `getline()` by simply defining a new function with the same name at global scope.
 	function getline(file)
+		-- The `getline()` function accepts a variety of types for _file_. If
+		-- the type is _string_, `getline()` interprets _file_ as a path. This
+		-- is the default case if getline is called by the _luawk_ main loop.
+		-- With this in mind, we can safely check if _file_ ends with a certain
+		-- extension, e.g. `.gzip`, and install out custom handler.
 		if type(file) == "string" and file:match("%.gz$") then
-			file = io.popen("gzip -dc " .. file:gsub("%W", "\\%0"))
+			-- There are several ways we can implement a gzip reader. The
+			-- following approach starts the system command _gzip_ in a separate
+			-- process and captures the output from a handle. It also is
+			-- advisable to properly escape any arguments passed to the subshell
+			-- invoked by _io.popen_. This is done by calling _gsub_ on the
+			-- _file_ argument to escape all non-alphanumeric characters.
+			--     path with spaces.gz
+			--     path\ with\ spaces\.gz
+			local template = "gzip -dc %s"
+			local filename = file:gsub("%W", "\\%0")
+			local cmdline = string.format(template, filename)
+			-- Here we let `_getline()` do the hard work of handling the stream.
+			-- This works because `_getline()` accepts previously opened file handles.
+			file = io.popen(cmdline, 'r')
 		end
 		return _getline(file)
 	end
