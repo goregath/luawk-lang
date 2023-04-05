@@ -61,7 +61,7 @@ group:add('getline from function', function(R)
 	assert_equal(#data, 0)
 end)
 
-group:add('getline from coroutine', function(R)
+group:add('getline from function (coroutine.wrap)', function(R)
 	local data = { "rec", "ord:eof" }
 	local read = coroutine.wrap(function()
 		for _, record in ipairs(data) do
@@ -74,6 +74,21 @@ group:add('getline from coroutine', function(R)
 	assert_type(state, "table")
 	assert_equal(getline(state), "record" )
 end)
+
+group:add('getline from coroutine', function(R)
+	local data = { "rec", "ord:eof" }
+	local read = coroutine.create(function()
+		for _, record in ipairs(data) do
+			coroutine.yield(record)
+		end
+	end)
+	local getline, state = R.getline(read)
+	R.RS = ":"
+	assert_type(getline, "function")
+	assert_type(state, "table")
+	assert_equal(getline(state), "record" )
+end)
+
 
 group:add('getline from mocked file object', function(R)
 	local data = iomock.open { "rec", "ord:eof" }

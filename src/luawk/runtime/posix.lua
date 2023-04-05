@@ -297,13 +297,9 @@ function class:getline(...)
     if argc == 0 then
         abort("getline: first argument is mandatory\n")
     end
+    local objtype = type(obj)
     local state = { "" }
-    if type(obj) == "table" or type(obj) == "userdata" and type(obj.read) == "function" then
-        state.read = function(sz) return obj:read(sz or pagesize) end
-    elseif type(obj) == "function" then
-        state.read = obj
-    else
-        obj = tostring(obj)
+    if objtype == "string" then
         local handle, msg = io.open(obj:gsub("^-$", "/dev/stdin"), "r")
         if not handle then
             return nil, msg
@@ -316,7 +312,24 @@ function class:getline(...)
         else
             handle:setvbuf("full", pagesize)
         end
-        state.read = function(sz) return handle:read(sz or pagesize) end
+        state.read = function(sz)
+            return handle:read(sz or pagesize)
+        end
+    elseif objtype == "table" or objtype == "userdata" and type(obj.read) == "function" then
+        state.read = function(sz)
+            return obj:read(sz or pagesize)
+        end
+    elseif objtype == "function" then
+        state.read = obj
+    elseif objtype == "thread" then
+        state.read = function(sz)
+            if coroutine.status(obj) == "dead" then
+                return nil
+            end
+            return select(2, coroutine.resume(obj, sz or pagesize))
+        end
+    else
+        return nil, string.format("getline: invalid type: %s", objtype)
     end
     return next, setmetatable(state, { __index = self }), nil
 end
