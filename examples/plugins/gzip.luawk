@@ -2,23 +2,52 @@
 
 -- Synopsis
 -- ========
+-- This module enables _luawk_ to parse compressed text files alongside
+-- uncompressed ones. To detect if a file has been compressed, the file
+-- extension is checked. 
 --
--- This extension qualifies luawk to parse compressed text files alongside
--- uncompressed ones.
---
--- A program like _zcat_ could be written like this (if using bash):
---
---     alias zcat="luawk -f gzip.luawk -e '{ ORS=RT } 1' --"
---
--- Source
--- ------
+-- Example
+-- -------
+-- With this module we could mimic a
+-- [zcat(1p)](http://www.kernel.org/doc/man-pages/online/pages/man1/zcat.1p.html)
+-- command, just like _cat_ but with compressed files. In a POSIX compatible
+-- shell you could define the _zcat_ command to be an alias to _luawk_. You
+-- could add the following lines to your `~/.profile` to enable the alias.
+--     export LUAWK_PATH=~/.local/lib/luawk/?.luawk
+--     alias zcat="luawk -l gzip '{ ORS=RT } 1' --"
+-- A call to _zcat_ would then expand to our _luawk_ command.
+--     zcat /var/log/*.gz
+-- The `LUAWK_PATH` is a search path (similar to `LUA_PATH`) for _luawk modules_.
+-- In this example the module file should be copied to _~/.local/lib/luawk/gzip.luawk_.
+
+-- Program
+-- =======
+-- With _luawk_ we are able to write user defined function definitions with a
+-- global scope. It is also permitted to override builtin functions, just like
+-- [getline()](../runtimes/posix.html#class:getline), 
+-- [print()](../runtimes/posix.html#class:print), 
+-- [match()](../runtimes/posix.html#class:match) or
+-- [split()](../runtimes/posix.html#class:split). 
+
+-- User defined functions can be declared nearly anywhere in a program, that
+-- is, inside or outside of an action block. Only their order of appearance
+-- matters.
+
+-- ### Declare global function from within a BEGIN action block
+-- By doing so we make sure that our _getline_ wrapper is defined before the
+-- first file is read by the main loop. We can also define local variables
+-- inside of an action which comes in handy as you may tell from the next
+-- line.
 BEGIN {
-	-- Store the current implementation of `getline()` as an upvalue for our wrapper.
+	-- ### Remember initial reference to [getline()](../runtimes/posix.html#class:getline)
+	-- First we store the current implementation of _getline_ as an
+	-- upvalue *\_getline* for our wrapper function.
 	local _getline = getline
-	-- We can override `getline()` by simply defining a new function with the same name at global scope.
+	-- ### Override the [getline()](../runtimes/posix.html#class:getline) builtin function
+	-- We can override _getline_ by simply defining a new function with the same name at global scope.
 	function getline(file)
-		-- The `getline()` function accepts a variety of types for _file_. If
-		-- the type is _string_, `getline()` interprets _file_ as a path. This
+		-- The _getline_ function accepts a variety of types for _file_. If
+		-- the type is _string_, _getline_ interprets _file_ as a path. This
 		-- is the default case if getline is called by the _luawk_ main loop.
 		-- With this in mind, we can safely check if _file_ ends with a certain
 		-- extension, e.g. `.gzip`, and install out custom handler.
@@ -28,16 +57,22 @@ BEGIN {
 			-- process and captures the output from a handle. It also is
 			-- advisable to properly escape any arguments passed to the subshell
 			-- invoked by _io.popen_. This is done by calling _gsub_ on the
-			-- _file_ argument to escape all non-alphanumeric characters.
+			-- _file_ argument to escape all non-alphanumeric characters:
 			--     path with spaces.gz
 			--     path\ with\ spaces\.gz
 			local template = "gzip -dc %s"
 			local filename = file:gsub("%W", "\\%0")
 			local cmdline = string.format(template, filename)
-			-- Here we let `_getline()` do the hard work of handling the stream.
-			-- This works because `_getline()` accepts previously opened file handles.
+			-- Finally we can replace the _file_ path with the process handle
+			-- (pipe) we received from _io.popen_. A call to _io.popen_ may
+			-- fail in several ways though and in this case, _nil_ is
+			-- returned. We just pass the value along to let _getline_
+			-- eventually handle any error for us.
 			file = io.popen(cmdline, 'r')
 		end
+		-- Here we let _getline_ do the hard work of handling the stream.
+		-- This works because _getline_ can also accept previously opened
+		-- file handles.
 		return _getline(file)
 	end
 }
