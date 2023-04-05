@@ -21,7 +21,7 @@ local abort = utils.abort
 local setfenv = utils.setfenv
 local acall = utils.acall
 
-local name = string.gsub(arg[0], "(.*/)(.*)", "%2")
+local name = arg[0]:gsub("^(.*/)([^.]+).*$", "%2"):match("[^.]+") or "luawk"
 local runtime = _G
 local program = {
     BEGIN = {},
@@ -43,7 +43,7 @@ local program_mt = {
 -- UTILITIES
 -- ---------------------------------------------------------
 
-local optstring = ':he:f:F:v:W:'
+local optstring = ':he:f:F:l:v:W:'
 
 local function usage(handle)
     handle:write(table.concat {
@@ -67,6 +67,21 @@ local function help(handle)
         "   -W loglevel=level\n",
         "\n",
     })
+end
+
+local function librequire(path)
+    local var = name:gsub("%A", ""):upper()
+    local env = os.getenv(var .. "_PATH") or "?.luawk"
+    local lib = path:gsub("%.", "/")
+    for file in env:gsub("%?", lib):gmatch("[^;]+") do
+        local handle = io.open(file)
+        if handle then
+            local src = handle:read('a')
+            handle:close()
+            return src
+        end
+    end
+    return nil
 end
 
 -- ---------------------------------------------------------
@@ -122,6 +137,7 @@ do
     -- initialiaze final runtime implementaton
     runtime = libruntime.new(runtime)
     -- getopt stage 2 - runtime flags and options
+    local oneliner = true
     local last_index = 1
     for r, optarg, optind in getopt(arg, optstring) do
         if r == '?' then
@@ -154,6 +170,14 @@ do
             if not stat then
                 abort('%s: %s\n', name, msg)
             end
+            oneliner = false
+        elseif r == 'l' then
+            -- TODO add to usage string
+            local src = librequire(optarg)
+            if not src then
+                abort('%s: library not found: %s\n', name, optarg)
+            end
+            table.insert(sources, { optarg, src })
         elseif r == 'e' then
             -- TODO add to usage string
             table.insert(sources, { "cmdline", optarg })
@@ -163,7 +187,7 @@ do
     if arg[last_index] == '--' then
         last_index = last_index + 1
     end
-    if #sources == 0 then
+    if oneliner then
         -- first argument is the program
         local src = arg[last_index]
         if not src then
