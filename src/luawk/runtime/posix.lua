@@ -56,12 +56,10 @@ local function new(lower)
             local idx = tonumber(k)
             if idx and idx >= 0 then
                 idx = math.modf(idx)
-                if idx == 0 and R[0] == nil then
-                    -- (re)build record from fields
-                    R:join(self)
-                end
                 local val = nil
-                if idx <= R.nf then
+                if idx == 0 then
+                    val = tostring(R[0])
+                elseif idx <= R.nf then
                     val = R[idx] or ""
                 end
                 log.trace("    [%s]=%s <record>\n", k, val)
@@ -102,7 +100,11 @@ local function new(lower)
                 log.debug("set [%s]=%s <field>\n", idx, v)
                 v = v ~= nil and tostring(v) or ""
                 if idx == 0 then
-                    rawset(R, 0, v)
+                    if R[0].set then
+                        R[0]:set(v)
+                    else
+                        rawset(R, 0, v)
+                    end
                     R:split(self)
                 else
                     R.nf = math.max(idx, R.nf)
