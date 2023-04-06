@@ -54,7 +54,7 @@ BEGIN {
 		if type(file) == "string" and file:match("%.gz$") then
 			-- There are several ways we can implement a _gzip_ reader. The
 			-- following approach starts the system command _gzip_ in a separate
-			-- process and captures the output from a handle. It also is
+			-- process and captures the output from a handle. It is also
 			-- advisable to properly escape any arguments passed to the subshell
 			-- invoked by _io.popen_. This is done by calling _gsub_ on the
 			-- _file_ argument to escape all non-alphanumeric characters:
