@@ -25,14 +25,12 @@ local class = {}
 
 local function split(R, self)
     R.n = self.split(R[0], R, self.FS)
-    log.trace("    [*]=%s <rebuilt>\n", R)
 end
 
 local function join(R, self)
     local ofs = tostring(self.OFS)
     -- build $0 from $1..$NF
-    rawset(R, 0, table.concat(self, ofs, 1, R.n))
-    log.trace("    [0]=%s <rebuilt>\n", R[0])
+    R[0] = table.concat(self, ofs, 1, R.n)
 end
 
 local next
@@ -42,12 +40,10 @@ local next
 --  @return A new instance of `posix.class`
 local function new(lower)
     -- @TODO R should use weak references
-    local r = {}
-    local R = setmetatable({ n = 0 }, { __index = r })
+    local R = { n = 0 }
     lower = lower or {}
     local upper = setmetatable({}, {
         __index = function(self,k)
-            log.debug("get [%s]\n", k)
             local idx = tonumber(k)
             if idx and idx >= 0 then
                 idx = math.modf(idx)
@@ -55,11 +51,9 @@ local function new(lower)
                 if idx <= R.n then
                     val = R[idx] or ""
                 end
-                log.trace("    [%s]=%s <record>\n", k, val)
                 return val
             end
             if k == "NF" then
-                log.trace("    [%s]=%s <record>\n", k, R.n)
                 return R.n
             end
             local val = class[k]
@@ -68,59 +62,47 @@ local function new(lower)
                 local proxy = function(...)
                     return val(self, ...)
                 end
-                log.trace("    [%s]=%s <default> (%s)\n", k, proxy, val)
                 rawset(self, k, proxy)
                 return proxy
             end
             if val ~= nil then
-                log.trace("    [%s]=%s <default>\n", k, val)
                 rawset(self, k, val)
                 return val
             end
             val = lower[k]
             if val ~= nil then
-                log.trace("    [%s]=%s <global>\n", k, val)
                 rawset(self, k, val)
                 return val
             end
-            log.trace("    [%s]=nil <not found>\n", k)
             return nil
         end,
         __newindex = function(self,k,v)
             local idx = tonumber(k)
             if idx and idx >= 0 then
                 idx = math.modf(idx)
-                log.debug("set [%s]=%s <field>\n", idx, v)
                 v = v ~= nil and tostring(v) or ""
                 if idx == 0 then
-                    rawset(R, 0, v)
+                    R[0] = v
                     split(R, self)
-                    if r.update then
-                        r:update(v)
-                    end
                 else
                     R.n = math.max(idx, R.n)
-                    log.trace("    [%s]=%s <field>\n", idx, v)
-                    rawset(R, idx, v)
+                    R[idx] = v
                     -- (re)build record from fields
                     join(R, self)
                 end
             elseif k == "NF" then
-                log.debug("set [%s]=%s <virtual>\n", k, v)
                 local n = R.n
                 -- ensure NF is always a number
                 R.n = math.max(math.modf(tonumber(v) or 0), 0)
                 if n > R.n then
                     -- clear fields after NF
                     for i=R.n+1,n do
-                        log.trace("    [%s]=%s <field>\n", i, nil)
                         R[i] = nil
                     end
                 end
                 -- (re)build record from fields
                 join(R, self)
             else
-                log.debug("set [%s]=%s <upper>\n", k, v)
                 rawset(self, k, v)
             end
         end,
@@ -128,27 +110,7 @@ local function new(lower)
             return R.n
         end
     })
-    if log.level == "trace" then
-        return setmetatable({}, {
-            __index = function(_,k)
-                log.debug("get [%s]\n", k)
-                local v = rawget(upper, k)
-                if v ~= nil then
-                    log.trace("    [%s]=%s <cached>\n", k, v)
-                    return v
-                end
-                return upper[k]
-            end,
-            __newindex = function(_,k,v)
-                log.debug("set [%s]=%s\n", k, v)
-                upper[k] = v
-            end,
-            __len = function()
-                return #upper
-            end
-        })
-    end
-    return upper, r
+    return upper
 end
 
 --- Class Fields.
