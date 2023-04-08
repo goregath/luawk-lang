@@ -23,15 +23,15 @@ local class = {}
 --- Constructors
 -- @section
 
-local function splitR(R, self)
-    R.nf = self.split(R[0], R, self.FS)
+local function split(R, self)
+    R.n = self.split(R[0], R, self.FS)
     log.trace("    [*]=%s <rebuilt>\n", R)
 end
 
-local function joinR(R, self)
+local function join(R, self)
     local ofs = tostring(self.OFS)
     -- build $0 from $1..$NF
-    rawset(R, 0, table.concat(self, ofs, 1, R.nf))
+    rawset(R, 0, table.concat(self, ofs, 1, R.n))
     log.trace("    [0]=%s <rebuilt>\n", R[0])
 end
 
@@ -42,32 +42,25 @@ local next
 --  @return A new instance of `posix.class`
 local function new(lower)
     -- @TODO R should use weak references
-    local R = {
-        [0] = "",
-        nf = 0,
-        split = splitR,
-        join = joinR,
-    }
+    local r = {}
+    local R = setmetatable({ n = 0 }, { __index = r })
     lower = lower or {}
     local upper = setmetatable({}, {
-        record = R,
         __index = function(self,k)
             log.debug("get [%s]\n", k)
             local idx = tonumber(k)
             if idx and idx >= 0 then
                 idx = math.modf(idx)
                 local val = nil
-                if idx == 0 then
-                    val = tostring(R[0])
-                elseif idx <= R.nf then
+                if idx <= R.n then
                     val = R[idx] or ""
                 end
                 log.trace("    [%s]=%s <record>\n", k, val)
                 return val
             end
             if k == "NF" then
-                log.trace("    [%s]=%s <record>\n", k, R.nf)
-                return R.nf
+                log.trace("    [%s]=%s <record>\n", k, R.n)
+                return R.n
             end
             local val = class[k]
             if type(val) == "function" then
@@ -100,40 +93,39 @@ local function new(lower)
                 log.debug("set [%s]=%s <field>\n", idx, v)
                 v = v ~= nil and tostring(v) or ""
                 if idx == 0 then
-                    if R[0].set then
-                        R[0]:set(v)
-                    else
-                        rawset(R, 0, v)
+                    rawset(R, 0, v)
+                    split(R, self)
+                    if r.update then
+                        r:update(v)
                     end
-                    R:split(self)
                 else
-                    R.nf = math.max(idx, R.nf)
+                    R.n = math.max(idx, R.n)
                     log.trace("    [%s]=%s <field>\n", idx, v)
                     rawset(R, idx, v)
                     -- (re)build record from fields
-                    R:join(self)
+                    join(R, self)
                 end
             elseif k == "NF" then
                 log.debug("set [%s]=%s <virtual>\n", k, v)
-                local nf = R.nf
+                local n = R.n
                 -- ensure NF is always a number
-                R.nf = math.max(math.modf(tonumber(v) or 0), 0)
-                if nf > R.nf then
+                R.n = math.max(math.modf(tonumber(v) or 0), 0)
+                if n > R.n then
                     -- clear fields after NF
-                    for i=R.nf+1,nf do
+                    for i=R.n+1,n do
                         log.trace("    [%s]=%s <field>\n", i, nil)
                         R[i] = nil
                     end
                 end
                 -- (re)build record from fields
-                R:join(self)
+                join(R, self)
             else
                 log.debug("set [%s]=%s <upper>\n", k, v)
                 rawset(self, k, v)
             end
         end,
         __len = function()
-            return R.nf
+            return R.n
         end
     })
     if log.level == "trace" then
@@ -156,7 +148,7 @@ local function new(lower)
             end
         })
     end
-    return upper
+    return upper, r
 end
 
 --- Class Fields.
