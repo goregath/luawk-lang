@@ -90,3 +90,199 @@ setup() {
 	run luawk 'BEGIN { exit 99 } END { exit 0 }' /etc/passwd
 	assert_success
 }
+
+@test "exit in BEGIN" {
+	run luawk '
+		BEGIN     { exit 1; print "unreachable" }
+		BEGIN     { print "unreachable" }
+		BEGINFILE { print "unreachable" }
+		1         { print "unreachable" }
+		ENDFILE   { print "unreachable" }
+		END       { print "END" }
+	' <<-"AWK"
+		line1
+		line2
+	AWK
+	assert_failure
+	assert_output - <<-"ASSERT"
+		END
+	ASSERT
+}
+
+@test "exit in BEGINFILE" {
+	run luawk '
+		BEGIN     { print "BEGIN" }
+		BEGINFILE { exit 1; print "unreachable" }
+		1         { print "unreachable" }
+		ENDFILE   { print "unreachable" }
+		END       { print "END" }
+	' <<-"AWK"
+		line1
+		line2
+	AWK
+	assert_failure
+	assert_output - <<-"ASSERT"
+		BEGIN
+		END
+	ASSERT
+}
+
+@test "exit in action" {
+	run luawk '
+		BEGIN     { print "BEGIN" }
+		BEGINFILE { print "BEGINFILE" }
+		1         { exit 1; print "unreachable" }
+		ENDFILE   { print "unreachable" }
+		END       { print "END" }
+	' <<-"AWK"
+		line1
+		line2
+	AWK
+	assert_failure
+	assert_output - <<-"ASSERT"
+		BEGIN
+		BEGINFILE
+		END
+	ASSERT
+}
+
+@test "exit in ENDILE" {
+	run luawk '
+		BEGIN     { print "BEGIN" }
+		BEGINFILE { print "BEGINFILE" }
+		1         { print "ACTION" }
+		ENDFILE   { exit 1; print "unreachable" }
+		END       { print "END" }
+	' <<-"AWK"
+		line1
+		line2
+	AWK
+	assert_failure
+	assert_output - <<-"ASSERT"
+		BEGIN
+		BEGINFILE
+		ACTION
+		ACTION
+		END
+	ASSERT
+}
+
+@test "exit in END" {
+	run luawk '
+		BEGIN     { print "BEGIN" }
+		BEGINFILE { print "BEGINFILE" }
+		1         { print "ACTION" }
+		ENDFILE   { print "ENDFILE" }
+		END       { exit 1; print "unreachable" }
+		END       { print "unreachable" }
+	' <<-"AWK"
+		line1
+		line2
+	AWK
+	assert_failure
+	assert_output - <<-"ASSERT"
+		BEGIN
+		BEGINFILE
+		ACTION
+		ACTION
+		ENDFILE
+	ASSERT
+}
+
+@test "return in BEGIN" {
+	run luawk '
+		BEGIN     { return 1 }
+		BEGIN     { print "unreachable" }
+		BEGINFILE { print "unreachable" }
+		1         { print "unreachable" }
+		ENDFILE   { print "unreachable" }
+		END       { print "END" }
+	' <<-"AWK"
+		line1
+		line2
+	AWK
+	assert_failure
+	assert_output - <<-"ASSERT"
+		END
+	ASSERT
+}
+
+@test "return in BEGINFILE" {
+	run luawk '
+		BEGIN     { print "BEGIN" }
+		BEGINFILE { return 1 }
+		1         { print "unreachable" }
+		ENDFILE   { print "unreachable" }
+		END       { print "END" }
+	' <<-"AWK"
+		line1
+		line2
+	AWK
+	assert_failure
+	assert_output - <<-"ASSERT"
+		BEGIN
+		END
+	ASSERT
+}
+
+@test "return in action" {
+	run luawk '
+		BEGIN     { print "BEGIN" }
+		BEGINFILE { print "BEGINFILE" }
+		1         { return 1 }
+		ENDFILE   { print "unreachable" }
+		END       { print "END" }
+	' <<-"AWK"
+		line1
+		line2
+	AWK
+	assert_failure
+	assert_output - <<-"ASSERT"
+		BEGIN
+		BEGINFILE
+		END
+	ASSERT
+}
+
+@test "return in ENDILE" {
+	run luawk '
+		BEGIN     { print "BEGIN" }
+		BEGINFILE { print "BEGINFILE" }
+		1         { print "ACTION" }
+		ENDFILE   { return 1 }
+		END       { print "END" }
+	' <<-"AWK"
+		line1
+		line2
+	AWK
+	assert_failure
+	assert_output - <<-"ASSERT"
+		BEGIN
+		BEGINFILE
+		ACTION
+		ACTION
+		END
+	ASSERT
+}
+
+@test "return in END" {
+	run luawk '
+		BEGIN     { print "BEGIN" }
+		BEGINFILE { print "BEGINFILE" }
+		1         { print "ACTION" }
+		ENDFILE   { print "ENDFILE" }
+		END       { return 1 }
+		END       { print "unreachable" }
+	' <<-"AWK"
+		line1
+		line2
+	AWK
+	assert_failure
+	assert_output - <<-"ASSERT"
+		BEGIN
+		BEGINFILE
+		ACTION
+		ACTION
+		ENDFILE
+	ASSERT
+}
