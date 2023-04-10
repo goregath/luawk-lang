@@ -282,6 +282,7 @@ local function atoi(v) return tonumber(v) or 0 end
 local function incr(v) return atoi(v) + 1 end
 local function isinf(v) return v == math.huge or v == -math.huge end
 local function isnan(v) return v ~= v end
+local sym = {}
 
 local function failfast(...)
     local r = { pcall(...) }
@@ -299,15 +300,29 @@ end
 
 local status
 
+function runtime.exit(n)
+    sym.label = n or status or 0
+    error(sym, 0)
+end
+
+function runtime.next()
+    sym.label = "next"
+    error(sym, 0)
+end
+
+function runtime.nextfile()
+    sym.label = "nextfile"
+    error(sym, 0)
+end
+
 -- BEGIN
 for _, action in ipairs(program.BEGIN) do
-    local ps, _status = pcall(action)
-    if not ps then
-        abort("%s: error: %s\n", name, _status)
-    end
-    if _status ~= nil then
-        status = _status
+    local _, _status = pcall(action)
+    if _status == sym or type(_status) == "number" then
+        status = sym.label
         goto END
+    elseif _status ~= nil then
+        abort("%s: error: %s\n", name, _status)
     end
 end
 
@@ -339,13 +354,12 @@ for i=1,atoi(runtime.ARGC)-1 do
 
     -- BEGINFILE
     for _, action in ipairs(program.BEGINFILE) do
-        local ps, _status = pcall(action)
-        if not ps then
-            abort("%s: error: %s\n", name, _status)
-        end
-        if _status ~= nil then
-            status = _status
+        local _, _status = pcall(action)
+        if _status == sym or type(_status) == "number" then
+            status = sym.label
             goto END
+        elseif _status ~= nil then
+            abort("%s: error: %s\n", name, _status)
         end
     end
 
@@ -363,15 +377,19 @@ for i=1,atoi(runtime.ARGC)-1 do
         runtime.NR = incr(runtime.NR)
         runtime.FNR = incr(runtime.FNR)
         for _, action in ipairs(program.main) do
-            local ps, _status = pcall(action)
-            if not ps then
-                abort("%s: error: %s\n", name, _status)
-            end
-            if     _status == "next"     then goto NEXT
-            elseif _status == "nextfile" then goto NEXTFILE
-            elseif _status ~= nil then
+            local _, _status = pcall(action)
+            if _status == sym then
+                if     sym.label == "next"     then goto NEXT
+                elseif sym.label == "nextfile" then goto NEXTFILE
+                elseif sym.label ~= nil then
+                    status = sym.label
+                    goto END
+                end
+            elseif type(_status) == "number" then
                 status = _status
                 goto END
+            elseif _status ~= nil then
+                abort("%s: error: %s\n", name, _status)
             end
         end
         ::NEXT::
@@ -380,13 +398,12 @@ for i=1,atoi(runtime.ARGC)-1 do
 
     -- ENDFILE
     for _, action in ipairs(program.ENDFILE) do
-        local ps, _status = pcall(action)
-        if not ps then
-            abort("%s: error: %s\n", name, _status)
-        end
-        if _status ~= nil then
-            status = _status
+        local _, _status = pcall(action)
+        if _status == sym or type(_status) == "number" then
+            status = sym.label
             goto END
+        elseif _status ~= nil then
+            abort("%s: error: %s\n", name, _status)
         end
     end
 end
@@ -394,13 +411,12 @@ end
 
 -- END
 for _, action in ipairs(program.END) do
-    local ps, _status = pcall(action)
-    if not ps then
-        abort("%s: error: %s\n", name, _status)
-    end
-    if _status ~= nil then
-        status = _status
+    local _, _status = pcall(action)
+    if _status == sym or type(_status) == "number" then
+        status = sym.label
         break
+    elseif _status ~= nil then
+        abort("%s: error: %s\n", name, _status)
     end
 end
 
@@ -415,6 +431,6 @@ elseif type(status) == "boolean" then status = status and 0 or 1
 elseif type(status) ~= "number"  then status = math.modf(tonumber(status) or 1)
 elseif isnan(status)             then status = 128
 elseif isinf(status)             then status = 255
-end
+else                                  status = math.modf(status) end
 
 os.exit(status)
