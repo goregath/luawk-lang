@@ -39,6 +39,26 @@ setup() {
 	assert_output $'line1\nline2'
 }
 
+@test "getline loop in BEGIN calls BEGINFILE and ENDFILE" {
+	skip "bug"
+	run luawk '
+		BEGIN     { while getline do print end }
+		BEGINFILE { print "BEGINFILE", FILENAME }
+		ENDFILE   { print "ENDFILE", FILENAME }
+	' /dev/fd/3 /dev/fd/4 \
+		3<<<'file1' \
+		4<<<'file2'
+	assert_success
+	assert_output - <<-"ASSERT"
+		BEGINFILE /dev/fd/3
+		file1
+		ENDFILE /dev/fd/3
+		BEGINFILE /dev/fd/4
+		file2
+		ENDFILE /dev/fd/4
+	ASSERT
+}
+
 @test "pipe into getline" {
 	skip "not implemented"
 	#  expression | getline [var]
