@@ -10,7 +10,6 @@ local setenv = stdlib.setenv
 local getenv = stdlib.getenv
 
 local regex = require 'luawk.regex'
-local log = require 'luawk.log'
 local utils = require 'luawk.utils'
 local isarray = utils.isarray
 local trim = utils.trim
@@ -36,14 +35,21 @@ end
 local next
 
 --- Create a new new instance of `posix.class`.
---  @param[type=table,opt] obj a backing table
+--  @param[type=table,opt] lower a backing table
 --  @return A new instance of `posix.class`
 local function new(lower)
+    return class:new(lower)
+end
+
+--- Create a new new instance of `posix.class`.
+--  @param[type=table,opt] lower a backing table
+--  @return A new instance of `posix.class`
+function class:new(lower)
     -- @TODO R should use weak references
     local R = { n = 0 }
     lower = lower or {}
     local upper = setmetatable({}, {
-        __index = function(self,k)
+        __index = function(t,k)
             local idx = tonumber(k)
             if idx and idx >= 0 then
                 idx = math.modf(idx)
@@ -56,39 +62,39 @@ local function new(lower)
             if k == "NF" then
                 return R.n
             end
-            local val = class[k]
+            local val = self[k]
             if type(val) == "function" then
-                -- wrap function self
+                -- wrap function t
                 local proxy = function(...)
-                    return val(self, ...)
+                    return val(t, ...)
                 end
-                rawset(self, k, proxy)
+                rawset(t, k, proxy)
                 return proxy
             end
             if val ~= nil then
-                rawset(self, k, val)
+                rawset(t, k, val)
                 return val
             end
             val = lower[k]
             if val ~= nil then
-                rawset(self, k, val)
+                rawset(t, k, val)
                 return val
             end
             return nil
         end,
-        __newindex = function(self,k,v)
+        __newindex = function(t,k,v)
             local idx = tonumber(k)
             if idx and idx >= 0 then
                 idx = math.modf(idx)
                 v = v ~= nil and tostring(v) or ""
                 if idx == 0 then
                     R[0] = v
-                    split(R, self)
+                    split(R, t)
                 else
                     R.n = math.max(idx, R.n)
                     R[idx] = v
                     -- (re)build record from fields
-                    join(R, self)
+                    join(R, t)
                 end
             elseif k == "NF" then
                 local n = R.n
@@ -101,9 +107,9 @@ local function new(lower)
                     end
                 end
                 -- (re)build record from fields
-                join(R, self)
+                join(R, t)
             else
-                rawset(self, k, v)
+                rawset(t, k, v)
             end
         end,
         __len = function()
@@ -569,7 +575,7 @@ end
 --  @return[1,type=string] Record terminator (match of @{RS})
 --  @return[2,type=fail] If an error occured or end of file has been reached
 --
---  @field function
+--  @class function
 --  @name next
 --  @see RS
 --  @see getline
@@ -644,7 +650,6 @@ function next(state)
         end
         state[1] = nil
     end
-    -- print(string.format("=> %q %q %q (%q)",(rc or""):gsub("%c","?"),(rt or""):gsub("%c","?"),(state.buffer or""):gsub("%c","?"), rs:gsub("%c","?")))
     return rc, rt
 end
 
