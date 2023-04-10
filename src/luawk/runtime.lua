@@ -22,4 +22,4 @@
 -- @see posix
 -- @see gnu
 
-return require "luawk.runtime.posix"
+return require "luawk.runtime.gnu"
