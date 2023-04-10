@@ -12,52 +12,69 @@ local utils = require 'luawk.utils'
 local isarray = utils.isarray
 local abort = utils.fail
 
-local M = {}
+--- The runtime class
+local class = setmetatable({}, { __index = libawk.class })
+
+--- Constructors
+-- @section
+
+--- Create a new new instance of `gnu.class`.
+--  @param[type=table,opt] lower a backing table
+--  @return A new instance of `gnu.class`
+local function new(lower)
+    return class:new(lower)
+end
+
+--- Class Fields.
+-- @section
 
 --- A regular expression (as a string) that is used to split text into fields
 --  that match the regular expresson. Assigning a value to @{FPAT} overrides
 --  the use of @{posix.FS} and @{FIELDWIDTHS} for field splitting.
 --  @see patsplit
 --  @see posix.FS
-M.FPAT = ''
+class.FPAT = ''
 
 --- The index in ARGV of the current file being processed.
 --  https://www.gnu.org/software/gawk/manual/html_node/POSIX_002fGNU.html
-M.ARGIND = ''
+class.ARGIND = ''
 
 --- On non-posix systems, this variable specifies use of binary mode for all I/O.
 --  https://www.gnu.org/software/gawk/manual/html_node/POSIX_002fGNU.html
-M.BINMODE = ''
+class.BINMODE = ''
 
 --- If a system error occurs during a redirection for getline, during a read
 --  for getline, or during a close() operation, then ERRNO contains a string
 --  describing the error.
 --  https://www.gnu.org/software/gawk/manual/html_node/POSIX_002fGNU.html
-M.ERRNO = ''
+class.ERRNO = ''
 
 --- A space-separated list of columns that tells gawk how to split input with
 --  fixed columnar boundaries.
 --  https://www.gnu.org/software/gawk/manual/html_node/POSIX_002fGNU.html
-M.FIELDWIDTHS = ''
+class.FIELDWIDTHS = ''
 
 --- If IGNORECASE is nonzero or non-null, then all string comparisons and all
 --  regular expression matching are case-independent.
 --  https://www.gnu.org/software/gawk/manual/html_node/POSIX_002fGNU.html
-M.IGNORECASE = ''
+class.IGNORECASE = ''
 
 --- Ignored
-M.LINT = ''
+class.LINT = ''
 
 --- The elements of this array provide access to information about the running awk program.
 --  https://www.gnu.org/software/gawk/manual/html_node/POSIX_002fGNU.html
-M.PROCINFO = ''
+class.PROCINFO = ''
 
 --- The input text that matched the text denoted by RS, the record separator.
 --  It is set every time a record is read.
-M.RT = ''
+class.RT = ''
 
 --- Used for internationalization of programs at the awk level.
-M.TEXTDOMAIN = ''
+class.TEXTDOMAIN = ''
+
+--- Methods
+-- @section
 
 --- Split the string `s` into fields of array `a` matching pattern `fp` and return `n`.
 --
@@ -81,7 +98,7 @@ M.TEXTDOMAIN = ''
 --  @see FPAT
 --  @depends regex.find
 --  @function Runtime:patsplit
-function M:patsplit(...)
+function class:patsplit(...)
     local argc, s,a,fp,seps = select('#', ...), ...
     -- TODO RELEASE UNDER DIFFERENT LIBRARY AND LICENSE
     -- TODO THIS IS GNU General Public License v3.0
@@ -167,27 +184,8 @@ function M:patsplit(...)
     return #a, table.unpack(found)
 end
 
---- Create a new object.
---  @param[type=table,opt] obj
---  @return[type=Runtime]
---  @function new
-function M.new(obj)
-    obj = libawk.new(obj)
-    local mt = getmetatable(obj)
-    local index = mt.__index
-    function mt.__index(self,k)
-        local fn = M[k]
-        if type(fn) == "function" then
-            -- wrap function self
-            local proxy = function(...)
-                return fn(self, ...)
-            end
-            rawset(self, k, proxy)
-            return proxy
-        end
-        return M[k] or index(self, k)
-    end
-    return setmetatable(obj,mt)
-end
-
-return M
+--- @export
+return {
+    class = class,
+    new = new,
+}
