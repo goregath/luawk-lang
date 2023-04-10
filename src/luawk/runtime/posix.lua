@@ -23,13 +23,21 @@ local class = {}
 -- @section
 
 local function split(R, self)
-    R.n = self.split(R[0], R, self.FS)
+    if R[0] == "" then
+        R.n = 0
+    else
+        R.n = self.split(R[0], R, self.FS)
+    end
 end
 
 local function join(R, self)
-    local ofs = tostring(self.OFS)
-    -- build $0 from $1..$NF
-    R[0] = table.concat(self, ofs, 1, R.n)
+    if R.n == 0 then
+        R[0] = ""
+    else
+        local ofs = tostring(self.OFS)
+        -- build $0 from $1..$NF
+        R[0] = table.concat(self, ofs, 1, R.n)
+    end
 end
 
 local next
@@ -265,10 +273,10 @@ function class:getline(...)
     local pagesize = 256
     local argc, obj = select('#', ...), ...
     if not self then
-        abort("getline: self expected, got: %s\n", type(self))
+        abort("getline: self expected, got: %s", type(self))
     end
     if argc == 0 then
-        abort("getline: first argument is mandatory\n")
+        abort("getline: first argument is mandatory")
     end
     local objtype = type(obj)
     local state = { "" }
@@ -367,10 +375,10 @@ function class:match(...)
     local argc, s, p = select('#', ...), ...
     -- TODO fix description
     if not self then
-        abort("match: self expected, got: %s\n", type(self))
+        abort("match: self expected, got: %s", type(self))
     end
     if argc < 2 then
-        abort("match: invalid number of arguments\n")
+        abort("match: invalid number of arguments")
     end
     s = s and tostring(s) or ""
     p = p and tostring(p) or ""
@@ -439,13 +447,13 @@ function class:split(...)
     local argc, s, a, fs = select('#', ...), ...
     local rsmode = self.RS == nil or tostring(self.RS) == ""
     if not self then
-        abort("split: self expected, got: %s\n", type(self))
+        abort("split: self expected, got: %s", type(self))
     end
     if argc == 0 then
-        abort("split: first argument is mandatory\n")
+        abort("split: first argument is mandatory")
     end
     if argc > 1 and not isarray(a) then
-        abort("split: second argument is not an array\n")
+        abort("split: second argument is not an array")
     end
     s = s ~= nil and tostring(s) or ""
     a = a or self
