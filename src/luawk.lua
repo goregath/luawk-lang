@@ -298,6 +298,20 @@ local function wrapfail(fn)
     end
 end
 
+local function memoize(fn)
+    local mem = {}
+    return function(arg1, ...)
+        local dat = mem[arg1]
+        if not dat then
+            dat = { fn(arg1, ...) }
+            mem[arg1] = dat
+        end
+        return table.unpack(dat)
+    end, function(arg1)
+        mem[arg1] = nil
+    end
+end
+
 local status
 
 function runtime.exit(n)
@@ -331,6 +345,8 @@ end
 
 -- TODO ugly
 if #program.BEGINFILE + #program.main + #program.ENDFILE + #program.END == 0 then goto END end
+
+runtime.getline, runtime.close = memoize(runtime.getline)
 
 for i=1,atoi(runtime.ARGC)-1 do
     local getline, state, var
@@ -372,6 +388,7 @@ for i=1,atoi(runtime.ARGC)-1 do
     -- TODO FIXME cleanup open file descriptors, best would be to user runtime.close()
     -- by calling the garbage collector we automatically close all dangling file descriptors
     collectgarbage()
+
     getline, state, var = failfast(runtime.getline, filename)
     if not getline then
         abort("%s: error: %s\n", name, state)
@@ -415,6 +432,8 @@ for i=1,atoi(runtime.ARGC)-1 do
             abort("%s: error: %s\n", name, _status)
         end
     end
+
+    failfast(runtime.close, filename)
 end
 ::END::
 
