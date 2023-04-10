@@ -318,8 +318,11 @@ end
 -- BEGIN
 for _, action in ipairs(program.BEGIN) do
     local _, _status = pcall(action)
-    if _status == sym or type(_status) == "number" then
+    if _status == sym then
         status = sym.label
+        goto END
+    elseif type(_status) == "number" then
+        status = _status
         goto END
     elseif _status ~= nil then
         abort("%s: error: %s\n", name, _status)
@@ -355,8 +358,11 @@ for i=1,atoi(runtime.ARGC)-1 do
     -- BEGINFILE
     for _, action in ipairs(program.BEGINFILE) do
         local _, _status = pcall(action)
-        if _status == sym or type(_status) == "number" then
+        if _status == sym then
             status = sym.label
+            goto END
+        elseif type(_status) == "number" then
+            status = _status
             goto END
         elseif _status ~= nil then
             abort("%s: error: %s\n", name, _status)
@@ -399,8 +405,11 @@ for i=1,atoi(runtime.ARGC)-1 do
     -- ENDFILE
     for _, action in ipairs(program.ENDFILE) do
         local _, _status = pcall(action)
-        if _status == sym or type(_status) == "number" then
+        if _status == sym then
             status = sym.label
+            goto END
+        elseif type(_status) == "number" then
+            status = _status
             goto END
         elseif _status ~= nil then
             abort("%s: error: %s\n", name, _status)
@@ -412,8 +421,11 @@ end
 -- END
 for _, action in ipairs(program.END) do
     local _, _status = pcall(action)
-    if _status == sym or type(_status) == "number" then
+    if _status == sym then
         status = sym.label
+        break
+    elseif type(_status) == "number" then
+        status = _status
         break
     elseif _status ~= nil then
         abort("%s: error: %s\n", name, _status)
