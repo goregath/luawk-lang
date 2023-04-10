@@ -80,7 +80,7 @@ class.TEXTDOMAIN = ''
 --
 --  @usage
 --      local libawk = require("luawk.runtime.gnu")
---      local gawk = libawk:new()
+--      local gawk = libawk.new()
 --      local a, s = {}, {}
 --      local n = gawk:patsplit("0xDEAD, 0xBEEF", a, "%x%x", s)
 --      -- n = 4
@@ -97,7 +97,7 @@ class.TEXTDOMAIN = ''
 --  @see posix
 --  @see FPAT
 --  @depends regex.find
---  @function Runtime:patsplit
+--  @function class:patsplit
 function class:patsplit(...)
     local argc, s,a,fp,seps = select('#', ...), ...
     -- TODO RELEASE UNDER DIFFERENT LIBRARY AND LICENSE
@@ -108,22 +108,22 @@ function class:patsplit(...)
     a = a or self
     fp = fp ~= nil and tostring(fp) or self.FPAT
     if not self then
-        abort("patsplit: self expected, got: %s\n", type(self))
+        abort("patsplit: self expected, got: %s", type(self))
     end
     if argc == 0 then
-        abort("patsplit: first argument is mandatory\n")
+        abort("patsplit: first argument is mandatory")
     end
     if argc > 1 and not isarray(a) then
-        abort("patsplit: second argument is not an array\n")
+        abort("patsplit: second argument is not an array")
     end
     if fp == nil or fp == "" then
-        abort("patsplit: third argument cannot be empty\n")
+        abort("patsplit: third argument cannot be empty")
     end
     if seps ~= nil and not isarray(seps) then
-        abort("patsplit: fourth argument is not an array\n")
+        abort("patsplit: fourth argument is not an array")
     end
     if a == seps then
-        abort("patsplit: second and fourth array cannot be the same\n")
+        abort("patsplit: second and fourth array cannot be the same")
     end
     -- clear array
     if a == self then
