@@ -34,6 +34,11 @@ setup() {
 	assert_failure 255
 }
 
+@test "exit(2.5)" {
+	run luawk 'BEGIN { exit 2.5 }' /etc/passwd
+	assert_failure 2
+}
+
 @test "exit returns from action" {
 	run luawk '1; { exit; print "unreachable" } END { print "END" }' <<-"AWK"
 		line1
