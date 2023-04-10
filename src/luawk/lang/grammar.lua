@@ -158,12 +158,6 @@ local grammar = {
 			return string.format("%smatch(%s,%s)", c[1]=='!~' and 'not ' or '', a, c[2])
 		  end)
 		;
-	awknext =
-		  (Knext + Knextfile) / 'coroutine.yield("%0")'
-		;
-	awkexit =
-		  Cs(Kexit / '"%0"' * (sp * Cc',' * V'exp')^-1) / 'coroutine.yield(%1)'
-		;
 	awktoken =
 		  Cs(V'awkkeywords' * Cc'(' * (sp * V'explist')^-1 * Cc')')
 		;
@@ -171,6 +165,9 @@ local grammar = {
 		  Kprintf
 		+ Kprint
 		+ Kgetline
+		+ Kexit
+		+ Knext
+		+ Knextfile
 		;
 	awkbuiltins =
 		  Katan2
@@ -290,9 +287,7 @@ local grammar = {
 		-- var [+-*/%^]= exp
 		+ (Cs(V'var') * sp * Cs(S'+-*/%^') * '=' * sp * Cs(V'exp')) / '%1=%1%2(%3)'
 		+ V'functioncall'
-		+ V'awkexit'
 		+ V'awktoken'
-		+ V'awknext'
 		;
 	laststat =
 		  Kreturn * (sp * V'explist')^-1 + Kbreak
