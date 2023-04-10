@@ -51,9 +51,13 @@ setup() {
 	ASSERT
 }
 
-@test "nextfile-getline bug on same file" {
-	skip
-	run luawk 'FNR==2 { nextfile } 1' /etc/passwd /etc/passwd
+@test "nextfile after first line" {
+	run luawk 'FNR==2 { nextfile } 1' \
+		/dev/fd/3 3<<<$'line1\nline2' \
+		/dev/fd/4 4<<<$'line3\nline4'
 	assert_success
-	assert_equal ${#lines[@]} 2
+	assert_output - <<-"ASSERT"
+		line1
+		line3
+	ASSERT
 }
