@@ -206,6 +206,17 @@ class.RS = '\n'
 --  @default <code>0</code>
 class.RSTART = 0
 
+--- Reserved Fields.
+--  Variables reserved by an luawk-compliant runtime.
+--  @section reserved_fields
+
+--- A pathname of the current input file. Inside a _BEGIN_ action the value is
+--  undefined. Inside an _END_ action the value shall be the name of the last
+--  input file processed.
+--  @class field
+--  @name obj.FILENAME
+--  @default <code>nil</code> (unset)
+
 --- Methods
 -- @section
 
@@ -484,6 +495,22 @@ function class:split(...)
     end
 end
 
+--- Reserved Methods.
+--  Methods reserved by an luawk-compliant runtime.
+--  @section reserved_methods
+
+--- Skip current record.
+--  @class function
+--  @name class:next
+
+--- Skip current file.
+--  @class function
+--  @name class:nextfile
+
+--- Cancel main loop and jump to END action.
+--  @class function
+--  @name class:exit
+
 --- Object Fields.
 --  @section
 
@@ -517,17 +544,6 @@ end
 --  @class field
 --  @name obj.NF
 --  @default <code>0</code> (when @{0|obj[0]} is the nullstring)
-
---- Reserved Fields.
---  Variables reserved by an awk-compliant runtime.
---  @section reserved
-
---- A pathname of the current input file. Inside a _BEGIN_ action the value is
---  undefined. Inside an _END_ action the value shall be the name of the last
---  input file processed.
---  @class field
---  @name obj.FILENAME
---  @default <code>nil</code> (unset)
 
 --- Iterators
 -- @section
