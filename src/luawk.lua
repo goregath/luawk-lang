@@ -315,25 +315,32 @@ end
 local status
 
 function runtime.exit(n)
-    sym.label = n or status or 0
+    sym.status = n or status or 0
     error(sym, 0)
 end
 
 function runtime.next()
-    sym.label = "next"
+    sym.status = "next"
     error(sym, 0)
 end
 
 function runtime.nextfile()
-    sym.label = "nextfile"
+    sym.status = "nextfile"
     error(sym, 0)
 end
+
+-- TODO getline in BEGIN should be handled, incl. BEGINFILE
+-- gawk 'BEGIN { while (getline) print } BEGINFILE { print FILENAME }' /dev/fd/3 3<<<"a" /dev/fd/4 4<<<"b
+-- /dev/fd/3
+-- a
+-- /dev/fd/4
+-- b
 
 -- BEGIN
 for _, action in ipairs(program.BEGIN) do
     local _, _status = pcall(action)
     if _status == sym then
-        status = sym.label
+        status = sym.status
         goto END
     elseif type(_status) == "number" then
         status = _status
@@ -375,7 +382,7 @@ for i=1,atoi(runtime.ARGC)-1 do
     for _, action in ipairs(program.BEGINFILE) do
         local _, _status = pcall(action)
         if _status == sym then
-            status = sym.label
+            status = sym.status
             goto END
         elseif type(_status) == "number" then
             status = _status
@@ -402,10 +409,10 @@ for i=1,atoi(runtime.ARGC)-1 do
         for _, action in ipairs(program.main) do
             local _, _status = pcall(action)
             if _status == sym then
-                if     sym.label == "next"     then goto NEXT
-                elseif sym.label == "nextfile" then goto NEXTFILE
-                elseif sym.label ~= nil then
-                    status = sym.label
+                if     sym.status == "next"     then goto NEXT
+                elseif sym.status == "nextfile" then goto NEXTFILE
+                elseif sym.status ~= nil then
+                    status = sym.status
                     goto END
                 end
             elseif type(_status) == "number" then
@@ -423,7 +430,7 @@ for i=1,atoi(runtime.ARGC)-1 do
     for _, action in ipairs(program.ENDFILE) do
         local _, _status = pcall(action)
         if _status == sym then
-            status = sym.label
+            status = sym.status
             goto END
         elseif type(_status) == "number" then
             status = _status
@@ -441,7 +448,7 @@ end
 for _, action in ipairs(program.END) do
     local _, _status = pcall(action)
     if _status == sym then
-        status = sym.label
+        status = sym.status
         break
     elseif type(_status) == "number" then
         status = _status
