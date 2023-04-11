@@ -15,7 +15,7 @@
 test/posix-record.lua
 test/posix-split.lua
 test/posix-match.lua
-test/posix-getline.lua
+test/posix-getlines.lua
 test/gnu-patsplit.lua
 
 # Unit / Integration
