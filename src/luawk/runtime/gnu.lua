@@ -6,14 +6,14 @@
 -- @usage require("luawk.runtime.gnu").new(_G)
 -- @see gawk(1)
 
-local libawk = require 'luawk.runtime.posix'
+local posix = require 'luawk.runtime.posix'
 local regex = require 'luawk.regex'
 local utils = require 'luawk.utils'
 local isarray = utils.isarray
 local abort = utils.fail
 
 --- The runtime class
-local class = setmetatable({}, { __index = libawk.class })
+local class = setmetatable({}, { __index = posix.class })
 
 --- Constructors
 -- @section
@@ -27,17 +27,6 @@ end
 
 --- Class Fields.
 -- @section
-
---- A regular expression (as a string) that is used to split text into fields
---  that match the regular expresson. Assigning a value to @{FPAT} overrides
---  the use of @{posix.FS} and @{FIELDWIDTHS} for field splitting.
---  @see patsplit
---  @see posix.FS
-class.FPAT = ''
-
---- The index in ARGV of the current file being processed.
---  https://www.gnu.org/software/gawk/manual/html_node/POSIX_002fGNU.html
-class.ARGIND = ''
 
 --- On non-posix systems, this variable specifies use of binary mode for all I/O.
 --  https://www.gnu.org/software/gawk/manual/html_node/POSIX_002fGNU.html
@@ -66,12 +55,36 @@ class.LINT = ''
 --  https://www.gnu.org/software/gawk/manual/html_node/POSIX_002fGNU.html
 class.PROCINFO = ''
 
---- The input text that matched the text denoted by RS, the record separator.
---  It is set every time a record is read.
-class.RT = ''
-
 --- Used for internationalization of programs at the awk level.
 class.TEXTDOMAIN = ''
+
+--- Reserved Fields.
+--  Variables reserved by an luawk-compliant runtime.
+--  @section reserved_fields
+
+--- The index in ARGV of the current file being processed.
+--  https://www.gnu.org/software/gawk/manual/html_node/POSIX_002fGNU.html
+--  @class field
+--  @name obj.ARGIND
+--  @default <code>nil</code> (unset)
+--  @see patsplit
+--  @see posix.FS
+
+--- A regular expression (as a string) that is used to split text into fields
+--  that match the regular expresson. Assigning a value to @{FPAT} overrides
+--  the use of @{posix.FS} and @{FIELDWIDTHS} for field splitting.
+--  @class field
+--  @name obj.FPAT
+--  @default <code>nil</code> (unset)
+--  @see patsplit
+--  @see posix.FS
+
+--- The input text that matched the text denoted by RS, the record separator.
+--  It is set every time a record is read.
+--  @class field
+--  @name obj.RT
+--  @default <code>nil</code> (unset)
+--  @see posix.getline
 
 --- Methods
 -- @section
