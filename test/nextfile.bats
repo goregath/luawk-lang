@@ -32,7 +32,7 @@ setup() {
 
 @test "nextfile (BEGINFILE)" {
 	run luawk 'BEGINFILE { nextfile }' /dev/null
-	assert_failure
+	assert_success
 }
 
 @test "nextfile (ENDFILE)" {
