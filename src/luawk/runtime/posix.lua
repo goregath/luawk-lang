@@ -209,9 +209,9 @@ class.ORS = '\n'
 --  @default <code>0</code>
 class.RLENGTH = 0
 
---- The record separator string, its value is interpreted by @{getline}.
+--- The record separator string, its value is interpreted by @{getlines}.
 --  @default `"\n"` (newline)
---  @see getline
+--  @see getlines
 class.RS = '\n'
 
 --- The starting position of the string matched by the match function, numbering
@@ -255,7 +255,7 @@ end
 --  @usage
 --    local F = require "luawk.runtime.posix".new()
 --    F.RS = "\n"
---    for record, rt in F.getline("-") do
+--    for record, rt in F.getlines("-") do
 --      print(record)
 --    end
 --
@@ -268,15 +268,15 @@ end
 --  @return[2,type=string] Message describing the error
 --
 --  @class function
---  @name class:getline
-function class:getline(...)
+--  @name class:getlines
+function class:getlines(...)
     local pagesize = 256
     local argc, obj = select('#', ...), ...
     if not self then
-        abort("getline: self expected, got: %s", type(self))
+        abort("getlines: self expected, got: %s", type(self))
     end
     if argc == 0 then
-        abort("getline: first argument is mandatory")
+        abort("getlines: first argument is mandatory")
     end
     local objtype = type(obj)
     local state = { "" }
@@ -310,7 +310,7 @@ function class:getline(...)
             return select(2, coroutine.resume(obj, sz or pagesize))
         end
     else
-        return nil, string.format("getline: invalid type: %s", objtype)
+        return nil, string.format("getlines: invalid type: %s", objtype)
     end
     return next, setmetatable(state, { __index = self }), nil
 end
@@ -528,11 +528,11 @@ end
 --- Object Fields.
 --  @section
 
---- The record, usually set by `getline`.
+--- The record, usually set by `getlines`.
 --  @class field
 --  @name 0
 --  @fieldof obj
---  @see getline
+--  @see getlines
 --  @default `""` (_nullstring_)
 
 --- Fields as handled by @{split}() for @{0|$0}.
@@ -562,7 +562,7 @@ end
 --- Iterators
 -- @section
 
---- A stateful iterator function returned by @{getline}.
+--- A stateful iterator function returned by @{getlines}.
 --
 --  This functions splits the contents of a file (`state.handle`) based
 --  on the value of the record seperator variable @{RS|state.RS}.
@@ -586,10 +586,10 @@ end
 --  @class function
 --  @name next
 --  @see RS
---  @see getline
+--  @see getlines
 --  @see regex.find
 function next(state)
-    -- TODO lua -lP=luawk.runtime.posix -e'p=P.new() p.RS="\n\n+" for l,r in p.getline("-") do print(l) end' <<<$'\n\na\n\nb\n'
+    -- TODO lua -lP=luawk.runtime.posix -e'p=P.new() p.RS="\n\n+" for l,r in p.getlines("-") do print(l) end' <<<$'\n\na\n\nb\n'
     --      CORRECT => 0a 61 0a 62 0a |.a.b.|
     -- TODO awk -vRS="\n\n+" 1 <<<$'\n\na\n\nb\n'
     --      CORRECT => 0a 61 0a 62 0a |.a.b.|
