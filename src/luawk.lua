@@ -282,7 +282,8 @@ local function atoi(v) return tonumber(v) or 0 end
 local function incr(v) return atoi(v) + 1 end
 local function isinf(v) return v == math.huge or v == -math.huge end
 local function isnan(v) return v ~= v end
-local sym = {}
+local ctx = {}
+local status
 
 local function failfast(...)
     local r = { pcall(...) }
@@ -312,21 +313,116 @@ local function memoize(fn)
     end
 end
 
-local status
+local getline0 = coroutine.wrap(function()
+    local getline, state, var
+    for i=1,atoi(runtime.ARGC)-1 do
+        -- local getline, state, var
+        local filename = runtime.ARGV[i]
+        runtime.ARGIND = i
+
+        if filename == nil or filename == "" then
+            -- If the value of a particular element of ARGV is empty, skip over it.
+            goto SKIP
+        end
+
+        if type(filename) == "string" and filename:find("=") then
+            -- If an argument matches the format of an assignment operand, this
+            -- argument shall be treated as an assignment rather than a file argument.
+            local k,v = filename:match("^([_%a][_%w]*)=(.*)$")
+            if k then
+                runtime[k] = v
+                goto SKIP
+            end
+        end
+
+        runtime.FNR = 0
+        runtime.FILENAME = filename
+
+        -- BEGINFILE
+        for _, action in ipairs(program.BEGINFILE) do
+            local _, _status = pcall(action)
+            if _status == ctx then
+                if ctx.status == "nextfile" then
+                    goto NEXTFILE
+                else
+                    error(ctx, 0)
+                end
+            elseif type(_status) == "number" then
+                error(_status, 0)
+            elseif _status ~= nil then
+                abort("%s: error: %s\n", name, _status)
+            end
+        end
+
+        -- TODO FIXME cleanup open file descriptors, best would be to user runtime.close()
+        -- by calling the garbage collector we automatically close all dangling file descriptors
+        collectgarbage()
+
+        getline, state, var = failfast(runtime.getlines, filename)
+        if not getline then
+            abort("%s: error: %s\n", name, state)
+        end
+
+        for record, rt in wrapfail(getline), state, var do
+            runtime[0] = record
+            runtime.RT = rt
+            runtime.NR = incr(runtime.NR)
+            runtime.FNR = incr(runtime.FNR)
+            if coroutine.yield(true).status == "nextfile" then
+                goto NEXTFILE
+            end
+        end
+        ::NEXTFILE::
+
+        -- ENDFILE
+        for _, action in ipairs(program.ENDFILE) do
+            local _, _status = pcall(action)
+            if _status == ctx then
+                error(ctx, 0)
+            elseif type(_status) == "number" then
+                error(_status, 0)
+            elseif _status ~= nil then
+                abort("%s: error: %s\n", name, _status)
+            end
+        end
+
+        ::SKIP::
+    end
+
+    -- never return, indicate end of all streams
+    while true do
+        coroutine.yield(false)
+    end
+end)
 
 function runtime.exit(n)
-    sym.status = n or status or 0
-    error(sym, 0)
+    ctx.status = n or status or 0
+    error(ctx, 0)
 end
 
 function runtime.next()
-    sym.status = "next"
-    error(sym, 0)
+    ctx.status = "next"
+    error(ctx, 0)
 end
 
 function runtime.nextfile()
-    sym.status = "nextfile"
-    error(sym, 0)
+    ctx.status = "nextfile"
+    error(ctx, 0)
+end
+
+-- TODO real close(expr)
+
+function runtime.getline(...)
+    -- getline duality
+    if select('#', ...) == 0 then
+        if getline0() then
+            return true
+        else
+            getline0 = nil
+            return false
+        end
+    end
+    abort("%s: error: getline with expression is not implemented\n", name)
 end
 
 -- TODO getline in BEGIN should be handled, incl. BEGINFILE
@@ -339,8 +435,8 @@ end
 -- BEGIN
 for _, action in ipairs(program.BEGIN) do
     local _, _status = pcall(action)
-    if _status == sym then
-        status = sym.status
+    if _status == ctx then
+        status = ctx.status
         goto END
     elseif type(_status) == "number" then
         status = _status
@@ -353,85 +449,29 @@ end
 -- TODO ugly
 if #program.BEGINFILE + #program.main + #program.ENDFILE + #program.END == 0 then goto END end
 
-runtime.getline, runtime.close = memoize(runtime.getline)
+-- runtime.getline, runtime.close = memoize(runtime.getline)
 
-for i=1,atoi(runtime.ARGC)-1 do
-    local getline, state, var
-    local filename = runtime.ARGV[i]
-    runtime.ARGIND = i
-
-    if filename == nil or filename == "" then
-        -- If the value of a particular element of ARGV is empty, skip over it.
-        goto NEXTFILE
+while true do
+    local _, _status = pcall(getline0, ctx)
+    if _status == ctx then
+        status = ctx.status
+        goto END
+    elseif type(_status) == "number" then
+        status = _status
+        goto END
+    elseif _status == false then
+        goto END
     end
-
-    if type(filename) == "string" and filename:find("=") then
-        -- If an argument matches the format of an assignment operand, this
-        -- argument shall be treated as an assignment rather than a file argument.
-        local k,v = filename:match("^([_%a][_%w]*)=(.*)$")
-        if k then
-            runtime[k] = v
-            goto NEXTFILE
-        end
-    end
-
-    runtime.FNR = 0
-    runtime.FILENAME = filename
-
-    -- BEGINFILE
-    for _, action in ipairs(program.BEGINFILE) do
-        local _, _status = pcall(action)
-        if _status == sym then
-            status = sym.status
-            goto END
-        elseif type(_status) == "number" then
-            status = _status
-            goto END
-        elseif _status ~= nil then
-            abort("%s: error: %s\n", name, _status)
-        end
-    end
-
-    -- TODO FIXME cleanup open file descriptors, best would be to user runtime.close()
-    -- by calling the garbage collector we automatically close all dangling file descriptors
-    collectgarbage()
-
-    getline, state, var = failfast(runtime.getline, filename)
-    if not getline then
-        abort("%s: error: %s\n", name, state)
-    end
-
-    for record, rt in wrapfail(getline), state, var do
-        runtime[0] = record
-        runtime.RT = rt
-        runtime.NR = incr(runtime.NR)
-        runtime.FNR = incr(runtime.FNR)
-        for _, action in ipairs(program.main) do
-            local _, _status = pcall(action)
-            if _status == sym then
-                if     sym.status == "next"     then goto NEXT
-                elseif sym.status == "nextfile" then goto NEXTFILE
-                elseif sym.status ~= nil then
-                    status = sym.status
-                    goto END
-                end
-            elseif type(_status) == "number" then
-                status = _status
+    ctx.status = 0
+    for _, action in ipairs(program.main) do
+        _, _status = pcall(action)
+        if _status == ctx then
+            if     ctx.status == "next"     then goto NEXT
+            elseif ctx.status == "nextfile" then goto NEXT
+            else
+                status = ctx.status
                 goto END
-            elseif _status ~= nil then
-                abort("%s: error: %s\n", name, _status)
             end
-        end
-        ::NEXT::
-    end
-    ::NEXTFILE::
-
-    -- ENDFILE
-    for _, action in ipairs(program.ENDFILE) do
-        local _, _status = pcall(action)
-        if _status == sym then
-            status = sym.status
-            goto END
         elseif type(_status) == "number" then
             status = _status
             goto END
@@ -439,16 +479,14 @@ for i=1,atoi(runtime.ARGC)-1 do
             abort("%s: error: %s\n", name, _status)
         end
     end
-
-    failfast(runtime.close, filename)
+    ::NEXT::
 end
-::END::
 
--- END
+::END::
 for _, action in ipairs(program.END) do
     local _, _status = pcall(action)
-    if _status == sym then
-        status = sym.status
+    if _status == ctx then
+        status = ctx.status
         break
     elseif type(_status) == "number" then
         status = _status
