@@ -62,6 +62,11 @@ custom_display_name_handler = function(item, default_handler)
 			name = ("<code>%s</code>%s%s"):format(name:match("([^.:]*)([.:])(.*)"))
 		end
 	end
+	-- if item.tags.label then
+	-- 	for _,label in ipairs(item.tags.label) do
+	-- 		name = ("%s <sup>%s</sup>"):format(name, label)
+	-- 	end
+	-- end
 	-- if item.tags.default then
 	-- 	name = ("%s<small> = %s</small>"):format(name, item.tags.default[1]:match("%W*(%S+)"))
 	-- end
