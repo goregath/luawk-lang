@@ -400,13 +400,13 @@ local dogetline = coroutine.wrap(function()
 
         ::SKIP::
     end
+    ctx.action = "getline"
+    ctx.status = "exit"
 
     ::END::
     -- never return, indicate end of all streams
     while true do
         coroutine.yield(true)
-        ctx.action = "getline"
-        ctx.status = "exit"
     end
 end)
 
@@ -434,6 +434,10 @@ function runtime.getline(...)
     -- getline duality
     if select('#', ...) == 0 then
         if dogetline() then
+            -- TODO find a better indicator
+            if ctx.status == "exit" and ctx.action == "getline" then
+                return false
+            end
             error(ctx, 0)
         end
         return true
