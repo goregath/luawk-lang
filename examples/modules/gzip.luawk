@@ -34,21 +34,21 @@
 -- matters.
 
 -- ### Declare global function from within a BEGIN action block
--- By doing so we make sure that our _getline_ wrapper is defined before the
+-- By doing so we make sure that our _getlines_ wrapper is defined before the
 -- first file is read by the main loop. We can also define local variables
 -- inside of an action which comes in handy as you may tell from the next
 -- line.
 BEGIN {
 	-- ### Remember initial reference to [getline()](../runtimes/posix.html#class:getline)
-	-- First we store the current implementation of _getline_ as an
+	-- First we store the current implementation of _getlines_ as an
 	-- upvalue *\_getline* for our wrapper function.
-	local _getline = getline
+	local _getlines = getlines
 	-- ### Override the [getline()](../runtimes/posix.html#class:getline) builtin function
-	-- We can override _getline_ by simply defining a new function with the same name at global scope.
-	function getline(file)
-		-- The _getline_ function accepts a variety of types for _file_. If
-		-- the type is _string_, _getline_ interprets _file_ as a path. This
-		-- is the default case if _getline_ is called by the _luawk_ main loop.
+	-- We can override _getlines_ by simply defining a new function with the same name at global scope.
+	function getlines(file)
+		-- The _getlines_ function accepts a variety of types for _file_. If
+		-- the type is _string_, _getlines_ interprets _file_ as a path. This
+		-- is the default case if _getlines_ is called by the _luawk_ main loop.
 		-- With this in mind, we can safely check if _file_ ends with a certain
 		-- extension, e.g. `.gzip`, and install a custom handler.
 		if type(file) == "string" and file:match("%.gz$") then
@@ -69,12 +69,12 @@ BEGIN {
 			-- (which is a _pipe_) we received from _io.popen_. A call
 			-- to _io.popen_ may fail in several ways though and in this
 			-- case, _nil_ is returned. We just pass the value along to
-			-- let _getline_ eventually handle any error for us.
+			-- let _getlines_ eventually handle any error for us.
 			file = io.popen(cmdline, 'r')
 		end
-		-- Here we let _getline_ do the hard work of handling the stream.
-		-- This works because _getline_ can also accept previously opened
+		-- Here we let _getlines_ do the hard work of handling the stream.
+		-- This works because _getlines_ can also accept previously opened
 		-- file handles.
-		return _getline(file)
+		return _getlines(file)
 	end
 }
