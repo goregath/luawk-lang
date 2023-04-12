@@ -282,8 +282,7 @@ local function atoi(v) return tonumber(v) or 0 end
 local function incr(v) return atoi(v) + 1 end
 local function isinf(v) return v == math.huge or v == -math.huge end
 local function isnan(v) return v ~= v end
-local ctx = {}
-local status
+local ctx = { code = 0 }
 
 local function failfast(...)
     local r = { pcall(...) }
@@ -313,6 +312,21 @@ local function memoize(fn)
     end
 end
 
+local function doaction(fn, ...)
+    ctx.status = nil
+    local ok, val = pcall(fn, ...)
+    if ok and val == nil then
+        return false
+    elseif ok then
+        -- return value is exit code
+        ctx.status = "exit"
+        ctx.code = val
+    elseif val ~= ctx then
+        abort("%s: error: %s\n", name, val)
+    end
+    return true
+end
+
 local getline0 = coroutine.wrap(function()
     local getline, state, var
     for i=1,atoi(runtime.ARGC)-1 do
@@ -340,17 +354,12 @@ local getline0 = coroutine.wrap(function()
 
         -- BEGINFILE
         for _, action in ipairs(program.BEGINFILE) do
-            local _, _status = pcall(action)
-            if _status == ctx then
+            if doaction(action) then
                 if ctx.status == "nextfile" then
                     goto NEXTFILE
                 else
                     error(ctx, 0)
                 end
-            elseif type(_status) == "number" then
-                error(_status, 0)
-            elseif _status ~= nil then
-                abort("%s: error: %s\n", name, _status)
             end
         end
 
@@ -368,7 +377,8 @@ local getline0 = coroutine.wrap(function()
             runtime.RT = rt
             runtime.NR = incr(runtime.NR)
             runtime.FNR = incr(runtime.FNR)
-            if coroutine.yield(true).status == "nextfile" then
+            coroutine.yield(true)
+            if ctx.status == "nextfile" then
                 goto NEXTFILE
             end
         end
@@ -376,13 +386,8 @@ local getline0 = coroutine.wrap(function()
 
         -- ENDFILE
         for _, action in ipairs(program.ENDFILE) do
-            local _, _status = pcall(action)
-            if _status == ctx then
+            if doaction(action) then
                 error(ctx, 0)
-            elseif type(_status) == "number" then
-                error(_status, 0)
-            elseif _status ~= nil then
-                abort("%s: error: %s\n", name, _status)
             end
         end
 
@@ -396,7 +401,10 @@ local getline0 = coroutine.wrap(function()
 end)
 
 function runtime.exit(n)
-    ctx.status = n or status or 0
+    ctx.status = "exit"
+    if n then
+        ctx.code = n
+    end
     error(ctx, 0)
 end
 
@@ -415,12 +423,7 @@ end
 function runtime.getline(...)
     -- getline duality
     if select('#', ...) == 0 then
-        if getline0() then
-            return true
-        else
-            getline0 = nil
-            return false
-        end
+        return getline0()
     end
     abort("%s: error: getline with expression is not implemented\n", name)
 end
@@ -434,15 +437,8 @@ end
 
 -- BEGIN
 for _, action in ipairs(program.BEGIN) do
-    local _, _status = pcall(action)
-    if _status == ctx then
-        status = ctx.status
+    if doaction(action) then
         goto END
-    elseif type(_status) == "number" then
-        status = _status
-        goto END
-    elseif _status ~= nil then
-        abort("%s: error: %s\n", name, _status)
     end
 end
 
@@ -452,49 +448,50 @@ if #program.BEGINFILE + #program.main + #program.ENDFILE + #program.END == 0 the
 -- runtime.getline, runtime.close = memoize(runtime.getline)
 
 while true do
-    local _, _status = pcall(getline0, ctx)
-    if _status == ctx then
-        status = ctx.status
-        goto END
-    elseif type(_status) == "number" then
-        status = _status
-        goto END
-    elseif _status == false then
-        goto END
+    ctx.status = nil
+    local ok, val = pcall(getline0)
+    -- print(ok, val, ctx.status)
+    if not ok then
+        -- if ctx.status == "nextfile" then goto NEXT end
+        if ctx.status == "exit" then goto END end
+        abort("%s: error: %s\n", name, val)
+    end
+    if not val then
+        break
     end
     ctx.status = 0
     for _, action in ipairs(program.main) do
-        _, _status = pcall(action)
-        if _status == ctx then
-            if     ctx.status == "next"     then goto NEXT
-            elseif ctx.status == "nextfile" then goto NEXT
-            else
-                status = ctx.status
-                goto END
-            end
-        elseif type(_status) == "number" then
-            status = _status
+        if doaction(action) then
+            if ctx.status == "next" then goto NEXT end
+            if ctx.status == "nextfile" then goto NEXT end
             goto END
-        elseif _status ~= nil then
-            abort("%s: error: %s\n", name, _status)
         end
     end
     ::NEXT::
+    -- print("::NEXT::", ctx.status, ctx.code)
 end
 
 ::END::
+-- print("::END::", ctx.status, ctx.code)
 for _, action in ipairs(program.END) do
-    local _, _status = pcall(action)
-    if _status == ctx then
-        status = ctx.status
-        break
-    elseif type(_status) == "number" then
-        status = _status
-        break
-    elseif _status ~= nil then
-        abort("%s: error: %s\n", name, _status)
+    if doaction(action) then
+        if ctx.status == "exit" then break end
     end
+    -- local _, _status = pcall(action)
+    -- if _status == ctx then
+    --     status = ctx.status
+    --     break
+    -- elseif type(_status) == "number" then
+    --     status = _status
+    --     break
+    -- elseif _status ~= nil then
+    --     abort("%s: error: %s\n", name, _status)
+    -- end
 end
+
+-- print("exit", ctx.status, ctx.code)
+
+local status = ctx.code
 
 -- expect nil, false or number
 if status and type(status) ~= "number" or isnan(status) or isinf(status) then
