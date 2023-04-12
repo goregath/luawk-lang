@@ -59,6 +59,19 @@ setup() {
 	ASSERT
 }
 
+@test "getline in BEGIN" {
+	run luawk '
+		BEGIN { getline }
+		BEGIN { print "BEGIN" }
+		END   { print "END" }
+	'  /dev/null
+	assert_success
+	assert_output - <<-"ASSERT"
+		BEGIN
+		END
+	ASSERT
+}
+
 @test "pipe into getline" {
 	skip "not implemented"
 	#  expression | getline [var]
