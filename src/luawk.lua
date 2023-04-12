@@ -282,7 +282,7 @@ local function atoi(v) return tonumber(v) or 0 end
 local function incr(v) return atoi(v) + 1 end
 local function isinf(v) return v == math.huge or v == -math.huge end
 local function isnan(v) return v ~= v end
-local ctx = { code = 0 }
+local ctx = { action = "action", code = 0 }
 
 local function failfast(...)
     local r = { pcall(...) }
@@ -312,8 +312,9 @@ local function memoize(fn)
     end
 end
 
+--- Generic action.
+-- @return[2,type=true] state has been affected
 local function doaction(fn, ...)
-    ctx.status = nil
     local ok, val = pcall(fn, ...)
     if ok and val == nil then
         return false
@@ -327,6 +328,9 @@ local function doaction(fn, ...)
     return true
 end
 
+--- Special compound action for getline.
+--  This action may trigger BEGINFILE and ENDFILE actions.
+-- @return[2,type=true] state has been affected
 local dogetline = coroutine.wrap(function()
     local getline, state, var
     for i=1,atoi(runtime.ARGC)-1 do
@@ -354,6 +358,7 @@ local dogetline = coroutine.wrap(function()
 
         -- BEGINFILE
         for _, action in ipairs(program.BEGINFILE) do
+            ctx.action = "BEGINFILE"
             if doaction(action) then
                 if ctx.status == "nextfile" then
                     goto NEXTFILE
@@ -381,12 +386,13 @@ local dogetline = coroutine.wrap(function()
             if ctx.status == "nextfile" then
                 goto NEXTFILE
             end
-            ctx.status = nil
         end
         ::NEXTFILE::
+        ctx.status = nil
 
         -- ENDFILE
         for _, action in ipairs(program.ENDFILE) do
+            ctx.action = "ENDFILE"
             if doaction(action) then
                 goto END
             end
@@ -399,6 +405,7 @@ local dogetline = coroutine.wrap(function()
     -- never return, indicate end of all streams
     while true do
         coroutine.yield(true)
+        ctx.action = "getline"
         ctx.status = "exit"
     end
 end)
@@ -434,15 +441,9 @@ function runtime.getline(...)
     abort("%s: error: getline with expression is not implemented\n", name)
 end
 
--- TODO getline in BEGIN should be handled, incl. BEGINFILE
--- gawk 'BEGIN { while (getline) print } BEGINFILE { print FILENAME }' /dev/fd/3 3<<<"a" /dev/fd/4 4<<<"b
--- /dev/fd/3
--- a
--- /dev/fd/4
--- b
-
 -- BEGIN
 for _, action in ipairs(program.BEGIN) do
+    ctx.action = "BEGIN"
     if doaction(action) then
         goto END
     end
@@ -457,46 +458,35 @@ while true do
     if dogetline() then
         goto END
     end
-    -- local ok, val = pcall(dogetline)
-    -- -- print(ok, val, ctx.status)
-    -- if not ok then
-    --     -- if ctx.status == "nextfile" then goto NEXT end
-    --     if ctx.status == "exit" then goto END end
-    --     abort("%s: error: %s\n", name, val)
-    -- end
-    -- if not val then
-    --     break
-    -- end
     for _, action in ipairs(program.main) do
+        ctx.action = "action"
         if doaction(action) then
-            if ctx.status == "next" then goto NEXT end
-            if ctx.status == "nextfile" then goto NEXT end
+            if ctx.status == "next" then
+                ctx.status = nil
+                goto NEXT
+            end
+            if ctx.status == "nextfile" then
+                goto NEXT
+            end
             goto END
         end
     end
     ::NEXT::
-    -- print("::NEXT::", ctx.status, ctx.code)
 end
 
 ::END::
--- print("::END::", ctx.status, ctx.code)
 for _, action in ipairs(program.END) do
+    ctx.action = "END"
     if doaction(action) then
         if ctx.status == "exit" then break end
     end
-    -- local _, _status = pcall(action)
-    -- if _status == ctx then
-    --     status = ctx.status
-    --     break
-    -- elseif type(_status) == "number" then
-    --     status = _status
-    --     break
-    -- elseif _status ~= nil then
-    --     abort("%s: error: %s\n", name, _status)
-    -- end
 end
 
 -- print("exit", ctx.status, ctx.code)
+
+if ctx.status ~= nil and ctx.status ~= "exit" then
+    abort("%s: error: %s not allowed in %s\n", name, ctx.status, ctx.action)
+end
 
 local status = ctx.code
 
