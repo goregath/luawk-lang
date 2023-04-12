@@ -327,7 +327,7 @@ local function doaction(fn, ...)
     return true
 end
 
-local getline0 = coroutine.wrap(function()
+local dogetline = coroutine.wrap(function()
     local getline, state, var
     for i=1,atoi(runtime.ARGC)-1 do
         -- local getline, state, var
@@ -358,7 +358,7 @@ local getline0 = coroutine.wrap(function()
                 if ctx.status == "nextfile" then
                     goto NEXTFILE
                 else
-                    error(ctx, 0)
+                    goto END
                 end
             end
         end
@@ -377,26 +377,29 @@ local getline0 = coroutine.wrap(function()
             runtime.RT = rt
             runtime.NR = incr(runtime.NR)
             runtime.FNR = incr(runtime.FNR)
-            coroutine.yield(true)
+            coroutine.yield(false)
             if ctx.status == "nextfile" then
                 goto NEXTFILE
             end
+            ctx.status = nil
         end
         ::NEXTFILE::
 
         -- ENDFILE
         for _, action in ipairs(program.ENDFILE) do
             if doaction(action) then
-                error(ctx, 0)
+                goto END
             end
         end
 
         ::SKIP::
     end
 
+    ::END::
     -- never return, indicate end of all streams
     while true do
-        coroutine.yield(false)
+        coroutine.yield(true)
+        ctx.status = "exit"
     end
 end)
 
@@ -423,7 +426,10 @@ end
 function runtime.getline(...)
     -- getline duality
     if select('#', ...) == 0 then
-        return getline0()
+        if dogetline() then
+            error(ctx, 0)
+        end
+        return true
     end
     abort("%s: error: getline with expression is not implemented\n", name)
 end
@@ -448,18 +454,19 @@ if #program.BEGINFILE + #program.main + #program.ENDFILE + #program.END == 0 the
 -- runtime.getline, runtime.close = memoize(runtime.getline)
 
 while true do
-    ctx.status = nil
-    local ok, val = pcall(getline0)
-    -- print(ok, val, ctx.status)
-    if not ok then
-        -- if ctx.status == "nextfile" then goto NEXT end
-        if ctx.status == "exit" then goto END end
-        abort("%s: error: %s\n", name, val)
+    if dogetline() then
+        goto END
     end
-    if not val then
-        break
-    end
-    ctx.status = 0
+    -- local ok, val = pcall(dogetline)
+    -- -- print(ok, val, ctx.status)
+    -- if not ok then
+    --     -- if ctx.status == "nextfile" then goto NEXT end
+    --     if ctx.status == "exit" then goto END end
+    --     abort("%s: error: %s\n", name, val)
+    -- end
+    -- if not val then
+    --     break
+    -- end
     for _, action in ipairs(program.main) do
         if doaction(action) then
             if ctx.status == "next" then goto NEXT end
