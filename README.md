@@ -8,7 +8,7 @@ AWK for Lua
 
 TODO
 
-# LUAWK Language
+# Overview
 
 The syntax of LUAWK is a superset of Lua 5.1 with additional syntactic sugar from AWK.
 
