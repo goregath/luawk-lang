@@ -4,7 +4,9 @@
 
 AWK for Lua
 
-## Supported Keywords
+# AWK Compatibility
+
+## Supported Statements
 
 |                    | **exit** | **next** | **nextfile\*** | **getline** |
 |-------------------:|:--------:|:--------:|:--------------:|:-----------:|
@@ -13,5 +15,6 @@ AWK for Lua
 |      **BEGINFILE** |     x    |          |        x       |             |
 |        **ENDFILE** |     x    |          |                |             |
 | **pattern-action** |     x    |     x    |        x       |      x      |
+| **user functions** |     x    |     x    |        x       |      x      |
 
 \* *GNU extension*
