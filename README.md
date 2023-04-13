@@ -10,10 +10,15 @@ The syntax of LUAWK is a superset of Lua 5.1 with additional syntactic sugar fro
 
 ## Program Structure
 
+    function name(...) do ... end
+    local function name(...) do ... end
     pattern
     { action }
     pattern { action }
-    function name(parameter, ...) { statements }
+    BEGIN { action }
+    END { action }
+    BEGINFILE { action }
+    ENDFILE { action }
 
 # LUAWK Syntax
 
