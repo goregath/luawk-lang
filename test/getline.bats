@@ -120,3 +120,7 @@ setup() {
 @test "ERRNO in BEGINFILE" {
 	skip "not implemented"
 }
+
+@test "getline with argument" {
+	skip "not implemented"
+}
