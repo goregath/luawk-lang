@@ -40,7 +40,7 @@ The listing above is equivalent to the following construct.
     BEGINFILE { action }
     ENDFILE { action }
 
-# LUAWK Syntax
+# Syntax
 
 ## Operators
 
