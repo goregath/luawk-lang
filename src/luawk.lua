@@ -407,6 +407,8 @@ local dogetline = coroutine.wrap(function()
     -- never return, indicate end of all streams
     while true do
         coroutine.yield(true)
+        ctx.action = "getline"
+        ctx.status = "exit"
     end
 end)
 
@@ -433,6 +435,10 @@ end
 function runtime.getline(...)
     -- getline duality
     if select('#', ...) == 0 then
+        if ctx.action == "BEGINFILE" or ctx.action == "ENDFILE" then
+            ctx.status = "getline"
+            error(ctx, 0)
+        end
         if dogetline() then
             -- TODO find a better indicator
             if ctx.status == "exit" and ctx.action == "getline" then
