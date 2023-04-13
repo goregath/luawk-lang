@@ -6,15 +6,15 @@ AWK for Lua
 
 # AWK Compatibility
 
-## Supported Statements
+## Supported I/O Statements
 
-|                    | **exit** | **next** | **nextfile\*** | **getline** |
-|-------------------:|:--------:|:--------:|:--------------:|:-----------:|
-|          **BEGIN** |     x    |          |                |      x      |
-|            **END** |     x    |          |                |      x      |
-|      **BEGINFILE** |     x    |          |        x       |             |
-|        **ENDFILE** |     x    |          |                |             |
-| **pattern-action** |     x    |     x    |        x       |      x      |
-| **user functions** |     x    |     x    |        x       |      x      |
+|                    | **exit** | **getline** | **next** | **nextfile\*** | **print** | **printf** |
+|-------------------:|:--------:|:-----------:|:--------:|:--------------:|:---------:|:----------:|
+|          **BEGIN** |     x    |      x      |          |                |     x     |      x     |
+|            **END** |     x    |      x      |          |                |     x     |      x     |
+|      **BEGINFILE** |     x    |             |          |        x       |     x     |      x     |
+|        **ENDFILE** |     x    |             |          |                |     x     |      x     |
+| **pattern-action** |     x    |      x      |     x    |        x       |     x     |      x     |
+| **user functions** |     x    |      x      |     x    |        x       |     x     |      x     |
 
 \* *GNU extension*
