@@ -10,11 +10,27 @@ The syntax of LUAWK is a superset of Lua 5.1 with additional syntactic sugar fro
 
 ## Program Structure
 
+### User-Defined Functions
+
     function name(...) do ... end
     local function name(...) do ... end
+
+Top level function definitions are translated into a single *BEGIN* action that is executed before any other actions.
+The listing above is equivalent to the following construct.
+
+    BEGIN {
+        function name(...) do ... end
+        local function name(...) do ... end
+    }
+
+## Pattern-Action Pairs
+
     pattern
     { action }
     pattern { action }
+
+## Special Actions
+
     BEGIN { action }
     END { action }
     BEGINFILE { action }
