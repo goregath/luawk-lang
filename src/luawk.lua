@@ -100,6 +100,24 @@ do
         setfenv(chunk, runtime)
         return chunk
     end
+    local function rangepattern(e1, e2, a)
+        local on = false
+        -- TODO load compat
+        local fe1 = compile("return " .. e1, "begin-pattern")
+        local fe2 = compile("return " .. e2, "end-pattern")
+        local act = compile(a, "action")
+        return function()
+            if on then
+                act()
+                if fe2() then
+                    on = false
+                end
+            elseif fe1() then
+                act()
+                on = not fe2()
+            end
+        end
+    end
     -- getopt stage 1 - special flags and options
     for r, optarg, optind in getopt(arg, optstring) do
         if r == ':' then
@@ -246,14 +264,7 @@ do
                         end
                     elseif #src == 3 then
                         -- pattern, pattern, action
-                        -- FIXME
-                        -- TODO refactor, matching twice could be expensive
-                        abort("%s: range pattern not implemented\n", name)
-                        -- rangestate[at] = false
-                        -- list[at] = compile(string.format(
-                        --     'if coroutine.yield("x-range-on",%d,%s,%s) then %s end',
-                        --     at, table.unpack(src)
-                        -- ), "range-pattern-action")
+                        list[at] = rangepattern(table.unpack(src))
                     else
                         abort('%s: invalid pattern or action\n', name)
                     end
