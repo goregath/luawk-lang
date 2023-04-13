@@ -15,7 +15,6 @@ setup() {
 }
 
 @test "getline is a keyword" {
-	skip "bug"
 	run luawk '
 		function getline(...)
 			print("getline", select("#", ...), ...)
@@ -27,10 +26,9 @@ setup() {
 }
 
 @test "read entire input in BEGIN" {
-	skip "bug"
 	run luawk '
 		BEGIN {
-			while getline do
+			while getline() do
 				print
 			end
 		}
@@ -64,7 +62,7 @@ setup() {
 		BEGIN { getline }
 		BEGIN { print "BEGIN" }
 		END   { print "END" }
-	'  /dev/null
+	' /dev/null
 	assert_success
 	assert_output - <<-"ASSERT"
 		BEGIN
@@ -76,14 +74,49 @@ setup() {
 	run luawk '
 		END { getline }
 		END { print "END" }
-	'  /dev/null
+	' /dev/null
 	assert_success
 	assert_output - <<-"ASSERT"
 		END
 	ASSERT
 }
 
+@test "getline in BEGINFILE" {
+	run luawk '
+		BEGINFILE { getline }
+	' /dev/null
+	assert_failure
+}
+
+@test "getline in ENDFILE" {
+	run luawk '
+		ENDFILE { getline }
+	' /dev/null
+	assert_failure
+}
+
+@test "getline in action" {
+	run luawk '
+		{ getline }
+		{ print "action" }
+	' <<<$'line1'
+	assert_success
+	assert_output - <<-"ASSERT"
+		action
+	ASSERT
+}
+
 @test "pipe into getline" {
 	skip "not implemented"
 	#  expression | getline [var]
+}
+
+
+# TODO Inside the BEGINFILE rule, the value of ERRNO will be the empty string if
+# the file was opened successfully.  Otherwise, there is some problem with the
+# file and the code should use nextfile to skip it. If that is not done, gawk
+# produces its usual fatal error for files that cannot be opened.
+
+@test "ERRNO in BEGINFILE" {
+	skip "not implemented"
 }
