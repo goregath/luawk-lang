@@ -1,10 +1,14 @@
-# luawk
+# LUAWK
 
 [![CI](https://github.com/goregath/luawk/actions/workflows/ci.yml/badge.svg)](https://github.com/goregath/luawk/actions/workflows/ci.yml)
 
 AWK for Lua
 
-# LUAWK Overview
+# Introduction
+
+TODO
+
+# LUAWK Language
 
 The syntax of LUAWK is a superset of Lua 5.1 with additional syntactic sugar from AWK.
 
