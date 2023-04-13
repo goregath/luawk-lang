@@ -20,6 +20,12 @@ setup() {
 	assert_output $'line1\nline2'
 }
 
+@test "string pattern" {
+	run luawk '"^line%d+"' <<<$'line1\nline2'
+	assert_success
+	assert_output $'line1\nline2'
+}
+
 @test "regex pattern chain" {
 	run luawk '/^.n:/ and not /^d/' <<-"AWK"
 		dn: cn=John Doe,dc=example,dc=com
