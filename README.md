@@ -61,14 +61,16 @@ The listing above is equivalent to the following construct.
 ## Supported I/O Statements
 
 The following statements are syntactically equivalent to a lua *return statement*, thus no parenthesis are required.
+They can appear anywhere in code, that are expressions or statements, in contrast to a return statement that is only valid as a last statement in a block.
+There are some exceptions to the rule as you can see in the following table.
 
-|                    | **exit** | **getline** | **next** | **nextfile\*** | **print** | **printf** |
-|-------------------:|:--------:|:-----------:|:--------:|:--------------:|:---------:|:----------:|
-|          **BEGIN** |     x    |      x      |          |                |     x     |      x     |
-|            **END** |     x    |      x      |          |                |     x     |      x     |
-|      **BEGINFILE** |     x    |             |          |        x       |     x     |      x     |
-|        **ENDFILE** |     x    |             |          |                |     x     |      x     |
-| **pattern-action** |     x    |      x      |     x    |        x       |     x     |      x     |
-| **user functions** |     x    |      x      |     x    |        x       |     x     |      x     |
+|                      | **exit** | **getline** | **next** | **nextfile\*** | **print** | **printf** |
+|---------------------:|:--------:|:-----------:|:--------:|:--------------:|:---------:|:----------:|
+|          **BEGIN**   |     x    |      x      |          |                |     x     |      x     |
+|            **END**   |     x    |      x      |          |                |     x     |      x     |
+|      **BEGINFILE**\* |     x    |             |          |        x       |     x     |      x     |
+|        **ENDFILE**\* |     x    |             |          |                |     x     |      x     |
+| **pattern-action**   |     x    |      x      |     x    |        x       |     x     |      x     |
+| **user functions**   |     x    |      x      |     x    |        x       |     x     |      x     |
 
 \* *GNU extension*
