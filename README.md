@@ -4,9 +4,42 @@
 
 AWK for Lua
 
+# LUAWK Overview
+
+The syntax of LUAWK is a superset of Lua 5.1 with additional syntactic sugar from AWK.
+
+## Program Structure
+
+    pattern
+    { action }
+    pattern { action }
+    function name(parameter, ...) { statements }
+
+# LUAWK Syntax
+
+## Operators
+
+* Match Operator
+* Dollar-Operator
+
+## Patterns
+
+* ERE Pattern
+
+## Records
+
+* Dollar-Operator
+
+## User-Defined Functions
+
+* Global scope
+* Builtins can be replaced by user functions
+
 # AWK Compatibility
 
 ## Supported I/O Statements
+
+The following statements are syntactically equivalent to a lua *return statement*, thus no parenthesis are required.
 
 |                    | **exit** | **getline** | **next** | **nextfile\*** | **print** | **printf** |
 |-------------------:|:--------:|:-----------:|:--------:|:--------------:|:---------:|:----------:|
