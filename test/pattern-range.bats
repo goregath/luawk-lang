@@ -177,3 +177,23 @@ setup() {
 		-----
 	ASSERT
 }
+
+@test "single match with next" {
+	run luawk '/^+/,/^-/ { next } 1' <<-"AWK"
+		line1
+		line2
+		+++++
+		line3
+		line4
+		-----
+		line5
+		line6
+	AWK
+	assert_success
+	assert_output - <<-"ASSERT"
+		line1
+		line2
+		line5
+		line6
+	ASSERT
+}
