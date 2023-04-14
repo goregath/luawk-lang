@@ -154,3 +154,26 @@ setup() {
 		+++++
 	ASSERT
 }
+
+@test "range continues on next file" {
+	run luawk 'BEGINFILE { print FILENAME } /^+/,/^-/' /dev/fd/{3,4} 3<<-"FILE1" 4<<-"FILE2"
+		line1
+		line2
+		+++++
+		line3
+	FILE1
+		line4
+		-----
+		line5
+		line6
+	FILE2
+	assert_success
+	assert_output - <<-"ASSERT"
+		/dev/fd/3
+		+++++
+		line3
+		/dev/fd/4
+		line4
+		-----
+	ASSERT
+}
