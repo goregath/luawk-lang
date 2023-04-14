@@ -1,4 +1,4 @@
---- POSIX AWK Runtime.
+--- POSIX AWK Runtime Environment.
 -- @usage
 --     local libenvironment = require("luawk.environment.posix")
 --     local environment = libenvironment.new(_G)
