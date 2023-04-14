@@ -16,13 +16,12 @@ local getopt = require 'posix.unistd'.getopt
 
 local load = require 'luawk.compat53'.load
 local log = require 'luawk.log'
-local libruntime = require 'luawk.runtime'
 local utils = require 'luawk.utils'
 local abort = utils.abort
 local acall = utils.acall
+local runenv = require 'luawk.environment.gnu'.new(_G)
 
 local name = arg[0]:gsub("^(.*/)([^.]+).*$", "%2"):match("[^.]+") or "luawk"
-local runtime = _G
 local program = {
     BEGIN = {},
     END = {},
@@ -62,7 +61,6 @@ local function help(handle)
         "   -W flag\n",
         "   -W var=value\n",
         "\n",
-        "   -W runtime=module\n",
         "   -W regex=module\n",
         "   -W loglevel=level\n",
         "\n",
@@ -91,7 +89,7 @@ end
 do
     local sources = {}
     local function compile(src, srcname)
-        local chunk, msg = load(src, srcname, "t", runtime)
+        local chunk, msg = load(src, srcname, "t", runenv)
         if not chunk then
             msg = msg:gsub("^%b[]", "")
             abort('%s: [%s]%s\n', name, src, msg)
@@ -126,11 +124,7 @@ do
         elseif r == 'W' then
             local k,v = string.match(optarg, "^(%w+)=?(.*)$")
             if k then
-                if k == "runtime" then
-                    libruntime =
-                        utils.requireany(v, "luawk.runtime." .. v)
-                        or abort('%s: cannot find runtime for %q\n', name, v)
-                elseif k == "regex" then
+                if k == "regex" then
                     -- TODO refactor
                     local relib =
                         utils.requireany(v, "rex_" .. v)
@@ -149,9 +143,7 @@ do
             end
         end
     end
-    -- initialiaze final runtime implementaton
-    runtime = libruntime.new(runtime)
-    -- getopt stage 2 - runtime flags and options
+    -- getopt stage 2 - runenv flags and options
     local oneliner = true
     local last_index = 1
     for r, optarg, optind in getopt(arg, optstring) do
@@ -165,11 +157,11 @@ do
         end
         last_index = optind
         if r == 'F' then
-            runtime.FS = optarg
+            runenv.FS = optarg
         elseif r == 'v' then
             local k,v = string.match(optarg, "^([_%a][_%w]*)=(.*)$")
             if k and v then
-                runtime[k] = v
+                runenv[k] = v
             else
                 abort('%s: invalid argument: %s\n', name, optarg)
             end
@@ -213,10 +205,10 @@ do
         last_index = last_index + 1
     end
     -- TODO should fallback to stdin: awk 1 a=1
-    runtime.ARGV[1] = "-"
+    runenv.ARGV[1] = "-"
     -- remaining arguments are files
     for i = last_index, #arg do
-        runtime.ARGV[i-last_index+1] = arg[i]
+        runenv.ARGV[i-last_index+1] = arg[i]
     end
     -- compile sources
     for _,srcobj in ipairs(sources) do
@@ -278,8 +270,8 @@ do
         end
     end
     program = setmetatable(program, program_mt)
-    runtime.ARGV[0] = arg[0]
-    runtime.ARGC = #runtime.ARGV+1
+    runenv.ARGV[0] = arg[0]
+    runenv.ARGC = #runenv.ARGV+1
 end
 
 -- ---------------------------------------------------------
@@ -341,10 +333,10 @@ end
 -- @return[2,type=true] state has been affected
 local dogetline = coroutine.wrap(function()
     local getline, state, var
-    for i=1,atoi(runtime.ARGC)-1 do
+    for i=1,atoi(runenv.ARGC)-1 do
         -- local getline, state, var
-        local filename = runtime.ARGV[i]
-        runtime.ARGIND = i
+        local filename = runenv.ARGV[i]
+        runenv.ARGIND = i
 
         if filename == nil or filename == "" then
             -- If the value of a particular element of ARGV is empty, skip over it.
@@ -356,13 +348,13 @@ local dogetline = coroutine.wrap(function()
             -- argument shall be treated as an assignment rather than a file argument.
             local k,v = filename:match("^([_%a][_%w]*)=(.*)$")
             if k then
-                runtime[k] = v
+                runenv[k] = v
                 goto SKIP
             end
         end
 
-        runtime.FNR = 0
-        runtime.FILENAME = filename
+        runenv.FNR = 0
+        runenv.FILENAME = filename
 
         -- BEGINFILE
         for _, action in ipairs(program.BEGINFILE) do
@@ -376,20 +368,20 @@ local dogetline = coroutine.wrap(function()
             end
         end
 
-        -- TODO FIXME cleanup open file descriptors, best would be to user runtime.close()
+        -- TODO FIXME cleanup open file descriptors, best would be to user runenv.close()
         -- by calling the garbage collector we automatically close all dangling file descriptors
         collectgarbage()
 
-        getline, state, var = failfast(runtime.getlines, filename)
+        getline, state, var = failfast(runenv.getlines, filename)
         if not getline then
             abort("%s: error: %s\n", name, state)
         end
 
         for record, rt in wrapfail(getline), state, var do
-            runtime[0] = record
-            runtime.RT = rt
-            runtime.NR = incr(runtime.NR)
-            runtime.FNR = incr(runtime.FNR)
+            runenv[0] = record
+            runenv.RT = rt
+            runenv.NR = incr(runenv.NR)
+            runenv.FNR = incr(runenv.FNR)
             coroutine.yield(false)
             if ctx.status == "nextfile" then
                 goto NEXTFILE
@@ -420,7 +412,7 @@ local dogetline = coroutine.wrap(function()
     end
 end)
 
-function runtime.exit(n)
+function runenv.exit(n)
     ctx.status = "exit"
     if n then
         ctx.code = n
@@ -428,19 +420,19 @@ function runtime.exit(n)
     error(ctx, 0)
 end
 
-function runtime.next()
+function runenv.next()
     ctx.status = "next"
     error(ctx, 0)
 end
 
-function runtime.nextfile()
+function runenv.nextfile()
     ctx.status = "nextfile"
     error(ctx, 0)
 end
 
 -- TODO real close(expr)
 
-function runtime.getline(...)
+function runenv.getline(...)
     -- getline duality
     if select('#', ...) == 0 then
         if ctx.action == "BEGINFILE" or ctx.action == "ENDFILE" then
@@ -470,7 +462,7 @@ end
 -- TODO ugly
 if #program.BEGINFILE + #program.main + #program.ENDFILE + #program.END == 0 then goto END end
 
--- runtime.getline, runtime.close = memoize(runtime.getline)
+-- runenv.getline, runenv.close = memoize(runenv.getline)
 
 while true do
     if dogetline() then

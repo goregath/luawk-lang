@@ -4,7 +4,7 @@
 
 local M = {}
 
---- Find function used by luawk runtimes (`luawk.runtime.*`).
+--- Find function used by luawk environments (`luawk.environment.*`).
 --
 --  This function can be used by any luawk `Runtime` function to implement
 --  pattern matching facilities like `posix.match`, `posix.split` or `GNU.patsplit`.

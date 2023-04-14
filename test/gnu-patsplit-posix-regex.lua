@@ -4,14 +4,14 @@ local path = debug.getinfo(1, "S").source:sub(2):match("(.*)/") or "."
 package.path = string.format("%s/../src/?.lua;%s/lua/lib/?.lua;%s", path, path, package.path)
 
 local assert_equal = require "assert".assert_equal
-local group = require "testgroup".new("luawk.runtime.gnu patsplit() with extended regex (lrexlib)")
+local group = require "testgroup".new("luawk.environment.gnu patsplit() with extended regex (lrexlib)")
 
 local regex_find = require "luawk.regex".find
 
 group:setup(function()
 	local lrexlib = require "rex_posix"
 	require "luawk.regex".find = lrexlib.find
-	return require "luawk.runtime.gnu".new()
+	return require "luawk.environment.gnu".new()
 end)
 
 group:teardown(function()

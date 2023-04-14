@@ -1,18 +1,18 @@
 --- GNU AWK Runtime Environment.
 --
 -- Extends the @{posix|posix (Runtime)} environment.
--- @runtime gnu
+-- @environment gnu
 --
--- @usage require("luawk.runtime.gnu").new(_G)
+-- @usage require("luawk.environment.gnu").new(_G)
 -- @see gawk(1)
 
-local posix = require 'luawk.runtime.posix'
+local posix = require 'luawk.environment.posix'
 local regex = require 'luawk.regex'
 local utils = require 'luawk.utils'
 local isarray = utils.isarray
 local abort = utils.fail
 
---- The runtime class
+--- The environment class
 local class = setmetatable({}, { __index = posix.class })
 
 --- Constructors
@@ -59,7 +59,7 @@ class.PROCINFO = ''
 class.TEXTDOMAIN = ''
 
 --- Reserved Fields.
---  Variables reserved by an luawk-compliant runtime.
+--  Variables reserved by an luawk-compliant environment.
 --  @section reserved_fields
 
 --- The index in ARGV of the current file being processed.
@@ -92,7 +92,7 @@ class.TEXTDOMAIN = ''
 --- Split the string `s` into fields of array `a` matching pattern `fp` and return `n`.
 --
 --  @usage
---      local libawk = require("luawk.runtime.gnu")
+--      local libawk = require("luawk.environment.gnu")
 --      local gawk = libawk.new()
 --      local a, s = {}, {}
 --      local n = gawk:patsplit("0xDEAD, 0xBEEF", a, "%x%x", s)

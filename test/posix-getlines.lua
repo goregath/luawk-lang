@@ -6,7 +6,7 @@ package.path = string.format("%s/../src/?.lua;%s/lua/lib/?.lua;%s", path, path, 
 local assert_equal = require "assert".assert_equal
 local assert_true = require "assert".assert_true
 local assert_type = require "assert".assert_type
-local group = require "testgroup".new("luawk.runtime.posix getlines()")
+local group = require "testgroup".new("luawk.environment.posix getlines()")
 local iomock = {}
 
 function iomock.open(tbl)
@@ -18,7 +18,7 @@ function iomock:read()
 end
 
 group:setup(function()
-	return require "luawk.runtime.posix".new()
+	return require "luawk.environment.posix".new()
 end)
 
 group:add('getlines from path', function(R)

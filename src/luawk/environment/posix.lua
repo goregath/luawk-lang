@@ -1,8 +1,8 @@
 --- POSIX AWK Runtime.
 -- @usage
---     local libruntime = require("luawk.runtime.posix")
---     local runtime = libruntime.new(_G)
--- @runtime posix
+--     local libenvironment = require("luawk.environment.posix")
+--     local environment = libenvironment.new(_G)
+-- @environment posix
 -- @see awk(1p)
 
 local stdlib = require 'posix.stdlib'
@@ -16,7 +16,7 @@ local trim = utils.trim
 local abort = utils.fail
 local utf8 = require 'luawk.compat53'.utf8
 
---- The runtime class
+--- The environment class
 local class = {}
 
 --- Constructors
@@ -221,7 +221,7 @@ class.RS = '\n'
 class.RSTART = 0
 
 --- Reserved Fields.
---  Variables reserved by an luawk-compliant runtime.
+--  Variables reserved by an luawk-compliant environment.
 --  @section reserved_fields
 
 --- A pathname of the current input file. Inside a _BEGIN_ action the value is
@@ -253,7 +253,7 @@ end
 --- Return a new iterator function of @{next} with the opened file handle.
 --
 --  @usage
---    local F = require "luawk.runtime.posix".new()
+--    local F = require "luawk.environment.posix".new()
 --    F.RS = "\n"
 --    for record, rt in F.getlines("-") do
 --      print(record)
@@ -319,7 +319,7 @@ end
 --  given, the record value @{0|$0} is printed.
 --
 --  @usage
---    local F = require "luawk.runtime.posix".new()
+--    local F = require "luawk.environment.posix".new()
 --    F[0] = "a b c"
 --    F.print()
 --    -- a b c
@@ -414,7 +414,7 @@ end
 --  Any other pattern is considered as regex pattern in the domain of lua.
 --
 --  @usage
---    local F = require "luawk.runtime.posix".new()
+--    local F = require "luawk.environment.posix".new()
 --    local n = F:split "a b c"
 --    --    n = 3
 --    -- F[1] = "a"
@@ -510,7 +510,7 @@ function class:split(...)
 end
 
 --- Reserved Methods.
---  Methods reserved by an luawk-compliant runtime.
+--  Methods reserved by an luawk-compliant environment.
 --  @section reserved_methods
 
 --- Skip current record.
@@ -537,7 +537,7 @@ end
 
 --- Fields as handled by @{split}() for @{0|$0}.
 --  @usage
---    local F = require 'luawk.runtime.posix':new()
+--    local F = require 'luawk.environment.posix':new()
 --    F.OFS = ","
 --    F[0] = "a b c"
 --    F[NF+1] = "d"
@@ -589,7 +589,7 @@ end
 --  @see getlines
 --  @see regex.find
 function next(state)
-    -- TODO lua -lP=luawk.runtime.posix -e'p=P.new() p.RS="\n\n+" for l,r in p.getlines("-") do print(l) end' <<<$'\n\na\n\nb\n'
+    -- TODO lua -lP=luawk.environment.posix -e'p=P.new() p.RS="\n\n+" for l,r in p.getlines("-") do print(l) end' <<<$'\n\na\n\nb\n'
     --      CORRECT => 0a 61 0a 62 0a |.a.b.|
     -- TODO awk -vRS="\n\n+" 1 <<<$'\n\na\n\nb\n'
     --      CORRECT => 0a 61 0a 62 0a |.a.b.|

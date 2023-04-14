@@ -4,10 +4,10 @@ local path = debug.getinfo(1, "S").source:sub(2):match("(.*)/") or "."
 package.path = string.format("%s/../src/?.lua;%s/lua/lib/?.lua;%s", path, path, package.path)
 
 local assert_equal = require "assert".assert_equal
-local group = require "testgroup".new("luawk.runtime.posix split()")
+local group = require "testgroup".new("luawk.environment.posix split()")
 
 group:setup(function()
-	return require "luawk.runtime.posix".new()
+	return require "luawk.environment.posix".new()
 end)
 
 group:add('defaults to FS="\\x20"', function(R)

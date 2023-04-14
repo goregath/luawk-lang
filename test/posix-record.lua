@@ -7,7 +7,7 @@ local assert_equal = require "assert".assert_equal
 local group = require "testgroup".new("record and field splitting")
 
 group:setup(function()
-	return require "luawk.runtime.posix".new()
+	return require "luawk.environment.posix".new()
 end)
 
 group:add("defaults", function(R)
