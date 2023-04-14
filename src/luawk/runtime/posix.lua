@@ -14,7 +14,7 @@ local utils = require 'luawk.utils'
 local isarray = utils.isarray
 local trim = utils.trim
 local abort = utils.fail
-local utf8charpattern = utils.utf8charpattern
+local utf8 = require 'luawk.compat53'.utf8
 
 --- The runtime class
 local class = {}
@@ -479,7 +479,7 @@ function class:split(...)
         -- special null string mode
         -- empty field separator, split to characters
         local i = 1
-        for c in string.gmatch(s, utf8charpattern) do
+        for c in string.gmatch(s, utf8.charpattern) do
             a[i] = c
             i = i + 1
         end
