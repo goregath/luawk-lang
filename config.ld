@@ -23,7 +23,7 @@ alias("FIXME","fixme")
 alias("WARNING","warning")
 alias("BUG","fixme")
 
-new_type("runtime", "Runtimes", true)
+new_type("environment", "Environments", true)
 
 custom_tags = {
 	-- { "label", hidden = true },
