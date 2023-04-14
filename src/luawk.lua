@@ -14,11 +14,11 @@
 
 local getopt = require 'posix.unistd'.getopt
 
+local load = require 'luawk.compat53'.load
 local log = require 'luawk.log'
 local libruntime = require 'luawk.runtime'
 local utils = require 'luawk.utils'
 local abort = utils.abort
-local setfenv = utils.setfenv
 local acall = utils.acall
 
 local name = arg[0]:gsub("^(.*/)([^.]+).*$", "%2"):match("[^.]+") or "luawk"
@@ -90,31 +90,28 @@ end
 
 do
     local sources = {}
-    local loadstring = _G.loadstring or _G.load
     local function compile(src, srcname)
-        local chunk, msg = loadstring(src, srcname)
+        local chunk, msg = load(src, srcname, "t", runtime)
         if not chunk then
             msg = msg:gsub("^%b[]", "")
             abort('%s: [%s]%s\n', name, src, msg)
         end
-        setfenv(chunk, runtime)
         return chunk
     end
     local function rangepattern(e1, e2, a)
         local on = false
-        -- TODO load compat
         local fe1 = compile("return " .. e1, "begin-pattern")
         local fe2 = compile("return " .. e2, "end-pattern")
         local act = compile(a, "action")
         return function()
             if on then
-                act()
                 if fe2() then
                     on = false
                 end
-            elseif fe1() then
                 act()
+            elseif fe1() then
                 on = not fe2()
+                act()
             end
         end
     end
