@@ -19,6 +19,8 @@ local log = require 'luawk.log'
 local utils = require 'luawk.utils'
 local abort = utils.abort
 local acall = utils.acall
+
+local runtime = require "luawk.runtime"
 local librunenv = require 'luawk.environment.gnu'
 
 local name = arg[0]:gsub("^(.*/)([^.]+).*$", "%2"):match("[^.]+") or "luawk"
@@ -274,10 +276,13 @@ for _,srcobj in ipairs(sources) do
     end
 end
 
+-- ---------------------------------------------------------
+-- MAIN LOOP
+-- ---------------------------------------------------------
+
 program = setmetatable(program, program_mt)
 runenv.ARGV[0] = arg[0]
 runenv.ARGC = #runenv.ARGV+1
 
-local runtime = require "luawk.runtime"
 local status = runtime.run(program, runenv)
 os.exit(status)
