@@ -1,7 +1,11 @@
-#!/usr/bin/env lua
+#!/bin/sh -e
 
-local path = debug.getinfo(1, "S").source:sub(2):match("(.*)/") or "."
-package.path = string.format("%s/../src/?.lua;%s/lua/lib/?.lua;%s", path, path, package.path)
+if true --[[; then
+	cd "${0%%/*}"
+	exec /usr/bin/env lua -lluacov "${0##*/}" "$@"
+fi; --]] then
+	package.path = "../src/?.lua;lua/lib/?.lua;" .. package.path
+end
 
 local assert_equal = require "assert".assert_equal
 local assert_true = require "assert".assert_true

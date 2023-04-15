@@ -1,7 +1,7 @@
 doc/
 
-# Compiled Lua sources
-luac.out
+# luacov files
+*.lcov
 
 # luarocks build files
 *.src.rock
