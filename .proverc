@@ -41,4 +41,5 @@ test/print.bats
 # test/printf.bats
 test/expression.bats
 test/generic.bats
+test/examples.bats
 test/oneliners.bats
