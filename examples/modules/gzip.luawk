@@ -24,10 +24,10 @@
 -- =======
 -- With _luawk_ we are able to write user defined function definitions with a
 -- global scope. It is also permitted to override builtin functions, just like
--- [getline()](../runtimes/posix.html#class:getline), 
--- [print()](../runtimes/posix.html#class:print), 
--- [match()](../runtimes/posix.html#class:match) or
--- [split()](../runtimes/posix.html#class:split). 
+-- [getlines()](../environments/posix.html#class:getlines), 
+-- [print()](../environments/posix.html#class:print), 
+-- [match()](../environments/posix.html#class:match) or
+-- [split()](../environments/posix.html#class:split). 
 
 -- User defined functions can be declared nearly anywhere in a program, that
 -- is, inside or outside of an action block. Only their order of appearance
@@ -39,11 +39,11 @@
 -- inside of an action which comes in handy as you may tell from the next
 -- line.
 BEGIN {
-	-- ### Remember initial reference to [getline()](../runtimes/posix.html#class:getline)
+	-- ### Remember initial reference to [getlines()](../environments/posix.html#class:getlines)
 	-- First we store the current implementation of _getlines_ as an
 	-- upvalue *\_getline* for our wrapper function.
 	local _getlines = getlines
-	-- ### Override the [getline()](../runtimes/posix.html#class:getline) builtin function
+	-- ### Override the [getlines()](../environments/posix.html#class:getlines) builtin function
 	-- We can override _getlines_ by simply defining a new function with the same name at global scope.
 	function getlines(file)
 		-- The _getlines_ function accepts a variety of types for _file_. If
