@@ -16,6 +16,10 @@ setup() {
 	TEST_TEMP_DIR="$(temp_make)"
 }
 
+teardown() {
+	temp_del "$TEST_TEMP_DIR"
+}
+
 @test "zcat" {
 	cat > "$TEST_TEMP_DIR"/file.txt <<-"TXT"
 		line1
