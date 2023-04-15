@@ -43,6 +43,8 @@ jobs:
           luarocks install lpeglabel
           luarocks install luaposix
           luarocks install lrexlib-posix
+          luarocks install luacov
+          luarocks install luacov-multiple
       
       # Runs a set of commands using the runners shell
       - name: Test
