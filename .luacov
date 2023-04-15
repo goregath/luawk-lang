@@ -3,11 +3,12 @@
 require "luacov.reporter.multiple"
 
 include = {
-	"src/luawk"
+	"src/"
 }
 
 exclude = {
-	"src/luawk/log"
+	"src/luawk/log",
+	"src/luawk/compat53",
 }
 
 modules = {
@@ -24,7 +25,8 @@ multiple = {
 	}
 }
 
-tick = true
+tick = false
+codefromstrings = true
 reporter = "multiple"
 statsfile = "test-coverage.lcov"
 reportfile = "test-coverage.txt"
