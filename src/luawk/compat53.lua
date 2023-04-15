@@ -41,7 +41,7 @@ if version == 51 then
         if not f then
             return nil, msg
         end
-        return setfenv(f, env)
+        return env and setfenv(f, env) or f
     end
 end
 
