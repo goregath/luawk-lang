@@ -1,0 +1,5 @@
+-- luacheck: ignore 111
+
+reporter = "html"
+statsfile = "../coverage.out"
+reportfile = "../doc/coverage.html"
