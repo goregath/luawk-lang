@@ -1,5 +1,0 @@
--- luacheck: ignore 111
-
-reporter = "html"
-statsfile = "../test.lcov"
-reportfile = "../doc/test/coverage.html"

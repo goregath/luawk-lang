@@ -1,0 +1,30 @@
+-- luacheck: ignore 111
+
+require "luacov.reporter.multiple"
+
+include = {
+	"src/luawk"
+}
+
+exclude = {
+	"src/luawk/log"
+}
+
+modules = {
+   ["luawk.*"] = "src"
+}
+
+multiple = {
+	reporters = {
+		"default",
+		"multiple.html"
+	},
+	html = {
+		reportfile = "doc/test/index.html"
+	}
+}
+
+tick = true
+reporter = "multiple"
+statsfile = "test-coverage.lcov"
+reportfile = "test-coverage.txt"

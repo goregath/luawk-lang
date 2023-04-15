@@ -1,10 +1,10 @@
 #!/bin/sh -e
 
 if true --[[; then
-	cd "${0%%/*}"
-	exec /usr/bin/env lua -lluacov "${0##*/}" "$@"
+	cd "${0%%/*}/.."
+	exec /usr/bin/env lua -lluacov "test/${0##*/}" "$@"
 fi; --]] then
-	package.path = "../src/?.lua;lua/lib/?.lua;" .. package.path
+	package.path = "src/?.lua;test/?.lua;test/lua/lib/?.lua;" .. package.path
 end
 
 local assert_equal = require "assert".assert_equal

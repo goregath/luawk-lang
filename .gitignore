@@ -2,6 +2,7 @@ doc/
 
 # luacov files
 *.lcov
+test-*.txt
 
 # luarocks build files
 *.src.rock
