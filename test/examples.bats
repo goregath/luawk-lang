@@ -14,7 +14,6 @@ setup() {
 	load 'bats/bats-assert/load'
 	load 'bats/bats-file/load'
 	TEST_TEMP_DIR="$(temp_make)"
-	export LUAWK_PATH="examples/modules/?.luawk"
 }
 
 @test "zcat" {
