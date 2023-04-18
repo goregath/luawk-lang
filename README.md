@@ -1,18 +1,48 @@
-# LUAWK
-
 [![CI](https://github.com/goregath/luawk/actions/workflows/ci.yml/badge.svg)](https://github.com/goregath/luawk/actions/workflows/ci.yml)
 
-AWK for Lua
+Synopsis
+========
 
-# Introduction
+LUAWK is an AWK-alike language and application written in Lua.
 
-TODO
+This project is currently in an alpha stage and may introduce breaking changes in the future.
 
-# Overview
+Description
+===========
+
+At its core LUAWK is a domain-specific language for processing textutal data.
+Although not a direct clone of AWK, many ideas and concepts apply for LUAWK.
+The overall program structure for example is very close to AWK while the actions itself are expressed in a grammar very close to Lua.
+
+* GNU AWK Extensions
+* POSIX
+
+Motiviation
+-----------
+
+LUAWK is an ongoing attempt to create a highly extensible version of AWK.
+
+* Idea: Combine compactness of AWK with an extension language like Lua
+* Benefit from Lua ecosystem
+* Learn both langugaes
+* Both great languages
+* Lua is influenced by AWK in some ways
+* Both languages naturally combine
+* Combine the strengths and weaknesses of both
+* Filter for structured data
+* Initial idea: patch tarballs with awk
+* Unsatisfactory Attempts: Patching busybox AWK, using libmawk
+
+Overview
+========
+
+Syntax
+------
 
 The syntax of LUAWK is a superset of Lua 5.1 with additional syntactic sugar from AWK.
 
-## Program Structure
+Program Structure
+-----------------
 
 ### User-Defined Functions
 
