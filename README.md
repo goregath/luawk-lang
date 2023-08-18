@@ -22,6 +22,10 @@ LUAWK is an AWK-alike language and application written in Lua.
 
 This project is currently in an alpha stage and may introduce breaking changes in the future.
 
+```bash
+echo 'a:b:c' | luawk -F: '{ print $2 }' # yields: b
+```
+
 Description
 ===========
 
