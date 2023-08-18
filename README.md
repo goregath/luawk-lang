@@ -19,7 +19,7 @@ There are also ongoing attempts to switch from pure Lua to a more elegant dialec
 Synopsis
 ========
 
-LUAWK is an AWK-alike language and application written in Lua.
+LUAWK is an AWK-alike, data-driven programming language written in Lua.
 
 This project is currently in an alpha stage and may introduce breaking changes in the future.
 
