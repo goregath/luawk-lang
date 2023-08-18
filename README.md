@@ -37,6 +37,8 @@ Usage: luawk [-W option] [-F value] [-v var=value] [--] 'program' [file ...]
    -W loglevel=level
 ```
 
+Example:
+
 ```bash
 echo 'a:b:c' | luawk -F: '{ print $2 }' # yields: b
 ```
