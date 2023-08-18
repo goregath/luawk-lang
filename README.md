@@ -1,5 +1,20 @@
 [![CI](https://github.com/goregath/luawk/actions/workflows/ci.yml/badge.svg)](https://github.com/goregath/luawk/actions/workflows/ci.yml)
 
+Luawk Beta
+==========
+
+**DISCLAIMER: This application is currently in an early stage of development.**
+**Feel free to play around but do not assume production ready code.**
+
+State of Development
+--------------------
+
+Despite all efforts to support *Lua 5.1* and *LuaJIT*, this project is tested against a more recent version of *Lua 5.4* with [luaposix].
+
+Please have a look at the [test/] folder to see what features are currently supported. There are two kinds of tests, unit test use a simple Lua test suite (see `test/*.lua`), integration and command-line tests are run with [bats] (see `test/*.bats`).
+
+There are also ongoing attempts to switch from pure Lua to a more elegant dialect for Luawk. A very intereseting candidate would be [erde-lang/erde][erde-lang] that has recently become stable.
+
 Synopsis
 ========
 
@@ -33,8 +48,8 @@ LUAWK is an ongoing attempt to create a highly extensible version of AWK.
 * Initial idea: patch tarballs with awk
 * Unsatisfactory Attempts: Patching busybox AWK, using libmawk
 
-Overview
-========
+DRAFT
+=====
 
 Syntax
 ------
@@ -72,25 +87,11 @@ The listing above is equivalent to the following construct.
 
 # Syntax
 
-## Operators
-
-* Match Operator
-* Dollar-Operator
-
-## Patterns
-
-* ERE Pattern
-
-## Records
-
-* Dollar-Operator
-
-## User-Defined Functions
-
-* Global scope
-* Builtins can be replaced by user functions
+TODO
 
 # AWK Compatibility
+
+TODO
 
 ## Supported I/O Statements
 
@@ -108,3 +109,8 @@ There are some exceptions to the rule as you can see in the following table.
 | **user functions**   |     x    |      x      |     x    |        x       |     x     |      x     |
 
 \* *GNU extension*
+
+[test/]: test/
+[bats]: https://bats-core.readthedocs.io/
+[luaposix]: http://luaposix.github.io/luaposix
+[erde-lang]: https://erde-lang.github.io/
