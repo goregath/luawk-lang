@@ -23,6 +23,15 @@ LUAWK is an AWK-alike language and application written in Lua.
 
 This project is currently in an alpha stage and may introduce breaking changes in the future.
 
+```plain
+Usage: luawk.lua [-F value] [-v var=value] [--] 'program' [file ...]
+       luawk.lua [-F value] [-v var=value] [-f file] [--] [file ...]
+
+    -f file        Program text is read from file instead of from the command line.
+    -F value       Sets the field separator, FS, to value.
+    -v var=value   Assigns value to program variable var.
+```
+
 ```bash
 echo 'a:b:c' | luawk -F: '{ print $2 }' # yields: b
 ```
