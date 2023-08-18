@@ -3,7 +3,7 @@
 Luawk Beta
 ==========
 
-**DISCLAIMER: This application is currently in an early stage of development.**
+**DISCLAIMER: This application is currently in an early stage.**
 **Feel free to play around but do not assume production ready code.**
 
 State of Development
