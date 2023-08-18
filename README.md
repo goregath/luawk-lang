@@ -8,12 +8,13 @@ Luawk Beta
 
 State of Development
 --------------------
-
 Despite all efforts to support *Lua 5.1* and *LuaJIT*, this project is tested against a more recent version of *Lua 5.4* with [luaposix].
 
 Please have a look at the [test/] folder to see what features are currently supported. There are two kinds of tests, unit test use a simple Lua test suite (see `test/*.lua`), integration and command-line tests are run with [bats] (see `test/*.bats`).
 
 There are also ongoing attempts to switch from pure Lua to a more elegant dialect for Luawk. A very intereseting candidate would be [erde-lang/erde][erde-lang] that has recently become stable.
+
+---
 
 Synopsis
 ========
@@ -51,9 +52,6 @@ LUAWK is an ongoing attempt to create a highly extensible version of AWK.
 * Filter for structured data
 * Initial idea: patch tarballs with awk
 * Unsatisfactory Attempts: Patching busybox AWK, using libmawk
-
-DRAFT
-=====
 
 Syntax
 ------
