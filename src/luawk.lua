@@ -22,6 +22,7 @@ local acall = utils.acall
 
 local erde = require "erde"
 
+local luawktype = require "luawk.type"
 local runtime = require "luawk.runtime"
 local librunenv = require 'luawk.environment.gnu'
 
@@ -259,7 +260,7 @@ for _,srcobj in ipairs(sources) do
                         list[at] = compile(runenv, src[2], "action")
                     else
                         list[at] = compile(runenv, string.format(
-                            'if %s { %s }',
+                            'if(0+(%s)!=0){%s}',
                             table.unpack(src)
                         ), "pattern-action")
                     end
@@ -297,6 +298,8 @@ setmetatable(runenv, runmt)
 function runmt:__pow(e)
     return self[e]
 end
+
+luawktype.enable()
 
 local status = runtime.run(program, runenv)
 os.exit(status)
