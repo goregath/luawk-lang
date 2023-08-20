@@ -284,5 +284,13 @@ program = setmetatable(program, program_mt)
 runenv.ARGV[0] = arg[0]
 runenv.ARGC = #runenv.ARGV+1
 
+-- Support for ${expr} grammar
+-- ${expr} evaluates to _ENV^{expr}
+local runmt = getmetatable(runenv) or {}
+setmetatable(runenv, runmt)
+function runmt:__pow(e)
+    return self[e]
+end
+
 local status = runtime.run(program, runenv)
 os.exit(status)
