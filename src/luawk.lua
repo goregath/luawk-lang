@@ -20,6 +20,8 @@ local utils = require 'luawk.utils'
 local abort = utils.abort
 local acall = utils.acall
 
+local erde = require "erde"
+
 local runtime = require "luawk.runtime"
 local librunenv = require 'luawk.environment.gnu'
 
@@ -87,7 +89,11 @@ local function librequire(path)
 end
 
 local function compile(env, src, srcname)
-    local chunk, msg = load(src, srcname, "t", env)
+    local ok, lsrc = pcall(erde.compile, src)
+    if not ok then
+        abort('%s: %s\n', name, lsrc)
+    end
+    local chunk, msg = load(lsrc, srcname, "t", env)
     if not chunk then
         msg = msg:gsub("^%b[]", "")
         abort('%s: [%s]%s\n', name, src, msg)
@@ -253,7 +259,7 @@ for _,srcobj in ipairs(sources) do
                         list[at] = compile(runenv, src[2], "action")
                     else
                         list[at] = compile(runenv, string.format(
-                            'if %s then %s end',
+                            'if %s { %s }',
                             table.unpack(src)
                         ), "pattern-action")
                     end
