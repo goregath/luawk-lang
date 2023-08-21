@@ -53,12 +53,6 @@ local grammar = {
 		  Cb('program') * Cc('BEGIN') / rawget * Cs(V'function')
 		;
 
-	["function"] =
-		  P'function' * blank^1
-		* V'name' * '(' * sp * V'exp'^0 * sp * ')' * sp
-		* '{' * sp * V'chunk' * sp * '}'
-		;
-
 	rule =
 		  Cb('program') * C(V'specialpattern') / rawget * sp * Cs(V'action')
 		+ Cb('program') * Cc('main') / rawget * Ct( Cs(V'pattern') * sp * Cs(V'action') )
@@ -141,6 +135,12 @@ local grammar = {
 		  (V'exp' + eol)^0
 		;
 
+	["function"] =
+		  P'function' * blank^1
+		* V'name' * '(' * sp * V'exp'^0 * sp * ')' * sp
+		* '{' * sp * V'chunk' * sp * '}'
+		;
+
 	longstring = C(P{ -- from Roberto Ierusalimschy's lpeg examples
 		V'open' * C((P(1) - V'closeeq')^0) * V'close' / function (_, s) return s end;
 
@@ -154,6 +154,7 @@ local grammar = {
 			  Cmt(V'close' * Cb'init', function (_, _, a, b) return a == b end)
 	});
 
+	-- TODO support string interpolations
 	string =
 		  '"' * ('\\' * P(1) + (P(1) - '"'))^0 * '"'
 		+ "'" * ("\\" * P(1) + (P(1) - "'"))^0 * "'"
