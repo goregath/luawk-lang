@@ -21,7 +21,8 @@ local Cs = lpeg.Cs
 local Ct = lpeg.Ct
 
 local nl = P'\n'
-local sp = P(locale.space + V'comment' - nl)^0
+local blank = P(locale.space + V'comment')
+local sp = blank^0
 local eol = P';' + nl
 local deref = P'$' / '_ENV^'
 local shebang = P"#" * (P(1) - nl)^0 * nl
@@ -43,7 +44,20 @@ local grammar = {
 		main = {}
 	}), 'program');
 
-	shebang^-1 * V'newobj' * (((V'rule' / table.insert) * (sp * eol)^-1)^1)^0 * sp * -1;
+	shebang^-1 * V'newobj' * sp * (
+			  ( ( V'prolog' / table.insert * sp )^1 )^0
+			* ( ( V'rule' / table.insert * sp )^1 )^0 * sp * -1
+		);
+
+	prolog =
+		  Cb('program') * Cc('BEGIN') / rawget * Cs(V'function')
+		;
+
+	["function"] =
+		  P'function' * blank^1
+		* V'name' * '(' * sp * V'exp'^0 * sp * ')' * sp
+		* '{' * sp * V'chunk' * sp * '}'
+		;
 
 	rule =
 		  Cb('program') * C(V'specialpattern') / rawget * sp * Cs(V'action')
@@ -87,6 +101,12 @@ local grammar = {
 		+ deref^0 * '{' * sp * V'chunk' * sp * '}'
 		+ deref^0 * '(' * sp * V'exp'^-1 * sp * ')'
 		+ V'subscript'
+		+ V'name'
+		;
+
+	name =
+		  (locale.alpha + '_') * (locale.alnum + '_')^0
+		+ P'...'
 		+ P'$@' / '_ENV'
 		;
 
