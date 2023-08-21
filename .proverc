@@ -22,6 +22,7 @@ test/gnu-patsplit.lua
 test/gnu-patsplit-posix-regex.lua
 
 # Functional
+test/function.bats
 test/pattern.bats
 test/pattern-range.bats
 # test/action.bats
