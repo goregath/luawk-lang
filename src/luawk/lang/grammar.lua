@@ -23,7 +23,7 @@ local Ct = lpeg.Ct
 local nl = P'\n'
 local sp = P(locale.space + V'comment' - nl)^0
 local eol = P';' + nl
-local dollar = P'$' / '_ENV^'
+local deref = P'$' / '_ENV^'
 local shebang = P"#" * (P(1) - nl)^0 * nl
 
 local function quote(s)
@@ -70,30 +70,50 @@ local grammar = {
 		;
 
 	action =
-		  V'actionblock' * sp * -#V'op'
+		  V'actionblock' * sp * -#V'binop'
 		;
 
 	actionblock =
 		  ('{' * sp * Cs(V'chunk') * sp * '}') / '%1'
 		;
 
-	valuestub =
-		  dollar^0 * (locale.alnum + '_')^1
-		+ dollar^0 * V'string'
-		+ dollar^0 * '{' * sp * V'chunk' * sp * '}'
-		+ dollar^0 * '(' * sp * V'exp'^-1 * sp * ')'
-		+ '[' * sp * V'exp'^-1 * sp * ']'
+	subscript =
+		  '[' * sp * V'exp'^-1 * sp * ']'
 		;
 
-	op =
-		  1 - S'(){}[]' - V'valuestub' - eol - V'comment'
+	value =
+		  deref^0 * (locale.alnum + '_')^1
+		+ deref^0 * V'string'
+		+ deref^0 * '{' * sp * V'chunk' * sp * '}'
+		+ deref^0 * '(' * sp * V'exp'^-1 * sp * ')'
+		+ V'subscript'
+		;
+
+	lvalue =
+		  P'$' * Cs(V'value' * V'subscript'^0) / '_ENV[%1]'
+		+ V'value' * V'subscript'^0
+		;
+
+	ctlchr =
+		  1 - S'(){}[]' - V'value' - eol - V'comment'
+		;
+
+	assignop =
+		  V'ctlchr'^-1 * P'='
+		- S'=!<>' * P'='
+		;
+
+	binop =
+		  (V'ctlchr'^2 - V'assignop')
+		+ (V'ctlchr' - P'=')
 		;
 
 	exp =
-		  V'op' * sp * V'exp'
-		+ V'valuestub' * sp * #S'([' * sp * V'exp'
-		+ V'valuestub' * (sp * V'op'^1 * sp * V'exp')^-1
-		+ V'valuestub'
+		  V'binop' * sp * V'exp'
+		+ V'lvalue' * (sp * ',' * sp * V'lvalue')^0 * sp * (P'=' + V'assignop') * sp * V'exp'
+		+ V'value' * sp * #S'([' * sp * V'exp'
+		+ V'value' * (sp * V'binop'^1 * sp * V'exp')^-1
+		+ V'value'
 		;
 
 	chunk =
