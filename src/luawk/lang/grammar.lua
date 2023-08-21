@@ -87,11 +87,12 @@ local grammar = {
 		+ deref^0 * '{' * sp * V'chunk' * sp * '}'
 		+ deref^0 * '(' * sp * V'exp'^-1 * sp * ')'
 		+ V'subscript'
+		+ P'$@' / '_ENV'
 		;
 
 	lvalue =
-		  P'$' * Cs(V'value' * V'subscript'^0) / '_ENV[%1]'
-		+ V'value' * V'subscript'^0
+		  P'$' * Cs(V'value') / '_ENV[%1]'
+		+ V'value'
 		;
 
 	ctlchr =
