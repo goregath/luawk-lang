@@ -34,6 +34,16 @@ setup() {
 	assert_output 'a,c,'
 }
 
+@test "table.sort fields and print" {
+	run luawk '{ table.sort($@) } 1' <<<$'lorem ipsum dolor'
+	assert_output 'dolor ipsum lorem'
+}
+
+@test "table.sort fields in reverse and print" {
+	run luawk '{ table.sort($@,(l,r)->(l>r)) } 1' <<<$'sit amet dolor'
+	assert_output 'sit dolor amet'
+}
+
 @test "swap fields and print" {
 	run luawk -vOFS=, '{ $2,$1 = $1,$2 } 1' <<<$'a b c'
 	assert_output 'b,a,c'
@@ -59,7 +69,7 @@ setup() {
 	assert_output 'a,b,c,1,2,3'
 }
 
-@test "assinment in parameter list" {
+@test "assignment in parameter list" {
 	run luawk '{ print(NF) }' /dev/fd/3 FS=, /dev/fd/4 \
 		3<<<'a b c' \
 		4<<<'a,b,c'
@@ -67,4 +77,10 @@ setup() {
 		3
 		3
 	ASSERT
+}
+
+@test "null-terminated records" {
+	run luawk -vOFS=, 'BEGIN { RS="\0" } { NF=NF } 1' <(printf 'a b c\0d e f')
+	assert_line -n 0 'a,b,c'
+	assert_line -n 1 'd,e,f'
 }
