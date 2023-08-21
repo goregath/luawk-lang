@@ -195,6 +195,26 @@ group:add("set field outside NF updates NF", function(R)
 	assert_equal(R.NF, 5)
 end)
 
+group:add("add field (`+` operator)", function(R)
+	R[0] = " a b   c "
+	assert_equal(#R, 3)
+	R.OFS = ","
+	R = R + "x"
+	assert_equal(#R, 4)
+	assert_equal(R.NF, 4)
+	assert_equal(R[0], "a,b,c,x")
+end)
+
+group:add("bulk add fields (`+` operator)", function(R)
+	R[0] = " a b   c "
+	assert_equal(#R, 3)
+	R.OFS = ","
+	R = R + { "x", "y", "z" }
+	assert_equal(#R, 6)
+	assert_equal(R.NF, 6)
+	assert_equal(R[0], "a,b,c,x,y,z")
+end)
+
 -- local assert_error = require "test.utils".assert_error
 
 -- group:add("set NF to -1 causes error", function(R)

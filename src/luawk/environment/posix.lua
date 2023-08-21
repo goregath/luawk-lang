@@ -120,6 +120,16 @@ function class:new(lower)
                 rawset(t, k, v)
             end
         end,
+        __add = function(t,l)
+            if type(l) == "table" or type(l) == "userdata" then
+                for _,v in ipairs(l) do
+                    table.insert(t,v)
+                end
+            else
+                table.insert(t,l)
+            end
+            return t
+        end,
         __len = function()
             return R.n
         end
