@@ -50,7 +50,7 @@ setup() {
 }
 
 @test "add first two fields, set to third field and print" {
-	run luawk -vOFS=, '{ $3 += $1+$2 } 1' <<<$'13 29'
+	run luawk -vOFS=, '{ $3 = $1+$2 } 1' <<<$'13 29'
 	assert_output '13,29,42'
 }
 
@@ -67,6 +67,11 @@ setup() {
 @test "bulk add fields and print" {
 	run luawk -vOFS=, '{ $@ += { 1,2,3 } } 1' <<<$'a b c'
 	assert_output 'a,b,c,1,2,3'
+}
+
+@test "bulk add '\$@' to itself and print" {
+	run luawk -vOFS=, '{ $@ += $@ } 1' <<<$'a b c'
+	assert_output 'a,b,c,a,b,c'
 }
 
 @test "assignment in parameter list" {

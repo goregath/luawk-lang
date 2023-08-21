@@ -122,7 +122,7 @@ function class:new(lower)
         end,
         __add = function(t,l)
             if type(l) == "table" or type(l) == "userdata" then
-                for _,v in ipairs(l) do
+                for _,v in ipairs(t == l and { table.unpack(l) } or l) do
                     table.insert(t,v)
                 end
             else
