@@ -2,32 +2,32 @@
 -- @alias M
 -- @module compat53
 
-local version = tonumber((
-    assert(
-        _VERSION:sub(-3):match("5%.%d"),
-        "unable to parse lua version"
-    ):gsub("%D", "")
-))
-assert(
-    version >= 51 and version < 60,
-    "version mismatch, expected lua >= 5.1 and < 6.0"
-)
-
 local M = {
     load = load,
     utf8 = utf8
 }
 
-if version < 53 then
+local major, minor = (_VERSION or ""):match("(%d)%.(%d)")
+
+assert(major and minor, "unable to parse lua version")
+major, minor = tonumber(major), tonumber(minor)
+
+local version = major * 100 + minor
+assert(
+    version > 501,
+    "lua version mismatch, expected lua 5.1 or newer"
+)
+
+if version < 503 then
     M.utf8 = {
         charpattern =
-            version == 51
+            version == 501
             and "[%z\1-\127\194-\244][\128-\191]*"
             or  "[\0-\127\194-\244][\128-\191]*"
     }
 end
 
-if version == 51 then
+if version == 501 then
     local load = assert(load)
     local loadstring = assert(loadstring)
     local setfenv = assert(setfenv)
@@ -44,5 +44,9 @@ if version == 51 then
         return env and setfenv(f, env) or f
     end
 end
+
+M.version_normalized = version
+M.version_major = major
+M.version_minor = minor
 
 return M
