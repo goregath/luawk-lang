@@ -1,4 +1,6 @@
---- Mimic the AWK type system.
+--- Mimic the AWK type system emulation.
+-- @alias M
+-- @module type
 
 -- __add: the addition (+) operation. If any operand for an addition is not a
 --   number, Lua will try to call a metamethod. It starts by checking the
@@ -110,6 +112,7 @@ function intmt.__le (l, r) return  (atoi(l) or l and 1 or 0) <= (atoi(r) or r an
 function intmt.__unm(l)    return -(atoi(l) or l and 1 or 0)  end
 function intmt.__tostring(l) return (tonumber(l) or "")  end
 
+--- Enable AWK type system emulation.
 function M.enable()
 	debug.setmetatable("",   strmt)
 	debug.setmetatable(0,    intmt)
@@ -117,6 +120,7 @@ function M.enable()
 	debug.setmetatable(nil,  intmt)
 end
 
+--- Disable AWK type system emulation.
 function M.disable()
 	debug.setmetatable("",   oldstrmt)
 	debug.setmetatable(0,    oldintmt)
