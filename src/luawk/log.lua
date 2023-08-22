@@ -92,7 +92,8 @@ for lvl, mode in ipairs(modes) do
 				local val = argv[k]
 				local type = type(val)
 				if type == "string" then
-					return string.format("%q",tostring(val)):gsub("\\\n","\\n")
+					-- return string.format("%s",tostring(val)):gsub("\\\n","\\n")
+					return val
 				elseif type == "number" then
 					return tostring(val)
 				elseif type == "table" and log._level == "trace" then
