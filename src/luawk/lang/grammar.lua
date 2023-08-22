@@ -45,8 +45,8 @@ local grammar = {
 	}), 'program');
 
 	shebang^-1 * V'newobj' * sp * (
-			  ( ( V'prolog' / table.insert * sp )^1 )^0
-			* ( ( V'rule' / table.insert * sp )^1 )^0 * sp * -1
+			  ( ( V'prolog' / table.insert * (blank + eol)^0 )^1 )^0
+			* ( ( V'rule' / table.insert * (blank + eol)^0 )^1 )^0 * sp * -1
 		);
 
 	prolog =
@@ -55,9 +55,9 @@ local grammar = {
 
 	rule =
 		  Cb('program') * C(V'specialpattern') / rawget * sp * Cs(V'action')
-		+ Cb('program') * Cc('main') / rawget * Ct( Cs(V'pattern') * sp * Cs(V'action') )
-		+ Cb('program') * Cc('main') / rawget * Ct( Cs(V'pattern') * Cc('print()') )
-		+ Cb('program') * Cc('main') / rawget * Ct( Cc('true') * Cs(V'action') )
+		+ Cb('program') * Cc('main') / rawget * Ct( Cs(V'pattern') * (P',' * Cs(V'pattern'))^-1 * sp * Cs(V'action') )
+		+ Cb('program') * Cc('main') / rawget * Ct( Cs(V'pattern') * (P',' * Cs(V'pattern'))^-1 * Cc('print()') )
+		+ Cb('program') * Cc('main') / rawget * Ct( Cc(true) * Cs(V'action') )
 		;
 
 	pattern =
@@ -85,16 +85,12 @@ local grammar = {
 		  ('{' * sp * Cs(V'chunk') * sp * '}') / '%1'
 		;
 
-	subscript =
-		  '[' * sp * V'exp'^-1 * sp * ']'
-		;
-
 	value =
 		  deref^0 * (locale.alnum + '_')^1
 		+ deref^0 * V'string'
 		+ deref^0 * '{' * sp * V'chunk' * sp * '}'
-		+ deref^0 * '(' * sp * V'exp'^-1 * sp * ')'
-		+ V'subscript'
+		+ deref^0 * '(' * sp * V'chunk' * sp * ')'
+		+ deref^0 * '[' * sp * V'chunk' * sp * ']'
 		+ V'name'
 		;
 
@@ -110,7 +106,7 @@ local grammar = {
 		;
 
 	ctlchr =
-		  1 - S'(){}[]' - V'value' - eol - V'comment'
+		  1 - S',(){}[]' - V'value' - eol - V'comment'
 		;
 
 	assignop =
@@ -132,7 +128,7 @@ local grammar = {
 		;
 
 	chunk =
-		  (V'exp' + eol)^0
+		  (V'exp' + P',' + eol)^0
 		;
 
 	["function"] =

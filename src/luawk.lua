@@ -69,7 +69,7 @@ local function help(handle)
         "   -W var=value\n",
         "\n",
         "   -W regex=module\n",
-        "   -W loglevel=level\n",
+        "   -W log=level\n",
         "\n",
     })
 end
@@ -89,10 +89,13 @@ local function librequire(path)
     return nil
 end
 
+local erdeopts = { alias = "" }
 local function compile(env, src, srcname)
-    local ok, lsrc = pcall(erde.compile, src)
+    log.debug("%s: %s\n", srcname, src)
+    local ok, lsrc = pcall(erde.compile, src, erdeopts)
     if not ok then
-        abort('%s: %s\n', name, lsrc)
+        lsrc = lsrc:gsub("^:%d%s*:%s*", "")
+        abort('%s: error: %s\n', name, lsrc)
     end
     local chunk, msg = load(lsrc, srcname, "t", env)
     if not chunk then
@@ -100,6 +103,14 @@ local function compile(env, src, srcname)
         abort('%s: [%s]%s\n', name, src, msg)
     end
     return chunk
+    -- TODO maybe needed for stateful chunks
+    -- for i=1,2 do
+    --     if not debug.getupvalue(chunk, i) then
+    --         debug.setupvalue(chunk, i, "_")
+    --         return chunk
+    --     end
+    -- end
+    -- abort('%s: %s\n', name, "failed to register upvalue")
 end
 
 local function rangepattern(env, e1, e2, a)
@@ -260,8 +271,7 @@ for _,srcobj in ipairs(sources) do
                         list[at] = compile(runenv, src[2], "action")
                     else
                         list[at] = compile(runenv, string.format(
-                            'if(0+(%s)!=0){%s}',
-                            table.unpack(src)
+                            'if(0+(%s)!=0){%s}', src[1], src[2]
                         ), "pattern-action")
                     end
                 elseif #src == 3 then
@@ -299,6 +309,10 @@ function runmt:__pow(e)
     return self[e]
 end
 
+erde.load({
+    keep_traceback = false,
+    disable_source_maps = false,
+})
 luawktype.enable()
 
 local status = runtime.run(program, runenv)
