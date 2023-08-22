@@ -14,7 +14,8 @@
 
 local getopt = require 'posix.unistd'.getopt
 
-local load = require 'luawk.compat53'.load
+local compat53 = require 'luawk.compat53'
+local load = compat53.load
 local log = require 'luawk.log'
 local utils = require 'luawk.utils'
 local abort = utils.abort
@@ -89,14 +90,19 @@ local function librequire(path)
     return nil
 end
 
-local erdeopts = { alias = "" }
+local erdeopts = {
+    lua_target = compat53.version,
+    bitlib = compat53.version_normalized < 503 and 'luawk.compat53' or nil,
+    alias = "",
+}
 local function compile(env, src, srcname)
-    log.debug("%s: %s\n", srcname, src)
+    log.trace("%s: %s\n", srcname, src)
     local ok, lsrc = pcall(erde.compile, src, erdeopts)
     if not ok then
         lsrc = lsrc:gsub("^:%d%s*:%s*", "")
         abort('%s: error: %s\n', name, lsrc)
     end
+    log.trace("%s: %s\n", srcname, lsrc)
     local chunk, msg = load(lsrc, srcname, "t", env)
     if not chunk then
         msg = msg:gsub("^%b[]", "")
@@ -271,7 +277,7 @@ for _,srcobj in ipairs(sources) do
                         list[at] = compile(runenv, src[2], "action")
                     else
                         list[at] = compile(runenv, string.format(
-                            'if(0+(%s)!=0){%s}', src[1], src[2]
+                            'if((%s)+0!=0){%s}', src[1], src[2]
                         ), "pattern-action")
                     end
                 elseif #src == 3 then
