@@ -74,7 +74,7 @@ local grammar = {
 		;
 
 	awkregex =
-		  '/' * Cg((P'\\' * P(1) + (1 - P'/'))^0) * '/' / quote / 'require("luawk.type.regex").new(%1)'
+		  '/' * Cg((P'\\' * P(1) + (1 - P'/'))^0) * '/' / quote / 'require("luawk.type.regex")(%1,_ENV)'
 		;
 
 	action =

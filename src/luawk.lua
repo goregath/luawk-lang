@@ -121,8 +121,8 @@ end
 
 local function rangepattern(env, e1, e2, a)
     local on = false
-    local fe1 = compile(env, "return " .. e1, "begin-pattern")
-    local fe2 = compile(env, "return " .. e2, "end-pattern")
+    local fe1 = compile(env, string.format("return (%s)+0!=0", e1), "begin-pattern")
+    local fe2 = compile(env, string.format("return (%s)+0!=0", e2), "end-pattern")
     local act = compile(env, a, "action")
     return function()
         if on then

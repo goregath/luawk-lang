@@ -69,8 +69,28 @@
 -- 	if v then pcall(load(tostring(s))) end
 -- end
 
+local compat53 = require("luawk.compat53")
+
+local luatonumber = tonumber
+
+local function tonumber(e)
+	local t, __add = type(e)
+	if t == "table" or t == "userdata" then
+		__add = rawget(getmetatable(e) or {}, "__add")
+	end
+	return luatonumber(e) or __add and __add(e,0)
+end
+
 local function atoi(e)
 	return e == true and 1 or tonumber(e) or 0
+end
+
+local function bxor(l,r)
+	local t, __bxor = type(r)
+	if t == "table" or t == "userdata" then
+		__bxor = rawget(getmetatable(r) or {}, "__bxor")
+	end
+	return not __bxor and compat53.bxor(l,r) or __bxor(l,r)
 end
 
 local function clone(t)
@@ -100,6 +120,7 @@ function strmt.__pow(l,r) return  atoi(l) ^  atoi(r) end
 function strmt.__lt (l,r) return  atoi(l) <  atoi(r) end
 function strmt.__le (l,r) return  atoi(l) <= atoi(r) end
 function strmt.__unm(l)   return -atoi(l) end
+strmt.__bxor = bxor
 
 function intmt.__add(l, r) return  (atoi(l) or l and 1 or 0) +  (atoi(r) or r and 1 or 0)  end
 function intmt.__sub(l, r) return  (atoi(l) or l and 1 or 0) -  (atoi(r) or r and 1 or 0)  end
@@ -111,6 +132,7 @@ function intmt.__lt (l, r) return  (atoi(l) or l and 1 or 0) <  (atoi(r) or r an
 function intmt.__le (l, r) return  (atoi(l) or l and 1 or 0) <= (atoi(r) or r and 1 or 0)  end
 function intmt.__unm(l)    return -(atoi(l) or l and 1 or 0)  end
 function intmt.__tostring(l) return (tonumber(l) or "")  end
+intmt.__bxor = bxor
 
 --- Enable AWK type system emulation.
 function M.enable()
