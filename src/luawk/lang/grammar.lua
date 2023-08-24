@@ -4,6 +4,65 @@
 -- @alias M
 -- @module grammar
 
+-- ╔═══════════════════════════════════════════════════════════════════════════════════════════════╗
+-- ║ Expressions in Decreasing Precedence in awk                                                   ║
+-- ╠════════════════════════╦═══════════════════════════════════╦══════════════════╦═══════════════╣
+-- ║ SYNTAX                 ║ NAME                              ║ TYPE OF RESULT   ║ ASSOCIATIVITY ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ (expr)                 ║ Grouping                          ║ Type of expr     ║ N/A           ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ $expr                  ║ Field reference                   ║ String           ║ N/A           ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ lvalue ++              ║ Post-increment                    ║ Numeric          ║ N/A           ║
+-- ║ lvalue --              ║ Post-decrement                    ║ Numeric          ║ N/A           ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ ++ lvalue              ║ Pre-increment                     ║ Numeric          ║ N/A           ║
+-- ║ -- lvalue              ║ Pre-decrement                     ║ Numeric          ║ N/A           ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ expr ^ expr            ║ Exponentiation                    ║ Numeric          ║ Right         ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ ! expr                 ║ Logical not                       ║ Numeric          ║ N/A           ║
+-- ║ + expr                 ║ Unary plus                        ║ Numeric          ║ N/A           ║
+-- ║ - expr                 ║ Unary minus                       ║ Numeric          ║ N/A           ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ expr * expr            ║ Multiplication                    ║ Numeric          ║ Left          ║
+-- ║ expr / expr            ║ Division                          ║ Numeric          ║ Left          ║
+-- ║ expr % expr            ║ Modulus                           ║ Numeric          ║ Left          ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ expr + expr            ║ Addition                          ║ Numeric          ║ Left          ║
+-- ║ expr - expr            ║ Subtraction                       ║ Numeric          ║ Left          ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ expr expr              ║ String concatenation              ║ String           ║ Left          ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ expr < expr            ║ Less than                         ║ Numeric          ║ None          ║
+-- ║ expr <= expr           ║ Less than or equal to             ║ Numeric          ║ None          ║
+-- ║ expr != expr           ║ Not equal to                      ║ Numeric          ║ None          ║
+-- ║ expr == expr           ║ Equal to                          ║ Numeric          ║ None          ║
+-- ║ expr > expr            ║ Greater than                      ║ Numeric          ║ None          ║
+-- ║ expr >= expr           ║ Greater than or equal to          ║ Numeric          ║ None          ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ expr ˜ expr            ║ ERE match                         ║ Numeric          ║ None          ║
+-- ║ expr !˜ expr           ║ ERE non-match                     ║ Numeric          ║ None          ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ expr in array          ║ Array membership                  ║ Numeric          ║ Left          ║
+-- ║ (index) in array       ║ Multi-dimension array membership  ║ Numeric          ║ Left          ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ expr && expr           ║ Logical AND                       ║ Numeric          ║ Left          ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ expr || expr           ║ Logical OR                        ║ Numeric          ║ Left          ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ expr1 ? expr2 : expr3  ║ Conditional expression            ║ Type of selected ║ Right         ║
+-- ║                        ║                                   ║ expr2 or expr3   ║               ║
+-- ╠════════════════════════╬═══════════════════════════════════╬══════════════════╬═══════════════╣
+-- ║ lvalue ^= expr         ║ Exponentiation assignment         ║ Numeric          ║ Right         ║
+-- ║ lvalue %= expr         ║ Modulus assignment                ║ Numeric          ║ Right         ║
+-- ║ lvalue *= expr         ║ Multiplication assignment         ║ Numeric          ║ Right         ║
+-- ║ lvalue /= expr         ║ Division assignment               ║ Numeric          ║ Right         ║
+-- ║ lvalue += expr         ║ Addition assignment               ║ Numeric          ║ Right         ║
+-- ║ lvalue -= expr         ║ Subtraction assignment            ║ Numeric          ║ Right         ║
+-- ║ lvalue = expr          ║ Assignment                        ║ Type of expr     ║ Right         ║
+-- ╚════════════════════════╩═══════════════════════════════════╩══════════════════╩═══════════════╝
+
 local M = {}
 
 local lpeg = require 'lpeglabel'
@@ -15,20 +74,52 @@ local P, S, V = lpeg.P, lpeg.S, lpeg.V
 local C = lpeg.C
 local Cb = lpeg.Cb
 local Cc = lpeg.Cc
+local Cf = lpeg.Cf
 local Cg = lpeg.Cg
 local Cmt = lpeg.Cmt
 local Cs = lpeg.Cs
 local Ct = lpeg.Ct
 
 local nl = P'\n'
-local blank = P(locale.space + V'comment')
+local blank = P(locale.space + V'comment' - nl)
 local sp = blank^0
-local eol = P';' + nl
-local deref = P'$' / '_ENV^'
+local eol = (P';' + nl)^1 / ';'
+local noident = -(locale.alnum + P'_')
 local shebang = P"#" * (P(1) - nl)^0 * nl
 
-local function quote(s)
-	return string.format("%q", s)
+local function awkregexunquote(s)
+	return string.format("%q", s):gsub("\\\\", "\\"):gsub("\\/", "/")
+end
+
+local token = {
+	["in"] = "in",
+	["!"] = "not",
+	["*"] = "mul",
+	["%"] = "fmod",
+	["/"] = "div",
+	["//"] = "floordiv",
+	["^"]  = "pow",
+	["<"]  = "lt",
+	[">"]  = "gt",
+	["<="] = "le",
+	[">="] = "ge",
+	["!="] = "ne",
+	["=="] = "eq",
+	["&&"] = "and",
+	["||"] = "or",
+	["~"] = "match",
+	["!~"] = "match",
+}
+local function eval(acc,op,v)
+	print(require"inspect"{acc,op,v})
+	local fn = token[op]
+	if fn then
+		if op == "!~" then
+			return string.format("%s(%s(%s,%s))", token["!"], fn, acc, v)
+		end
+		return string.format("%s(%s,%s)", fn, acc, v)
+	end
+	return string.format("%s%s%s", acc, op, v)
 end
 
 -- TODO proper comment and line break handling
@@ -74,67 +165,125 @@ local grammar = {
 		;
 
 	awkregex =
-		  '/' * Cg((P'\\' * P(1) + (1 - P'/'))^0) * '/' / quote / 'require("luawk.type.regex")(%1,_ENV)'
+		  '/' * Cs((P'\\' * P(1) + (1 - P'/'))^0) * '/' / awkregexunquote
 		;
 
 	action =
-		  V'actionblock' * sp * -#V'binop'
+		  V'actionblock'
 		;
 
 	actionblock =
 		  ('{' * sp * Cs(V'chunk') * sp * '}') / '%1'
 		;
 
-	value =
-		  deref^0 * (locale.alnum + '_')^1
-		+ deref^0 * V'string'
-		+ deref^0 * '{' * sp * V'chunk' * sp * '}'
-		+ deref^0 * '(' * sp * V'chunk' * sp * ')'
-		+ deref^0 * '[' * sp * V'chunk' * sp * ']'
-		+ V'name'
-		;
-
 	name =
-		  (locale.alpha + '_') * (locale.alnum + '_')^0
-		+ P'...'
+		  (locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword'
+		+ P'...' * sp * V'name'^0
 		+ P'$@' / '_ENV'
 		;
 
-	lvalue =
-		  P'$' * Cs(V'value') / '_ENV[%1]'
-		+ V'value'
-		;
-
-	ctlchr =
-		  1 - S',(){}[]' - V'value' - eol - V'comment'
-		;
-
-	assignop =
-		  V'ctlchr'^-1 * P'='
-		- S'=!<>' * P'='
-		;
-
-	binop =
-		  (V'ctlchr'^2 - V'assignop')
-		+ (V'ctlchr' - P'=')
+	explist =
+		  V'exp' * (sp * P',' * sp * V'exp')^0 * sp
 		;
 
 	exp =
-		  V'binop' * sp * V'exp'
-		+ V'lvalue' * (sp * ',' * sp * V'lvalue')^0 * sp * (P'=' + V'assignop') * sp * V'exp'
-		+ V'value' * sp * #S'([' * sp * V'exp'
-		+ V'value' * (sp * V'binop'^1 * sp * V'exp')^-1
-		+ V'value'
+		  -- V'lvalue' * (sp * ',' * sp * V'lvalue')^0 * sp * (P'=' + V'assignop') * sp * V'exp'
+		-- + V'value' * sp * #S'([' * sp * V'value'
+		  V'binop'
+		;
+
+	-- TODO support NAME '[' expr_list ']' syntax (awk way of multidimensional, associative arrays)
+	-- TODO parse special unop not (`!`)
+	-- TODO assignments
+	-- TODO string concatenation
+	-- TODO match expresion
+
+	-- TODO unary operators
+	binop = Cf(V'tier10' * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier10')^0, eval) * sp;
+	tier10 =
+		Cf(Cf(V'tier09' * Cg(Cs(P'?'/'&&') * sp * V'exp'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'exp'), eval) * sp
+		+ V'tier09';
+	tier09 = Cf(V'tier08' * Cg(C(P'||') * sp * V'tier08')^0, eval) * sp;
+	tier08 = Cf(V'tier07' * Cg(C(P'&&') * sp * V'tier07')^0, eval) * sp;
+	tier07 = Cf(V'tier06' * Cg(C(P'in') * sp * V'tier06')^0, eval) * sp;
+	tier06 = Cf(V'tier05' * Cg(C(P'!~' + P'~') * sp * V'tier05')^0, eval) * sp;
+	tier05 = Cf(V'tier04' * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier04')^0, eval) * sp;
+	tier04 = Cf(V'tier03' * Cg(C(S'<>!' * P'=' + P'==' + S'<>') * sp * V'tier03')^0, eval) * sp;
+	-- TODO 'expr expr' (AWK, left-associative) 'expr .. expr' (Lua, right-associative)
+	tier03 = Cf(V'tier02' * Cg(Cc('..') * sp * (V'tier02'))^0, eval) * sp;
+	tier02 = Cf(V'tier01' * Cg(C(S'+-') * sp * V'tier01')^0, eval) * sp;
+	tier01 = Cf(V'tier00' * Cg(C(P'//' + S'*/%') * sp * V'tier00')^0, eval) * sp;
+	tier00 = Cf(Cs(V'value') * Cg(C(S'^') * sp * Cs(V'value'))^0, eval) * sp;
+
+	value =
+		  V'simple' * (sp * V'subvalue')^0
+		+ V'subvalue'^1
+		;
+
+	subvalue =
+		  S'.:' * sp * V'exp'
+		+ P'[' * sp * V'explist'^0 * sp * P']'
+		+ P'(' * sp * V'explist'^0 * sp * P')'
+		;
+
+	simple =
+		  locale.digit * locale.alnum^0
+		+ V'string'
+		+ V'name'
+		+ V'fieldref'
+		;
+
+	fieldref =
+		  P'$' * sp * Cs(V'value') / '_ENV[%1]'
 		;
 
 	chunk =
-		  (V'exp' + P',' + eol)^0
+		  V'source'^0
+		;
+
+	source =
+		 '{' * sp * V'chunk' * sp * '}'
+		+ V'explist'
+		+ V'keyword'
+		+ blank
+		+ eol
 		;
 
 	["function"] =
 		  P'function' * blank^1
 		* V'name' * '(' * sp * V'exp'^0 * sp * ')' * sp
 		* '{' * sp * V'chunk' * sp * '}'
+		;
+
+	keyword =
+		  P'break' * noident
+		+ P'do' * noident
+		+ P'else' * noident
+		+ P'elseif' * noident
+		+ P'end' * noident
+		+ P'false' * noident
+		+ P'for' * noident
+		+ P'function' * noident
+		+ P'goto' * noident
+		+ P'if' * noident
+		+ P'in' * noident
+		+ P'local' * noident
+		+ P'nil' * noident
+		+ P'repeat' * noident
+		+ P'return' * noident
+		+ P'then' * noident
+		+ P'true' * noident
+		+ P'until' * noident
+		+ P'while' * noident
+		;
+
+	awkbuiltins =
+		  P'exit'
+		+ P'getline'
+		+ P'next'
+		+ P'nextfile'
+		+ P'print'
+		+ P'printf'
 		;
 
 	longstring = C(P{ -- from Roberto Ierusalimschy's lpeg examples
@@ -152,15 +301,14 @@ local grammar = {
 
 	-- TODO support string interpolations
 	string =
-		  '"' * ('\\' * P(1) + (P(1) - '"'))^0 * '"'
+		  P'"' * C(('\\' * P(1) + (P(1) - '"'))^0) * P'"'
 		+ "'" * ("\\" * P(1) + (P(1) - "'"))^0 * "'"
 		+ V'awkregex'
 		+ V'longstring'
 		;
 
 	comment =
-		  '--' * V'longstring'
-		+ '--' * (P(1) - nl)^0 * (nl + -P(1))
+		  '#' * (P(1) - nl)^0 * (nl + -P(1)) / ''
 		;
 };
 
