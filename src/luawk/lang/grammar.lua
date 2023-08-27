@@ -178,16 +178,18 @@ local grammar = {
 		  V'exp' * (sp * P',' * sp * V'exp')^0 * sp
 		;
 
-	-- TODO support NAME '[' expr_list ']' syntax (awk way of multidimensional, associative arrays)
-	-- TODO parse special unop not (`!`)
-	-- TODO assignments
-	-- TODO string concatenation
-	-- TODO match expresion
+	namelist =
+		  V'name' * (sp * P',' * sp * V'name')^0 * sp
+		;
+
+	-- TODO ++a--
+	-- TODO ambiguous syntax: {}
 
 	exp =
 		  Cf(V'tier12' * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier12')^0, eval) * sp
 		;
 
+	-- ternary operator / conditional expression
 	tier12 =
 		  Cf(Cf(V'tier11' * Cg(Cs(P'?'/'&&') * sp * V'exp'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'exp'), eval) * sp
 		+ V'tier11' * sp;
@@ -208,8 +210,6 @@ local grammar = {
 		+ V'tier01' * sp;
 	tier01 = Cf(Cs(V'tier00') * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval) * sp;
 	tier00 = V'value' * (S'-=' * P'>' * sp * V'value')^0;
-
-	-- TODO ++a--
 
 	value =
 		  V'simple' * (sp * V'subvalue')^0
@@ -239,6 +239,7 @@ local grammar = {
 
 	source =
 		 '{' * sp * V'chunk' * sp * '}'
+		+ P'for' * noident * sp * (V'namelist'^1 + P(-1)) * sp * P'in' * noident * sp * V'source'
 		+ V'explist'
 		+ V'keyword'
 		+ blank
