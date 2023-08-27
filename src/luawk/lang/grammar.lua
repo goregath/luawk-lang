@@ -156,7 +156,7 @@ local grammar = {
 	pattern =
 		  V'exp'
 		- V'specialpattern'
-		- #P'{'
+		-- - #P'{'
 		;
 
 	specialpattern =
@@ -186,9 +186,6 @@ local grammar = {
 
 	exp =
 		  Cf(V'tier11' * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier11')^0, eval) * sp
-		+ V'awkbuiltins' * sp * P'(' * sp * V'explist'^0 * sp * P')'
-		+ V'awkbuiltins' * sp * Cc'(' * V'explist'^0 * sp * Cc')'
-		+ V'awkbuiltins' * Cc'()'
 		;
 
 	-- TODO TEST 'BEGIN { print // 1 }' --> '11'
@@ -220,12 +217,16 @@ local grammar = {
 	value =
 		  V'simple' * (sp * V'subvalue')^0
 		+ V'subvalue'^1
+		+ V'awkbuiltins' * sp * P'(' * sp * V'explist'^0 * sp * P')'
+		+ V'awkbuiltins' * sp * Cc'(' * V'explist'^0 * sp * Cc')'
+		+ V'awkbuiltins' * Cc'()'
 		;
 
 	subvalue =
 		  S'.:' * sp * V'exp'
 		+ P'[' * sp * V'explist'^0 * sp * P']'
 		+ P'(' * sp * V'explist'^0 * sp * P')'
+		-- + P'{' * sp * V'chunk'^-1 * sp * P'}'
 		;
 
 	simple =
