@@ -69,8 +69,6 @@
 -- 	if v then pcall(load(tostring(s))) end
 -- end
 
-local compat53 = require("luawk.compat53")
-
 local luatonumber = tonumber
 
 local function tonumber(e)
@@ -85,20 +83,18 @@ local function atoi(e)
 	return e == true and 1 or tonumber(e) or 0
 end
 
-local function bxor(l,r)
-	local t, __bxor = type(r)
-	if t == "table" or t == "userdata" then
-		__bxor = rawget(getmetatable(r) or {}, "__bxor")
-	end
-	return not __bxor and compat53.bxor(l,r) or __bxor(l,r)
-end
-
 local function clone(t)
 	local new = {}
 	for k,v in pairs(t) do
 		new[k] = v
 	end
 	return new
+end
+
+local function concat(s1, s2)
+	return string.format("%s%s",
+		s1 == nil and "" or type(s1) == "string" and s1 or atoi(s1),
+		s2 == nil and "" or type(s2) == "string" and s2 or atoi(s2))
 end
 
 local M = {}
@@ -120,7 +116,7 @@ function strmt.__pow(l,r) return  atoi(l) ^  atoi(r) end
 function strmt.__lt (l,r) return  atoi(l) <  atoi(r) end
 function strmt.__le (l,r) return  atoi(l) <= atoi(r) end
 function strmt.__unm(l)   return -atoi(l) end
-strmt.__bxor = bxor
+strmt.__concat = concat
 
 function intmt.__add(l, r) return  (atoi(l) or l and 1 or 0) +  (atoi(r) or r and 1 or 0)  end
 function intmt.__sub(l, r) return  (atoi(l) or l and 1 or 0) -  (atoi(r) or r and 1 or 0)  end
@@ -132,7 +128,7 @@ function intmt.__lt (l, r) return  (atoi(l) or l and 1 or 0) <  (atoi(r) or r an
 function intmt.__le (l, r) return  (atoi(l) or l and 1 or 0) <= (atoi(r) or r and 1 or 0)  end
 function intmt.__unm(l)    return -(atoi(l) or l and 1 or 0)  end
 function intmt.__tostring(l) return (tonumber(l) or "")  end
-intmt.__bxor = bxor
+intmt.__concat = concat
 
 --- Enable AWK type system emulation.
 function M.enable()
