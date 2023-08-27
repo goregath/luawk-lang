@@ -223,6 +223,8 @@ local grammar = {
 		+ V'tier00' * sp;
 	tier00 = Cf(Cs(V'value') * Cg(C(S'^') * sp * Cs(V'value'))^0, eval) * sp;
 
+	-- TODO ++a--
+
 	value =
 		  V'simple' * (sp * V'subvalue')^0
 		+ V'subvalue'^1
@@ -252,6 +254,9 @@ local grammar = {
 	source =
 		 '{' * sp * V'chunk' * sp * '}'
 		+ V'explist'
+		+ V'awkbuiltins' * sp * P'(' * sp * V'explist'^0 * sp * P')'
+		+ V'awkbuiltins' * sp * Cc'(' * V'explist'^0 * sp * Cc')'
+		+ V'awkbuiltins' * Cc'()'
 		+ V'keyword'
 		+ blank
 		+ eol
@@ -283,15 +288,16 @@ local grammar = {
 		+ P'true' * noident
 		+ P'until' * noident
 		+ P'while' * noident
+		+ V'awkbuiltins'
 		;
 
 	awkbuiltins =
-		  P'exit'
-		+ P'getline'
-		+ P'next'
-		+ P'nextfile'
-		+ P'print'
-		+ P'printf'
+		  P'exit' * noident
+		-- + P'getline' * noident
+		+ P'next' * noident
+		+ P'nextfile' * noident
+		-- + P'print' * noident
+		-- + P'printf' * noident
 		;
 
 	longstring = C(P{ -- from Roberto Ierusalimschy's lpeg examples
@@ -316,7 +322,7 @@ local grammar = {
 		;
 
 	comment =
-		  '#' * (P(1) - nl)^0 * (nl + -P(1)) / ''
+		  '#' * (P(1) - nl)^0 * (nl + -P(1))
 		;
 };
 
