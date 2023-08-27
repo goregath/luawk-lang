@@ -83,7 +83,7 @@ local Ct = lpeg.Ct
 local nl = P'\n'
 local blank = P(locale.space + V'comment' - nl)
 local sp = blank^0
-local eol = (P';' + nl)^1 / ';'
+local eol = (P';' + nl)^1
 local noident = -(locale.alnum + P'_')
 local shebang = P"#" * (P(1) - nl)^0 * nl
 
@@ -111,7 +111,6 @@ local token = {
 	["!~"] = "match",
 }
 local function eval(acc,op,v)
-	print(require"inspect"{acc,op,v})
 	local fn = token[op]
 	if fn then
 		if op == "!~" then
@@ -138,12 +137,12 @@ local grammar = {
 		main = {}
 	}), 'program');
 
-	shebang^-1 * V'newobj' * sp * (
-			  ( ( V'prolog' / table.insert * (blank + eol)^0 )^1 )^0
+	shebang^-1 * V'newobj' * (blank + nl)^0 * (
+			  ( ( V'globals' / table.insert * (blank + eol)^0 )^1 )^0
 			* ( ( V'rule' / table.insert * (blank + eol)^0 )^1 )^0 * sp * -1
 		);
 
-	prolog =
+	globals =
 		  Cb('program') * Cc('BEGIN') / rawget * Cs(V'function')
 		;
 
@@ -175,12 +174,6 @@ local grammar = {
 		  ('{' * sp * Cs(V'chunk') * sp * '}') / '%1'
 		;
 
-	name =
-		  (locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword'
-		+ P'...' * sp * V'name'^0
-		+ P'$@' / '_ENV'
-		;
-
 	explist =
 		  V'exp' * (sp * P',' * sp * V'exp')^0 * sp
 		;
@@ -193,6 +186,9 @@ local grammar = {
 
 	exp =
 		  Cf(V'tier11' * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier11')^0, eval) * sp
+		+ V'awkbuiltins' * sp * P'(' * sp * V'explist'^0 * sp * P')'
+		+ V'awkbuiltins' * sp * Cc'(' * V'explist'^0 * sp * Cc')'
+		+ V'awkbuiltins' * Cc'()'
 		;
 
 	-- TODO TEST 'BEGIN { print // 1 }' --> '11'
@@ -246,9 +242,6 @@ local grammar = {
 	source =
 		 '{' * sp * V'chunk' * sp * '}'
 		+ V'explist'
-		+ V'awkbuiltins' * sp * P'(' * sp * V'explist'^0 * sp * P')'
-		+ V'awkbuiltins' * sp * Cc'(' * V'explist'^0 * sp * Cc')'
-		+ V'awkbuiltins' * Cc'()'
 		+ V'keyword'
 		+ blank
 		+ eol
@@ -256,7 +249,7 @@ local grammar = {
 
 	["function"] =
 		  P'function' * blank^1
-		* V'name' * sp * '(' * sp * V'exp'^0 * sp * ')' * sp
+		* (V'name' + V'awkbuiltins') * sp * '(' * sp * V'exp'^0 * sp * ')' * sp
 		* '{' * sp * V'chunk' * sp * '}'
 		;
 
@@ -283,6 +276,12 @@ local grammar = {
 		+ V'awkbuiltins'
 		;
 
+	name =
+		  (locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword'
+		+ P'...' * sp * V'name'^0
+		+ P'$@' / '_ENV'
+		;
+
 	longstring = C(P{ -- from Roberto Ierusalimschy's lpeg examples
 		V'open' * C((P(1) - V'closeeq')^0) * V'close' / function (_, s) return s end;
 
@@ -307,7 +306,6 @@ local grammar = {
 	comment =
 		  '#' * (P(1) - nl)^0 * (nl + -P(1))
 		;
-
 
 	awkbuiltins =
 		  P'exit' * noident
