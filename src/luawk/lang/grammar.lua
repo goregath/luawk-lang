@@ -185,31 +185,29 @@ local grammar = {
 	-- TODO match expresion
 
 	exp =
-		  Cf(V'tier11' * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier11')^0, eval) * sp
+		  Cf(V'tier12' * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier12')^0, eval) * sp
 		;
 
-	-- TODO TEST 'BEGIN { print // 1 }' --> '11'
-
-	tier11 =
-		  Cf(Cf(V'tier10' * Cg(Cs(P'?'/'&&') * sp * V'exp'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'exp'), eval) * sp
-		+ V'tier10' * sp;
-	tier10 = Cf(V'tier09' * Cg(C(P'||') * sp * V'tier09')^0, eval) * sp;
-	tier09 = Cf(V'tier08' * Cg(C(P'&&') * sp * V'tier08')^0, eval) * sp;
-	tier08 = Cf(V'tier07' * Cg(C(P'in') * sp * V'tier07')^0, eval) * sp;
-	tier07 = Cf(V'tier06' * Cg(C(P'!~' + P'~') * sp * (V'awkregex' + V'tier06'))^0, eval) * sp;
-	tier06 = Cf(V'tier05' * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier05')^0, eval) * sp;
-	tier05 = Cf(V'tier04' * Cg(C(S'<>!' * P'=' + P'==' + S'<>') * sp * V'tier04')^0, eval) * sp;
+	tier12 =
+		  Cf(Cf(V'tier11' * Cg(Cs(P'?'/'&&') * sp * V'exp'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'exp'), eval) * sp
+		+ V'tier11' * sp;
+	tier11 = Cf(V'tier10' * Cg(C(P'||') * sp * V'tier10')^0, eval) * sp;
+	tier10 = Cf(V'tier09' * Cg(C(P'&&') * sp * V'tier09')^0, eval) * sp;
+	tier09 = Cf(V'tier08' * Cg(C(P'in') * sp * V'tier08')^0, eval) * sp;
+	tier08 = Cf(V'tier07' * Cg(C(P'!~' + P'~') * sp * (V'awkregex' + V'tier07'))^0, eval) * sp;
+	tier07 = Cf(V'tier06' * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier06')^0, eval) * sp;
+	tier06 = Cf(V'tier05' * Cg(C(S'<>!' * P'=' + P'==' + S'<>') * sp * V'tier05')^0, eval) * sp;
 	-- TODO 'expr expr' (AWK, left-associative) 'expr .. expr' (Lua, right-associative)
-	tier04 = Cf(V'tier03' * Cg(Cc('..') * sp * (V'tier03'))^0, eval) * sp;
-	tier03 = Cf(V'tier02' * Cg(C(S'+-') * sp * V'tier02')^0, eval) * sp;
-	tier02 = Cf(V'tier01' * Cg(C(P'//' + S'*/%') * sp * V'tier01')^0, eval) * sp;
+	tier05 = Cf(V'tier04' * Cg(Cc('..') * sp * (V'tier04'))^0, eval) * sp;
+	tier04 = Cf(V'tier03' * Cg(C(S'+-') * sp * V'tier03')^0, eval) * sp;
+	tier03 = Cf(V'tier02' * Cg(C(P'//' + S'*/%') * sp * V'tier02')^0, eval) * sp;
 	-- binary operators
-	tier01 =
-		  Cg(Cc(nil) * sp * C(P'!') * sp * Cs(V'tier00')) / eval * sp
-		+ Cs(P'-' * sp * V'tier00') * sp
-		+ V'tier00' * sp;
-	tier00 = Cf(Cs(V'tier1') * Cg(C(S'^') * sp * Cs(V'tier1'))^0, eval) * sp;
-	tier1 = Cf(Cs(V'value') * Cg(C(S'=-' * P'>') * sp * Cs(V'value'))^0, eval) * sp;
+	tier02 =
+		  Cg(Cc(nil) * sp * C(P'!') * sp * Cs(V'tier01')) / eval * sp
+		+ Cs(P'-' * sp * V'tier01') * sp
+		+ V'tier01' * sp;
+	tier01 = Cf(Cs(V'tier00') * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval) * sp;
+	tier00 = V'value' * (S'-=' * P'>' * sp * V'value')^0;
 
 	-- TODO ++a--
 
@@ -219,10 +217,11 @@ local grammar = {
 		+ V'awkbuiltins' * sp * P'(' * sp * V'explist'^0 * sp * P')'
 		+ V'awkbuiltins' * sp * Cc'(' * V'explist'^0 * sp * Cc')'
 		+ V'awkbuiltins' * Cc'()'
+		+ V'awkfieldref'
 		;
 
 	subvalue =
-		  S'.:' * sp * V'exp'
+		  S'.:' * sp * V'value'
 		+ P'[' * sp * V'explist'^0 * sp * P']'
 		+ P'(' * sp * V'explist'^0 * sp * P')'
 		-- + P'{' * sp * V'chunk'^-1 * sp * P'}'
@@ -232,7 +231,6 @@ local grammar = {
 		  locale.digit * locale.alnum^0
 		+ V'string'
 		+ V'name'
-		+ V'awkfieldref'
 		;
 
 	chunk =
