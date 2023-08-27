@@ -167,10 +167,6 @@ local grammar = {
 		+ P'END'
 		;
 
-	awkregex =
-		  '/' * Cs((P'\\' * P(1) + (1 - P'/'))^0) * '/' / awkregexunquote
-		;
-
 	action =
 		  V'actionblock'
 		;
@@ -189,27 +185,25 @@ local grammar = {
 		  V'exp' * (sp * P',' * sp * V'exp')^0 * sp
 		;
 
-	exp =
-		  -- V'lvalue' * (sp * ',' * sp * V'lvalue')^0 * sp * (P'=' + V'assignop') * sp * V'exp'
-		-- + V'value' * sp * #S'([' * sp * V'value'
-		  V'binop'
-		;
-
 	-- TODO support NAME '[' expr_list ']' syntax (awk way of multidimensional, associative arrays)
 	-- TODO parse special unop not (`!`)
 	-- TODO assignments
 	-- TODO string concatenation
 	-- TODO match expresion
 
-	-- TODO unary operators
-	binop = Cf(V'tier11' * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier11')^0, eval) * sp;
+	exp =
+		  Cf(V'tier11' * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier11')^0, eval) * sp
+		;
+
+	-- TODO TEST 'BEGIN { print // 1 }' --> '11'
+
 	tier11 =
 		  Cf(Cf(V'tier10' * Cg(Cs(P'?'/'&&') * sp * V'exp'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'exp'), eval) * sp
 		+ V'tier10' * sp;
 	tier10 = Cf(V'tier09' * Cg(C(P'||') * sp * V'tier09')^0, eval) * sp;
 	tier09 = Cf(V'tier08' * Cg(C(P'&&') * sp * V'tier08')^0, eval) * sp;
 	tier08 = Cf(V'tier07' * Cg(C(P'in') * sp * V'tier07')^0, eval) * sp;
-	tier07 = Cf(V'tier06' * Cg(C(P'!~' + P'~') * sp * V'tier06')^0, eval) * sp;
+	tier07 = Cf(V'tier06' * Cg(C(P'!~' + P'~') * sp * (V'awkregex' + V'tier06'))^0, eval) * sp;
 	tier06 = Cf(V'tier05' * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier05')^0, eval) * sp;
 	tier05 = Cf(V'tier04' * Cg(C(S'<>!' * P'=' + P'==' + S'<>') * sp * V'tier04')^0, eval) * sp;
 	-- TODO 'expr expr' (AWK, left-associative) 'expr .. expr' (Lua, right-associative)
@@ -221,7 +215,9 @@ local grammar = {
 		  Cg(Cc(nil) * sp * C(P'!') * sp * Cs(V'tier00')) / eval * sp
 		+ Cs(P'-' * sp * V'tier00') * sp
 		+ V'tier00' * sp;
-	tier00 = Cf(Cs(V'value') * Cg(C(S'^') * sp * Cs(V'value'))^0, eval) * sp;
+	tier00 =
+		  Cf(Cs(V'value') * Cg(C(S'^') * sp * Cs(V'value'))^0, eval) * sp
+		;
 
 	-- TODO ++a--
 
@@ -240,11 +236,7 @@ local grammar = {
 		  locale.digit * locale.alnum^0
 		+ V'string'
 		+ V'name'
-		+ V'fieldref'
-		;
-
-	fieldref =
-		  P'$' * sp * Cs(V'value') / '_ENV[%1]'
+		+ V'awkfieldref'
 		;
 
 	chunk =
@@ -264,7 +256,7 @@ local grammar = {
 
 	["function"] =
 		  P'function' * blank^1
-		* V'name' * '(' * sp * V'exp'^0 * sp * ')' * sp
+		* V'name' * sp * '(' * sp * V'exp'^0 * sp * ')' * sp
 		* '{' * sp * V'chunk' * sp * '}'
 		;
 
@@ -291,15 +283,6 @@ local grammar = {
 		+ V'awkbuiltins'
 		;
 
-	awkbuiltins =
-		  P'exit' * noident
-		-- + P'getline' * noident
-		+ P'next' * noident
-		+ P'nextfile' * noident
-		-- + P'print' * noident
-		-- + P'printf' * noident
-		;
-
 	longstring = C(P{ -- from Roberto Ierusalimschy's lpeg examples
 		V'open' * C((P(1) - V'closeeq')^0) * V'close' / function (_, s) return s end;
 
@@ -315,15 +298,34 @@ local grammar = {
 
 	-- TODO support string interpolations
 	string =
-		  P'"' * C(('\\' * P(1) + (P(1) - '"'))^0) * P'"'
+		  P'"' * ('\\' * P(1) + (P(1) - '"')^0) * P'"'
 		+ "'" * ("\\" * P(1) + (P(1) - "'"))^0 * "'"
-		+ V'awkregex'
+		+ V'awkregex' / 'match(_ENV[0],%1)'
 		+ V'longstring'
 		;
 
 	comment =
 		  '#' * (P(1) - nl)^0 * (nl + -P(1))
 		;
+
+
+	awkbuiltins =
+		  P'exit' * noident
+		+ P'getline' * noident
+		+ P'next' * noident
+		+ P'nextfile' * noident
+		+ P'print' * noident
+		+ P'printf' * noident
+		;
+
+	awkfieldref =
+		  P'$' * sp * Cs(V'value') / '_ENV[%1]'
+		;
+
+	awkregex =
+		  '/' * Cs((P'\\' * P(1) + (1 - P'/'))^0) * '/' / awkregexunquote
+		;
+
 };
 
 --- Program data type.
