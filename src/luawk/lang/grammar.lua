@@ -94,11 +94,11 @@ end
 local token = {
 	["in"] = "in",
 	["!"] = "not",
-	["*"] = "mul",
-	["%"] = "fmod",
-	["/"] = "div",
-	["//"] = "floordiv",
-	["^"]  = "pow",
+	-- ["*"] = "mul",
+	-- ["%"] = "fmod",
+	-- ["/"] = "div",
+	-- ["//"] = "floordiv",
+	-- ["^"]  = "pow",
 	["<"]  = "lt",
 	[">"]  = "gt",
 	["<="] = "le",
@@ -249,7 +249,7 @@ local grammar = {
 
 	["function"] =
 		  P'function' * blank^1
-		* (V'name' + V'awkbuiltins') * sp * '(' * sp * V'exp'^0 * sp * ')' * sp
+		* (V'name' + V'awkbuiltins') * sp * '(' * sp * V'explist'^0 * sp * ')' * sp
 		* '{' * sp * V'chunk' * sp * '}'
 		;
 
@@ -297,14 +297,14 @@ local grammar = {
 
 	-- TODO support string interpolations
 	string =
-		  P'"' * ('\\' * P(1) + (P(1) - '"')^0) * P'"'
-		+ "'" * ("\\" * P(1) + (P(1) - "'"))^0 * "'"
+		  P'"' * ('\\' * P(1) + (P(1) - '"'))^0 * P'"'
+		+ P"'" * ("\\" * P(1) + (P(1) - "'"))^0 * P"'"
 		+ V'awkregex' / 'match(_ENV[0],%1)'
 		+ V'longstring'
 		;
 
 	comment =
-		  '#' * (P(1) - nl)^0 * (nl + -P(1))
+		  '#' * (P(1) - nl)^0 * (nl + -P(1)) / '\n'
 		;
 
 	awkbuiltins =
