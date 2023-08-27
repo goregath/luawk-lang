@@ -1,98 +1,98 @@
 #!/usr/bin/env -S luawk -f
 
--- Synopsis
--- ========
---
--- Read file of
--- [passwd(5)](http://www.kernel.org/doc/man-pages/online/pages/man5/passwd.5.html)
--- and print users with a login shell.
---
--- This example also demonstrates how we can extend the runtime of _luawk_ to
--- use a different implementation for matching operations.
---
--- File Format
--- -----------
--- The _passwd_ file contains one line for each user account, with up to seven fields delimited by colons.
---
--- 1. Login name
--- 2. Optional encrypted password
--- 3. Numerical user ID
--- 4. Numerical group ID
--- 5. User name or comment field
--- 6. User home directory
--- 7. Optional user command interpreter
---
--- A _passwd_ file may look like this:
---
--- <pre>
--- <code><b>root</b>:x:0:0:root:/root:/bin/bash</code>
--- <code><b>daemon</b>:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin</code>
--- <code><b>mail</b>:x:8:8:mail:/var/mail:/usr/sbin/nologin</code>
--- <code><b>news</b>:x:9:9:news:/var/spool/news:/usr/sbin/nologin</code>
--- <code><b>www-data</b>:x:33:33:www-data:/var/www:/usr/sbin/nologin</code>
--- <code><b>user</b>:x:1000:1000:user:/home/user:/bin/bash</code>
--- </pre>
+#  Synopsis
+#  ========
+# 
+#  Read file of
+#  [passwd(5)](http://www.kernel.org/doc/man-pages/online/pages/man5/passwd.5.html)
+#  and print users with a login shell.
+# 
+#  This example also demonstrates how we can extend the runtime of _luawk_ to
+#  use a different implementation for matching operations.
+# 
+#  File Format
+#  -----------
+#  The _passwd_ file contains one line for each user account, with up to seven fields delimited by colons.
+# 
+#  1. Login name
+#  2. Optional encrypted password
+#  3. Numerical user ID
+#  4. Numerical group ID
+#  5. User name or comment field
+#  6. User home directory
+#  7. Optional user command interpreter
+# 
+#  A _passwd_ file may look like this:
+# 
+#  <pre>
+#  <code><b>root</b>:x:0:0:root:/root:/bin/bash</code>
+#  <code><b>daemon</b>:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin</code>
+#  <code><b>mail</b>:x:8:8:mail:/var/mail:/usr/sbin/nologin</code>
+#  <code><b>news</b>:x:9:9:news:/var/spool/news:/usr/sbin/nologin</code>
+#  <code><b>www-data</b>:x:33:33:www-data:/var/www:/usr/sbin/nologin</code>
+#  <code><b>user</b>:x:1000:1000:user:/home/user:/bin/bash</code>
+#  </pre>
 
--- Program
--- ========
+#  Program
+#  ========
 
--- User Defined Functions
--- ---------------
--- This section can contain user defined function definitions with a global scope.
--- With _luawk_ it is permitted to override builtin functions, like
--- [print()](../runtimes/posix.html#class:print), 
--- [match()](../runtimes/posix.html#class:match) or
--- [split()](../runtimes/posix.html#class:split). 
+#  User Defined Functions
+#  ---------------
+#  This section can contain user defined function definitions with a global scope.
+#  With _luawk_ it is permitted to override builtin functions, like
+#  [print()](../runtimes/posix.html#class:print), 
+#  [match()](../runtimes/posix.html#class:match) or
+#  [split()](../runtimes/posix.html#class:split). 
 
--- ### Override the [match()](../runtimes/posix.html#class:match) builtin function
---
--- This allows us to dynamically redefine the definition of what a pattern
--- actually is. For our example we define a pattern to match as a
--- [glob(7)](http://www.kernel.org/doc/man-pages/online/pages/man7/glob.7.html) pattern using
--- [fnmatch(3)](http://www.kernel.org/doc/man-pages/online/pages/man3/fnmatch.3.html)
--- provided by the lua _posix_ library.
-function match(s,p)
+#  ### Override the [match()](../runtimes/posix.html#class:match) builtin function
+# 
+#  This allows us to dynamically redefine the definition of what a pattern
+#  actually is. For our example we define a pattern to match as a
+#  [glob(7)](http://www.kernel.org/doc/man-pages/online/pages/man7/glob.7.html) pattern using
+#  [fnmatch(3)](http://www.kernel.org/doc/man-pages/online/pages/man3/fnmatch.3.html)
+#  provided by the lua _posix_ library.
+function match(s,p) {
 	local posix = require("posix.fnmatch")
 	return 0 == posix.fnmatch(p, s, posix.FNM_PATHNAME)
-end
+}
 
--- Special Actions
--- ---------------
--- Special actions are executed depending on the current state of execution.
--- They are any of _BEGIN_, _END_, _BEGINFILE_ and _ENDFILE_.
+#  Special Actions
+#  ---------------
+#  Special actions are executed depending on the current state of execution.
+#  They are any of _BEGIN_, _END_, _BEGINFILE_ and _ENDFILE_.
 
--- ### Setup the program
--- The special action _BEGIN_ is run before any files are processed.
--- We can make use of this to setup our program environment.
+#  ### Setup the program
+#  The special action _BEGIN_ is run before any files are processed.
+#  We can make use of this to setup our program environment.
 BEGIN {
-	-- #### Change the default field separator
-	-- Records of _/etc/passwd_ are delimited by colons.
-	-- By setting _FS_ we get the same result as specifying `-F` on command line.
-	-- <pre><code> <span class="gp">$</span> <span class="nt">luawk</span> <span class="nf">-F:</span> <span class="s">'..'</span></code></pre>
+	#  #### Change the default field separator
+	#  Records of _/etc/passwd_ are delimited by colons.
+	#  By setting _FS_ we get the same result as specifying `-F` on command line.
+	#  <pre><code> <span class="gp">$</span> <span class="nt">luawk</span> <span class="nf">-F:</span> <span class="s">'..'</span></code></pre>
 	FS = ":"
-	-- #### Override command line arguments
-	-- 
-	-- By setting _ARGV[1]_ we override the first non-option argument
-	-- (the first file), this is equivalent to specifying a single input file
-	-- on command line.
-	--
-	-- <pre><code> <span class="gp">$</span> <span class="nt">luawk</span> <span class="s">'..'</span> <span class="s">/etc/passwd</span></code></pre>
-	--
-	-- The _ARGV_ varibale is zero-based with _ARGV[0]_ set to the program
-	-- path. By setting _ARGC_ we make sure to run with one non-option
-	-- argument, regardless what has been defined on command line.
+	#  #### Override command line arguments
+	#  
+	#  By setting _ARGV[1]_ we override the first non-option argument
+	#  (the first file), this is equivalent to specifying a single input file
+	#  on command line.
+	# 
+	#  <pre><code> <span class="gp">$</span> <span class="nt">luawk</span> <span class="s">'..'</span> <span class="s">/etc/passwd</span></code></pre>
+	# 
+	#  The _ARGV_ varibale is zero-based with _ARGV[0]_ set to the program
+	#  path. By setting _ARGC_ we make sure to run with one non-option
+	#  argument, regardless what has been defined on command line.
 	ARGC = 2
 	ARGV[1] = "/etc/passwd"
 }
 
--- Patterns & Actions
--- ------------------
--- Actions are run for each record of a file.
+#  Patterns & Actions
+#  ------------------
+#  Actions are run for each record of a file.
 
--- ### Define a pattern-action pair
--- Enter action block if the field `$7` matches against the pattern `/bin/*sh`.
+#  ### Define a pattern-action pair
+#  Enter action block if the field `$7` matches against the pattern `/bin/*sh`.
 $7 ~ "/bin/*sh" {
-	-- #### Print a formatted concatenation of fields
-	-- Print the _login name_ (`$1`) and the associated _command interpreter_ (`$7`) to stdout.
+	#  #### Print a formatted concatenation of fields
+	#  Print the _login name_ (`$1`) and the associated _command interpreter_ (`$7`) to stdout.
 	printf "%s (%s)\n", $1, $7
 }

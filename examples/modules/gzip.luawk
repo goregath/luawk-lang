@@ -1,80 +1,80 @@
 #!/usr/bin/env -S luawk -f
 
--- Synopsis
--- ========
--- This module enables _luawk_ to parse compressed text files alongside
--- uncompressed ones. To detect if a file has been compressed, the file
--- extension is checked. 
---
--- Example
--- -------
--- With this module we could mimic a
--- [zcat(1p)](http://www.kernel.org/doc/man-pages/online/pages/man1/zcat.1p.html)
--- command, just like _cat_ but with compressed files. In a POSIX compatible
--- shell you could define the _zcat_ command to be an alias to _luawk_. You
--- could add the following lines to your `~/.profile` to enable the alias.
---     export LUAWK_PATH=~/.local/lib/luawk/?.luawk
---     alias zcat="luawk -l gzip '{ ORS=RT } 1'"
--- A call to _zcat_ would then expand to our _luawk_ command.
---     zcat /var/log/*.gz
--- The `LUAWK_PATH` is a search path (similar to `LUA_PATH`) for _luawk modules_.
--- In this example the module file should be copied to _~/.local/lib/luawk/gzip.luawk_.
+#  Synopsis
+#  ========
+#  This module enables _luawk_ to parse compressed text files alongside
+#  uncompressed ones. To detect if a file has been compressed, the file
+#  extension is checked. 
+# 
+#  Example
+#  -------
+#  With this module we could mimic a
+#  [zcat(1p)](http://www.kernel.org/doc/man-pages/online/pages/man1/zcat.1p.html)
+#  command, just like _cat_ but with compressed files. In a POSIX compatible
+#  shell you could define the _zcat_ command to be an alias to _luawk_. You
+#  could add the following lines to your `~/.profile` to enable the alias.
+#      export LUAWK_PATH=~/.local/lib/luawk/?.luawk
+#      alias zcat="luawk -l gzip '{ ORS=RT } 1'"
+#  A call to _zcat_ would then expand to our _luawk_ command.
+#      zcat /var/log/*.gz
+#  The `LUAWK_PATH` is a search path (similar to `LUA_PATH`) for _luawk modules_.
+#  In this example the module file should be copied to _~/.local/lib/luawk/gzip.luawk_.
 
--- Program
--- =======
--- With _luawk_ we are able to write user defined function definitions with a
--- global scope. It is also permitted to override builtin functions, just like
--- [getlines()](../environments/posix.html#class:getlines), 
--- [print()](../environments/posix.html#class:print), 
--- [match()](../environments/posix.html#class:match) or
--- [split()](../environments/posix.html#class:split). 
+#  Program
+#  =======
+#  With _luawk_ we are able to write user defined function definitions with a
+#  global scope. It is also permitted to override builtin functions, just like
+#  [getlines()](../environments/posix.html#class:getlines), 
+#  [print()](../environments/posix.html#class:print), 
+#  [match()](../environments/posix.html#class:match) or
+#  [split()](../environments/posix.html#class:split). 
 
--- User defined functions can be declared nearly anywhere in a program, that
--- is, inside or outside of an action block. Only their order of appearance
--- matters.
+#  User defined functions can be declared nearly anywhere in a program, that
+#  is, inside or outside of an action block. Only their order of appearance
+#  matters.
 
--- ### Declare global function from within a BEGIN action block
--- By doing so we make sure that our _getlines_ wrapper is defined before the
--- first file is read by the main loop. We can also define local variables
--- inside of an action which comes in handy as you may tell from the next
--- line.
+#  ### Declare global function from within a BEGIN action block
+#  By doing so we make sure that our _getlines_ wrapper is defined before the
+#  first file is read by the main loop. We can also define local variables
+#  inside of an action which comes in handy as you may tell from the next
+#  line.
 BEGIN {
-	-- ### Remember initial reference to [getlines()](../environments/posix.html#class:getlines)
-	-- First we store the current implementation of _getlines_ as an
-	-- upvalue *\_getline* for our wrapper function.
+	#  ### Remember initial reference to [getlines()](../environments/posix.html#class:getlines)
+	#  First we store the current implementation of _getlines_ as an
+	#  upvalue *\_getline* for our wrapper function.
 	local _getlines = getlines
-	-- ### Override the [getlines()](../environments/posix.html#class:getlines) builtin function
-	-- We can override _getlines_ by simply defining a new function with the same name at global scope.
-	function getlines(file)
-		-- The _getlines_ function accepts a variety of types for _file_. If
-		-- the type is _string_, _getlines_ interprets _file_ as a path. This
-		-- is the default case if _getlines_ is called by the _luawk_ main loop.
-		-- With this in mind, we can safely check if _file_ ends with a certain
-		-- extension, e.g. `.gzip`, and install a custom handler.
-		if type(file) == "string" and file:match("%.gz$") then
-			-- There are several ways we can implement a _gzip_ reader. The
-			-- following approach starts the system command _gzip_ in a separate
-			-- process and captures the output from a handle. It is also
-			-- advisable to properly escape any arguments passed to the subshell
-			-- invoked by _io.popen_. This is done by calling _gsub_ on the
-			-- _file_ argument to escape all non-alphanumeric characters:
-			--     path with spaces.gz
-			--     path\ with\ spaces\.gz
-			-- *Caution: This method, yet simple and effective, has some major
-			-- drawbacks and should not be used in real applications.*
+	#  ### Override the [getlines()](../environments/posix.html#class:getlines) builtin function
+	#  We can override _getlines_ by simply defining a new function with the same name at global scope.
+	function getlines(file) {
+		#  The _getlines_ function accepts a variety of types for _file_. If
+		#  the type is _string_, _getlines_ interprets _file_ as a path. This
+		#  is the default case if _getlines_ is called by the _luawk_ main loop.
+		#  With this in mind, we can safely check if _file_ ends with a certain
+		#  extension, e.g. `.gzip`, and install a custom handler.
+		if (type(file) == "string" && file:match("%.gz$")) {
+			#  There are several ways we can implement a _gzip_ reader. The
+			#  following approach starts the system command _gzip_ in a separate
+			#  process and captures the output from a handle. It is also
+			#  advisable to properly escape any arguments passed to the subshell
+			#  invoked by _io.popen_. This is done by calling _gsub_ on the
+			#  _file_ argument to escape all non-alphanumeric characters:
+			#      path with spaces.gz
+			#      path\ with\ spaces\.gz
+			#  *Caution: This method, yet simple and effective, has some major
+			#  drawbacks and should not be used in real applications.*
 			local template = "gzip -dc %s"
 			local filename = file:gsub("%W", "\\%0")
 			local cmdline = string.format(template, filename)
-			-- Finally we can replace the _file_ path with the process handle
-			-- (which is a _pipe_) we received from _io.popen_. A call
-			-- to _io.popen_ may fail in several ways though and in this
-			-- case, _nil_ is returned. We just pass the value along to
-			-- let _getlines_ eventually handle any error for us.
+			#  Finally we can replace the _file_ path with the process handle
+			#  (which is a _pipe_) we received from _io.popen_. A call
+			#  to _io.popen_ may fail in several ways though and in this
+			#  case, _nil_ is returned. We just pass the value along to
+			#  let _getlines_ eventually handle any error for us.
 			file = io.popen(cmdline, 'r')
-		end
-		-- Here we let _getlines_ do the hard work of handling the stream.
-		-- This works because _getlines_ can also accept previously opened
-		-- file handles.
+		}
+		#  Here we let _getlines_ do the hard work of handling the stream.
+		#  This works because _getlines_ can also accept previously opened
+		#  file handles.
 		return _getlines(file)
-	end
+	}
 }

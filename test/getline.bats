@@ -16,9 +16,9 @@ setup() {
 
 @test "getline is a keyword" {
 	run luawk '
-		function getline(...)
+		function getline(...) {
 			print("getline", select("#", ...), ...)
-		end
+		}
 		BEGIN { getline }
 	'
 	assert_success
@@ -28,9 +28,9 @@ setup() {
 @test "read entire input in BEGIN" {
 	run luawk '
 		BEGIN {
-			while getline() do
+			while(getline) {
 				print
-			end
+			}
 		}
 	' <<<$'line1\nline2'
 	assert_success

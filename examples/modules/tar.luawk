@@ -1,9 +1,9 @@
 BEGIN {
-	local _getline = getline
-	function getline(file)
-		if type(file) == "string" and file:match("%.tar$") then
-			file = io.popen("tar -tf " .. file:gsub("%W", "\\%0"))
-		end
-		return _getline(file)
-	end
+	local _getlines = getlines
+	function getlines(file) {
+		if (type(file) == "string" && file:match("%.tar$")) {
+			file = io.popen("tar -tf " file:gsub("%W", "\\%0"))
+		}
+		return _getlines(file)
+	}
 }
