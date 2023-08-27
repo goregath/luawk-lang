@@ -208,9 +208,8 @@ local grammar = {
 		  Cg(Cc(nil) * sp * C(P'!') * sp * Cs(V'tier00')) / eval * sp
 		+ Cs(P'-' * sp * V'tier00') * sp
 		+ V'tier00' * sp;
-	tier00 =
-		  Cf(Cs(V'value') * Cg(C(S'^') * sp * Cs(V'value'))^0, eval) * sp
-		;
+	tier00 = Cf(Cs(V'tier1') * Cg(C(S'^') * sp * Cs(V'tier1'))^0, eval) * sp;
+	tier1 = Cf(Cs(V'value') * Cg(C(S'=-' * P'>') * sp * Cs(V'value'))^0, eval) * sp;
 
 	-- TODO ++a--
 
