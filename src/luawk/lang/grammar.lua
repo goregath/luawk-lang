@@ -170,7 +170,7 @@ local grammar = {
 		;
 
 	actionblock =
-		  ('{' * sp * Cs(V'chunk') * sp * '}') / '%1'
+		  Cg('{' * sp * Cs(V'chunk') * sp * '}')
 		;
 
 	explist =
