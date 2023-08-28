@@ -211,6 +211,7 @@ local grammar = {
 
 	value =
 		  V'simple' * (sp * V'subvalue')^0
+		+ V'subvalue'
 		+ V'awkbuiltins' * sp * P'(' * sp * V'explist'^0 * sp * P')'
 		+ V'awkbuiltins' * sp * Cc'(' * V'explist'^0 * sp * Cc')'
 		+ V'awkbuiltins' * Cc'()'
