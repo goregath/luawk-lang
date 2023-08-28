@@ -190,7 +190,7 @@ local grammar = {
 
 	-- ternary operator / conditional expression
 	tier11 =
-		  Cf(Cf(V'tier10' * Cg(Cs(P'?'/'&&') * sp * V'exp'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'exp'), eval)
+		  Cf(Cf(V'tier10' * Cg(Cs(P'?'/'&&') * sp * V'tier10'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'tier10'), eval)
 		+ V'tier10';
 	tier10 = Cf(V'tier09' * Cg(C(P'||') * sp * V'tier09')^0, eval);
 	tier09 = Cf(V'tier08' * Cg(C(P'&&') * sp * V'tier08')^0, eval);
@@ -228,6 +228,9 @@ local grammar = {
 		  locale.digit * locale.alnum^0
 		+ V'string'
 		+ V'name'
+		+ P'nil'
+		+ P'true'
+		+ P'false'
 		;
 
 	chunk =
@@ -244,7 +247,7 @@ local grammar = {
 		;
 
 	["function"] =
-		  P'function' * blank^1
+		  P'function' * noident * blank^1
 		* (V'name' + V'awkbuiltins') * sp * '(' * sp * V'explist'^0 * sp * ')' * sp
 		* '{' * sp * V'chunk' * sp * '}'
 		;
