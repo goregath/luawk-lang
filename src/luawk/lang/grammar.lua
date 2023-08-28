@@ -138,9 +138,9 @@ local grammar = {
 	}), 'program');
 
 	shebang^-1 * V'newobj' * (blank + nl)^0 * (
-			  ( ( V'globals' / table.insert * (blank + eol)^0 )^1 )^0
-			* ( ( V'rule' / table.insert * (blank + eol)^0 )^1 )^0 * sp * -1
-		);
+		  ( ( V'globals' / table.insert * (blank + eol)^0 )^1 )^0
+		* ( ( V'rule' / table.insert * (blank + eol)^0 )^1 )^0 * sp * -1
+	);
 
 	globals =
 		  Cb('program') * Cc('BEGIN') / rawget * Cs(V'function')
@@ -148,15 +148,14 @@ local grammar = {
 
 	rule =
 		  Cb('program') * C(V'specialpattern') / rawget * sp * Cs(V'action')
-		+ Cb('program') * Cc('main') / rawget * Ct( Cs(V'pattern') * (P',' * Cs(V'pattern'))^-1 * sp * Cs(V'action') )
-		+ Cb('program') * Cc('main') / rawget * Ct( Cs(V'pattern') * (P',' * Cs(V'pattern'))^-1 * Cc('print()') )
+		+ Cb('program') * Cc('main') / rawget * Ct( Cs(V'pattern') * (P',' * sp * Cs(V'pattern'))^-1 * sp * Cs(V'action') )
+		+ Cb('program') * Cc('main') / rawget * Ct( Cs(V'pattern') * (P',' * sp * Cs(V'pattern'))^-1 * Cc('print()') )
 		+ Cb('program') * Cc('main') / rawget * Ct( Cc(true) * Cs(V'action') )
 		;
 
 	pattern =
 		  V'exp'
 		- V'specialpattern'
-		-- - #P'{'
 		;
 
 	specialpattern =
@@ -186,33 +185,32 @@ local grammar = {
 	-- TODO ambiguous syntax: {}
 
 	exp =
-		  Cf(V'tier11' * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier11')^0, eval) * sp
+		  Cf(V'tier11' * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier11')^0, eval)
 		;
 
 	-- ternary operator / conditional expression
 	tier11 =
-		  Cf(Cf(V'tier10' * Cg(Cs(P'?'/'&&') * sp * V'exp'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'exp'), eval) * sp
-		+ V'tier10' * sp;
-	tier10 = Cf(V'tier09' * Cg(C(P'||') * sp * V'tier09')^0, eval) * sp;
-	tier09 = Cf(V'tier08' * Cg(C(P'&&') * sp * V'tier08')^0, eval) * sp;
-	tier08 = Cf(V'tier07' * Cg(C(P'in') * sp * V'tier07')^0, eval) * sp;
-	tier07 = Cf(V'tier06' * Cg(C(P'!~' + P'~') * sp * (V'awkregex' + V'tier06'))^0, eval) * sp;
-	tier06 = Cf(V'tier05' * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier05')^0, eval) * sp;
+		  Cf(Cf(V'tier10' * Cg(Cs(P'?'/'&&') * sp * V'exp'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'exp'), eval)
+		+ V'tier10';
+	tier10 = Cf(V'tier09' * Cg(C(P'||') * sp * V'tier09')^0, eval);
+	tier09 = Cf(V'tier08' * Cg(C(P'&&') * sp * V'tier08')^0, eval);
+	tier08 = Cf(V'tier07' * Cg(C(P'in') * sp * V'tier07')^0, eval);
+	tier07 = Cf(V'tier06' * Cg(C(P'!~' + P'~') * sp * (V'awkregex' + V'tier06'))^0, eval);
+	tier06 = Cf(V'tier05' * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier05')^0, eval);
 	-- TODO 'expr expr' (AWK, left-associative) 'expr .. expr' (Lua, right-associative)
-	tier05 = Cf(V'tier04' * Cg(Cc('..') * sp * (V'tier04'))^0, eval) * sp;
-	tier04 = Cf(V'tier03' * Cg(C(S'+-') * sp * V'tier03')^0, eval) * sp;
-	tier03 = Cf(V'tier02' * Cg(C(P'//' + S'*/%') * sp * V'tier02')^0, eval) * sp;
+	tier05 = Cf(V'tier04' * Cg(Cc('..') * sp * V'tier04')^0, eval);
+	tier04 = Cf(V'tier03' * Cg(C(S'+-') * sp * V'tier03')^0, eval);
+	tier03 = Cf(V'tier02' * Cg(C(P'//' + S'*/%') * sp * V'tier02')^0, eval);
 	-- binary operators
 	tier02 =
 		  Cg(Cc(nil) * sp * C(P'!') * sp * Cs(V'tier01')) / eval * sp
 		+ Cs(P'-' * sp * V'tier01') * sp
-		+ V'tier01' * sp;
-	tier01 = Cf(Cs(V'tier00') * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval) * sp;
-	tier00 = V'value' * (S'-=' * P'>' * sp * V'value')^0;
+		+ V'tier01';
+	tier01 = Cf(Cs(V'tier00') * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval);
+	tier00 = Cg(Cs(V'value') * sp * (C(S'-=' * P'>') * sp * Cs(V'value'))^0);
 
 	value =
 		  V'simple' * (sp * V'subvalue')^0
-		+ V'subvalue'^1
 		+ V'awkbuiltins' * sp * P'(' * sp * V'explist'^0 * sp * P')'
 		+ V'awkbuiltins' * sp * Cc'(' * V'explist'^0 * sp * Cc')'
 		+ V'awkbuiltins' * Cc'()'
@@ -220,10 +218,10 @@ local grammar = {
 		;
 
 	subvalue =
-		  S'.:' * sp * V'value'
+		  S'.:' * sp * V'name' * sp * P'(' * sp * V'explist'^0 * sp * P')'
 		+ P'[' * sp * V'explist'^0 * sp * P']'
 		+ P'(' * sp * V'explist'^0 * sp * P')'
-		-- + P'{' * sp * V'chunk'^-1 * sp * P'}'
+		+ P'.' * sp * V'value'
 		;
 
 	simple =
