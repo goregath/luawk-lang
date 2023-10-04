@@ -69,6 +69,22 @@ LUAWK is an ongoing attempt to create a highly extensible version of AWK.
 * Initial idea: patch tarballs with awk
 * Unsatisfactory Attempts: Patching busybox AWK, using libmawk
 
+Language Features
+-----------------
+
+### Field Reference / Dollar Sign Operator `$`
+
+The dollar sign operator `$` is an unary operator that denotes a field reference in AWK, that is an expression prefixed
+with `$` evaluates to an index of a field in the current record. A field reference in turn is a non-negative integer
+constant. For example `$1` references the first field of the current record and `$NF` is last one. Here `NF` is a
+special variable linked to the total number of fields of the current record. The special field `$0` is the current
+record itself. An expression of `$(NF-1)` could be used to get the second last field. Please note the use of parenthesis
+here, the `$` operator has the highest precedence of all operators.
+
+So far we looked at the dollar operator from an AWK point of view.
+
+*TODO*
+
 Syntax
 ------
 
