@@ -9,10 +9,10 @@ build/luaposix-$(LUAPOSIX_VERSION)/:
 	mkdir -p build/
 	curl -fsSL "https://github.com/luaposix/luaposix/archive/refs/tags/v$(LUAPOSIX_VERSION).tar.gz" | tar -C build/ -xvzf -
 
-build/lua-$(LUA_VERSION)/%: | build/lua-$(LUA_VERSION)/
+build/lua-$(LUA_VERSION)/%.a: | build/lua-$(LUA_VERSION)/
 	$(MAKE) -C build/lua-$(LUA_VERSION)/ posix
 
-build/luaposix-$(LUAPOSIX_VERSION)/%: | build/luaposix-$(LUAPOSIX_VERSION)/ build/lua-$(LUA_VERSION)/src/liblua.a
+build/luaposix-$(LUAPOSIX_VERSION)/%.o: | build/luaposix-$(LUAPOSIX_VERSION)/ build/lua-$(LUA_VERSION)/src/liblua.a
 	$(CC) -c $(patsubst %.o,%.c,$@) -fPIC \
 	  -DPACKAGE='"luaposix"' -DVERSION='"luawk"' \
 	  -I build/lua-$(LUA_VERSION)/src \
