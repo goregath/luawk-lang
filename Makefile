@@ -1,55 +1,59 @@
+LDOC := ldoc
+LUACOV := luacov
 PROVE := prove
-
-LUAPOSIX_VERSION := 36.2.1
 
 LUA_VERSION := 5.4.6
 LUA := build/lua-$(LUA_VERSION)
-
 LUAINC := $(LUA)/src
 LUALIB := $(LUA)/src
 LUABIN := $(LUA)/src
 
-# TODO download archives to tmp/, add clean-all to clear dl-cache too
+LUAPOSIX_VERSION := 36.2.1
+LUAPOSIX := build/luaposix-$(LUAPOSIX_VERSION)
+LUAPOSIXINC := $(LUAPOSIX)/ext/include
+LUAPOSIX_CFLAGS := -fPIC -Wall
+LUAPOSIX_CFLAGS += -DPACKAGE='"luaposix"'
+LUAPOSIX_CFLAGS += -DVERSION='"luawk"'
+LUAPOSIX_CFLAGS += -I$(LUAINC)
+LUAPOSIX_CFLAGS += -I$(LUAPOSIXINC)
 
-build/:
-	mkdir -p build/
+tmp/lua-%: URL := https://www.lua.org/ftp/lua-$(LUA_VERSION).tar.gz
+tmp/luaposix-%: URL := https://github.com/luaposix/luaposix/archive/refs/tags/v$(LUAPOSIX_VERSION).tar.gz
 
-build/lua-$(LUA_VERSION)/: | build/
-	curl -fsSL "https://www.lua.org/ftp/lua-$(LUA_VERSION).tar.gz" | tar -C build/ -xzf -
+build/ doc/ tmp/:
+	mkdir -p "$@"
 
-build/luaposix-$(LUAPOSIX_VERSION)/: | build/ build/lua-$(LUA_VERSION)/
-	curl -fsSL "https://github.com/luaposix/luaposix/archive/refs/tags/v$(LUAPOSIX_VERSION).tar.gz" | tar -C build/ -xzf -
+tmp/%: | tmp/
+	curl -fsSL "$(URL)" -o "$@"
 
-build/lua-$(LUA_VERSION)/%: | build/lua-$(LUA_VERSION)/
+build/%: tmp/%.tar.gz | build/
+	tar -C build/ -xzf "$<" -- "$(patsubst build/%,%,$@)"
+	find "$@" -exec touch {} \;
+
+build/lua-$(LUA_VERSION)/%: | build/lua-$(LUA_VERSION)
 	$(MAKE) -C build/lua-$(LUA_VERSION)/ posix
 
-build/luaposix-$(LUAPOSIX_VERSION)/%.o: | build/luaposix-$(LUAPOSIX_VERSION)/
-	$(CC) -c $(patsubst %.o,%.c,$@) -fPIC \
-	  -DPACKAGE='"luaposix"' -DVERSION='"luawk"' \
-	  -I build/lua-$(LUA_VERSION)/src \
-	  -I build/luaposix-$(LUAPOSIX_VERSION)/ext/include \
-	  -o $@
+build/luaposix-%.o: build/luaposix-%.c | build/luaposix-$(LUAPOSIX_VERSION)/
+	$(CC) -c "$<" $(LUAPOSIX_CFLAGS) -o "$@"
 
-build/luawk: | $(LUALIB)/liblua.a $(LUABIN)/lua build/luaposix-$(LUAPOSIX_VERSION)/ext/posix/unistd.o
+build/luawk: | $(LUALIB)/liblua.a $(LUABIN)/lua $(LUAPOSIX)/ext/posix/unistd.o
 	$(LUABIN)/lua utils/luastatic/luastatic.lua
 
-.PHONY: all clean doc test
+.PHONY: all clean clean-all doc test
 
 clean:
 	rm -rf -- build/ doc/
 
+clean-all: clean
+	rm -rf -- tmp/
+
 test: build/luawk
-	# luarocks install --local luacov
-	# luarocks install --local luacov-multiple
 	$(PROVE)
 
-doc:
-	rm -rf -- doc/
-	mkdir -p doc/
-	ldoc .
-	mkdir -p doc/examples
-	cd doc/examples && ../../utils/locco/locco.lua ../../examples/**/*.luawk
-	mkdir -p doc/test
-	luacov
+doc: | doc/
+	mkdir -p doc/examples doc/test
+	cd doc/examples && ../../utils/locco/locco.lua ../../examples/*.luawk ../../examples/*/*.luawk
+	$(LDOC) .
+	$(LUACOV)
 
 all: test doc
