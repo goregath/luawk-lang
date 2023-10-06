@@ -1,3 +1,5 @@
+PROVE := prove
+
 LUA_VERSION := 5.4.6
 LUAPOSIX_VERSION := 36.2.1
 
@@ -20,9 +22,23 @@ build/luaposix-$(LUAPOSIX_VERSION)/%.o: | build/luaposix-$(LUAPOSIX_VERSION)/
 	  -I build/luaposix-$(LUAPOSIX_VERSION)/ext/include \
 	  -o $@
 
-.PHONY: all clean
+.PHONY: all clean doc test
 
 clean:
 	rm -rf -- build/
+
+test:
+	# luarocks install --local luacov
+	# luarocks install --local luacov-multiple
+	$(PROVE)
+
+doc:
+	mkdir -p doc/
+	rm -rf -- doc/*
+	ldoc .
+	mkdir -p doc/examples
+	cd doc/examples && ../../utils/locco/locco.lua ../../examples/**/*.luawk
+	mkdir -p doc/test
+	luacov
 
 all: build/luaposix-$(LUAPOSIX_VERSION)/ext/posix/unistd.o
