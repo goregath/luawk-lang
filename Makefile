@@ -52,6 +52,7 @@ luawk: src/luawk.c $(LUALIB)/liblua.a $(LUAPOSIX)/ext/posix/unistd.o
 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 .PHONY: all clean clean-all doc test
+.NOTPARALLEL:
 
 clean:
 	rm -rf -- build/ doc/
