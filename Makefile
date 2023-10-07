@@ -48,7 +48,7 @@ build/%.luab: src/%.lua | $(LUABIN)/luac
 	@mkdir -p $(dir $@)
 	$(LUABIN)/luac -o $@ $<
 
-build/luawk.bin: src/luawk.c $(LUALIB)/liblua.a $(LUAPOSIX)/ext/posix/unistd.o
+luawk: src/luawk.c $(LUALIB)/liblua.a $(LUAPOSIX)/ext/posix/unistd.o
 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 .PHONY: all clean clean-all doc test
@@ -59,7 +59,7 @@ clean:
 clean-all: clean
 	rm -rf -- tmp/
 
-test: build/luawk.bin
+test:
 	$(PROVE)
 
 doc: | doc/
@@ -68,4 +68,4 @@ doc: | doc/
 	$(LDOC) .
 	$(LUACOV)
 
-all: test doc
+all: luawk test doc
