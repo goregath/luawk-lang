@@ -17,6 +17,9 @@ LUAPOSIX_CFLAGS += -DVERSION='"luawk"'
 LUAPOSIX_CFLAGS += -I$(LUAINC)
 LUAPOSIX_CFLAGS += -I$(LUAPOSIX)/ext/include
 
+CFLAGS := -Wall -fPIC -I$(LUAINC)
+LDFLAGS := -rdynamic -lm -ldl
+
 .NOTINTERMEDIATE:
 
 tmp/lua.tar.gz: URL := https://www.lua.org/ftp/lua-$(LUA_VERSION).tar.gz
@@ -39,10 +42,10 @@ build/lua/%: | build/lua
 build/luaposix/%: build/luaposix; @: # no-op
 
 build/luaposix/%.o: build/luaposix/%.c
-	$(CC) -c "$<" $(LUAPOSIX_CFLAGS) -o "$@"
+	$(CC) -c $< $(LUAPOSIX_CFLAGS) -o $@
 
-build/luawk: $(LUALIB)/liblua.a $(LUABIN)/lua $(LUAPOSIX)/ext/posix/unistd.o
-	$(LUABIN)/lua utils/luastatic/luastatic.lua
+build/luawk: src/luawk.c $(LUALIB)/liblua.a $(LUAPOSIX)/ext/posix/unistd.o
+	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 .PHONY: all clean clean-all doc test
 
