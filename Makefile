@@ -39,12 +39,16 @@ build/%: tmp/%.tar.gz | build/
 build/lua/%: | build/lua
 	$(MAKE) -C build/lua posix
 
-build/luaposix/%: build/luaposix; @: # no-op
+build/luaposix/%: | build/luaposix; @: # no-op
 
 build/luaposix/%.o: build/luaposix/%.c
 	$(CC) -c $< $(LUAPOSIX_CFLAGS) -o $@
 
-build/luawk: src/luawk.c $(LUALIB)/liblua.a $(LUAPOSIX)/ext/posix/unistd.o
+build/%.luab: src/%.lua | $(LUABIN)/luac
+	@mkdir -p $(dir $@)
+	$(LUABIN)/luac -o $@ $<
+
+build/luawk.bin: src/luawk.c $(LUALIB)/liblua.a $(LUAPOSIX)/ext/posix/unistd.o
 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 .PHONY: all clean clean-all doc test
@@ -55,7 +59,7 @@ clean:
 clean-all: clean
 	rm -rf -- tmp/
 
-test: build/luawk
+test: build/luawk.bin
 	$(PROVE)
 
 doc: | doc/
