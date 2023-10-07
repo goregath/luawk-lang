@@ -37,7 +37,7 @@ build/%: tmp/%.tar.gz | build/
 	find "$@" -exec touch {} \;
 
 build/lua/%: | build/lua
-	$(MAKE) -C build/lua posix
+	$(MAKE) -C build/lua $(if $(findstring $(shell uname -s),Linux),linux,posix)
 
 build/luaposix/%: | build/luaposix; @: # no-op
 
