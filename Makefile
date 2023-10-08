@@ -11,27 +11,26 @@ LUABIN := $(LUA)/src
 LUAPOSIX_VERSION := 36.2.1
 LUAPOSIX := build/luaposix
 
-LUAPOSIX_CFLAGS := -fPIC
-LUAPOSIX_CFLAGS += -DPACKAGE='"luaposix"'
-LUAPOSIX_CFLAGS += -DVERSION='"luawk"'
-LUAPOSIX_CFLAGS += -I$(LUAINC)
-LUAPOSIX_CFLAGS += -I$(LUAPOSIX)/ext/include
-
 CFLAGS := -Wall -fPIC -I$(LUAINC)
 LDFLAGS := -rdynamic -lm -ldl
+
+PACKAGES := lua luaposix
 
 .NOTINTERMEDIATE:
 
 tmp/lua.tar.gz: URL := https://www.lua.org/ftp/lua-$(LUA_VERSION).tar.gz
 tmp/luaposix.tar.gz: URL := https://github.com/luaposix/luaposix/archive/refs/tags/v$(LUAPOSIX_VERSION).tar.gz
 
+build/lua: tmp/lua.tar.gz
+build/luaposix: tmp/luaposix.tar.gz
+
 build/ doc/ tmp/:
 	mkdir -p "$@"
 
-tmp/%: | tmp/
+$(patsubst %,tmp/%.tar.gz,$(PACKAGES)): | tmp/
 	curl -fsSL "$(URL)" -o "$@"
 
-build/%: tmp/%.tar.gz | build/
+$(patsubst %,build/%,$(PACKAGES)): | build/
 	tar -C build/ -xzf "$<"
 	cd build/ && ln -s $(notdir $@)-* $(notdir $@)
 	find "$@" -exec touch {} \;
@@ -39,17 +38,18 @@ build/%: tmp/%.tar.gz | build/
 build/lua/%: | build/lua
 	$(MAKE) -C build/lua $(if $(findstring $(shell uname -s),Linux),linux,posix)
 
-build/luaposix/%: | build/luaposix; @: # no-op
-
-build/luaposix/%.o: build/luaposix/%.c
-	$(CC) -c $< $(LUAPOSIX_CFLAGS) -o $@
+build/%/Makefile: | $(LUABIN)/lua build/%
+	LUA_PATH="$(wildcard $(dir $@)/*.rockspec)" $(LUABIN)/lua >$@ -l? -e "\
+		function P(...) print(string.format(...)) end \
+		function E(str) return str:gsub('%\n', '$$\\\n') end \
+		P('.PHONY: all install\nall:;%s\ninstall:;%s', E(build.build_command), E(build.install_command))"
 
 build/%.luab: src/%.lua | $(LUABIN)/luac
 	@mkdir -p $(dir $@)
 	$(LUABIN)/luac -o $@ $<
 
-luawk: src/luawk.c $(LUALIB)/liblua.a $(LUAPOSIX)/ext/posix/unistd.o
-	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
+# luawk: src/luawk.c $(LUALIB)/liblua.a $(patsubst %.c,%.o,$(wildcard $(LUAPOSIX)/ext/posix/*.c))
+# 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 .PHONY: all clean clean-all doc test
 .NOTPARALLEL:
