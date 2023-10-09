@@ -36,7 +36,8 @@ PACKAGES := luaposix
 
 VPATH := src build/root
 
-$(info $(VPATH))
+.PHONY: all clean clean-all doc test
+.PHONY: lua $(PACKAGES)
 
 .NOTINTERMEDIATE:
 
@@ -57,28 +58,35 @@ build/lua $(patsubst %,build/%,$(PACKAGES)): | build/
 	cd build/ && ln -s $(notdir $@)-* $(notdir $@)
 	find "$@" -exec touch {} \;
 
-build/lua/%: | lua; test -f $@
+build/shell.lua: | $(LUABIN)/lua
+	echo '#!$(abspath $(LUABIN)/lua)'$$'\n''assert((loadstring or load)(arg[2]:gsub("\\\n", "\n")))()' > $@
+	chmod +x $@
 
-build/%/Makefile: | $(LUABIN)/lua build/%
-	LUA_PATH="$(wildcard $(dir $@)/*.rockspec)" \
-	$(LUABIN)/lua >$@ -l? -e "\
-	  function P(...) print(string.format(...)) end \
-	  function E(str) return str:gsub('%\n', '$$\\\n') end \
-	  P('.PHONY: all install\nall:;%s\ninstall:;%s', \
-	    E(build.build_command or 'make all'),\
-		E(build.install_command or 'make install'))"
+# build/lua/%: | lua; test -f $@
 
-.PHONY: lua $(PACKAGES)
+build/%/Makefile: private SHELL := build/shell.lua
+build/%/Makefile: | build/shell.lua build/%
+	loadfile "$(wildcard $(dir $@)/*.rockspec)" () \
+	function P(...) io.open("$@", "w"):write(string.format(...)):close() end \
+	function E(str) return str:gsub('%\n', '$$\\\n') end \
+	assert(build.type == 'command') \
+	P('.PHONY: all install\nall:;%s\ninstall:;%s', \
+	  E(build.build_command or 'make all'),\
+	  E(build.install_command or 'make install'))
 
-luaposix: | build/luaposix build/luaposix/Makefile
+build/lua/src/lua build/lua/src/luac: | lua
 
-lua: | build/lua build/lua/Makefile
+lua: | build/lua
 	$(MAKE) -C build/lua $(PLATFORM)
+
+luaposix: export CFLAGS := $(CFLAGS) -fPIC
+luaposix: export LIB_EXTENSION := so
+luaposix: export OBJ_EXTENSION := o
+luaposix: | build/luaposix build/luaposix/Makefile
 
 $(PACKAGES): | $(LUABIN)/lua
 	set -e; \
 	mkdir -p build/pkg; \
-	export CFLAGS="$(CFLAGS) -fPIC"; \
 	export LIBFLAG="-c";\
 	export LUA="$(abspath $(LUABIN)/lua)"; \
 	export LUALIB="$(abspath $(LUALIB)/liblua.a)"; \
@@ -90,8 +98,6 @@ $(PACKAGES): | $(LUABIN)/lua
 	export LIBDIR="../pkg"; \
 	export LUADIR="../pkg"; \
 	export CONFDIR="../pkg"; \
-	export LIB_EXTENSION="so"; \
-	export OBJ_EXTENSION="o"; \
 	$(MAKE) -C build/$@ -f Makefile all; \
 	$(MAKE) -C build/$@ -f Makefile install
 
@@ -102,7 +108,6 @@ build/%.luab: %.lua | $(LUABIN)/luac
 # luawk: src/luawk.c $(LUALIB)/liblua.a $(patsubst %.c,%.o,$(wildcard $(LUAPOSIX)/ext/posix/*.c))
 # 	$(CC) $^ $(LUAWK_CFLAGS) -o $@ $(LUAWK_LDFLAGS)
 
-.PHONY: all clean clean-all doc test
 .NOTPARALLEL:
 
 clean:
