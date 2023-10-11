@@ -1,31 +1,41 @@
 # LUAWK Makefile
 
 space := $(subst ,, )
-modlocate = $(sort $(subst /,.,$(patsubst %/init,%,$(patsubst $(1)%.lua,%,$(shell find $(1) -name '*.$(2)')))))
-bldpkg = $(patsubst build/%/,%,$@)
+
+1 = $(word 1,$(subst /,$(space),$@))
+2 = $(word 2,$(subst /,$(space),$@))
+3 = $(word 3,$(subst /,$(space),$@))
+
+pkgencode := $(sort $(subst /,.,$(patsubst %/init,%,$(patsubst $(1)%.lua,%,$(shell find $(1) -name '*.$(2)')))))
+pkgsearch := $(foreach mod,$(1),$(firstword $(wildcard $(subst ?,$(subst .,/,$(mod)),$(MOD_PATH)))))
 
 PROGRAM := luawk
-PLATFORM := $(if $(findstring $(shell uname -s),Linux),linux,posix)
+
+HOST != uname -m
+ARCH := $(HOST)
+PLATFORM != uname -s | tr '[:upper:]' '[:lower:]'
 
 LDOC := ldoc
-LUA := lua
+LUAC := build/$(ARCH)/lua/src/luac
 LUACOV := luacov
 PROVE := prove
 
 LUA_VERSION := 5.4.6
 LUAPOSIX_VERSION := 36.2.1
 
-LUABIN := build/lua/src
-LUAINC := build/lua/src
-LUALIB := build/lua/src
+LUABIN := build/$(ARCH)/lua/src
+LUAINC := build/$(ARCH)/lua/src
+LUALIB := build/$(ARCH)/lua/src
 
 CFLAGS := -fPIC
 LDFLAGS := -rdynamic -lm -ldl
+INCLUDES := -I$(LUAINC)
 
 MOD_PATH := src/?.lua
 MOD_PATH += src/?/init.lua
+MOD_PATH += build/$(ARCH)/luaposix/ext/posix/?.o
 
-MODULES := $(call modlocate,src/,lua)
+MODULES := $(call pkgencode,src/,lua)
 MODULES += posix.stdlib
 MODULES += posix.unistd
 
@@ -39,8 +49,8 @@ MODULES += posix.unistd
 tmp/lua-$(LUA_VERSION).tar.gz: URL := https://www.lua.org/ftp/lua-$(LUA_VERSION).tar.gz
 tmp/luaposix-$(LUAPOSIX_VERSION).tar.gz: URL := https://github.com/luaposix/luaposix/archive/refs/tags/v$(LUAPOSIX_VERSION).tar.gz
 
-build/lua/: tmp/lua-$(LUA_VERSION).tar.gz
-build/luaposix/: tmp/luaposix-$(LUAPOSIX_VERSION).tar.gz
+build/$(ARCH)/lua/: tmp/lua-$(LUA_VERSION).tar.gz
+build/$(ARCH)/luaposix/: tmp/luaposix-$(LUAPOSIX_VERSION).tar.gz
 
 %/:
 	mkdir -p "$@"
@@ -48,34 +58,33 @@ build/luaposix/: tmp/luaposix-$(LUAPOSIX_VERSION).tar.gz
 tmp/%.tar.gz: | tmp/
 	curl -fsSL "$(URL)" -o "$@"
 
-build/lua/ build/luaposix/: | build/
-	tar -C build/ -xzf "$<"
-	cd build/
-	ln -s $(bldpkg)-* $(bldpkg)
-	find $(bldpkg) -exec touch {} \;
+build/$(ARCH)/lua/ build/$(ARCH)/luaposix/: | build/$(ARCH)/
+	tar -C $1/$2 -xzf $<
+	cd $1/$2
+	ln -s $3-* $3
+	find $3 -exec touch {} \;
 
-build/lua/Makefile build/lua/src/: | build/lua/; @stat $@ >/dev/null 
+build/$(ARCH)/lua/Makefile: | build/$(ARCH)/lua/; @stat $@ >/dev/null
+build/$(ARCH)/lua/src/: | build/$(ARCH)/lua/; @stat $@ >/dev/null
 
-build/lua/src/liblua.a build/lua/src/lua build/lua/src/luac: build/lua/Makefile
-	$(MAKE) -C build/lua $(PLATFORM)
-	stat $@ >/dev/null 
+build/$(ARCH)/lua/src/luac build/$(ARCH)/lua/src/liblua.a: build/$(ARCH)/lua/Makefile
+	$(MAKE) -C build/$2/lua $(PLATFORM)
 
-build/luaposix/lib/%.lua: | build/luaposix/; @stat $@ >/dev/null 
-build/luaposix/ext/%.c:   | build/luaposix/; @stat $@ >/dev/null 
+build/$(ARCH)/luaposix/lib/%.lua: | build/$(ARCH)/luaposix/; @stat $@ >/dev/null 
+build/$(ARCH)/luaposix/ext/%.c:   | build/$(ARCH)/luaposix/; @stat $@ >/dev/null 
 
-build/luaposix/%.o: CFLAGS += -Ibuild/luaposix/ext/include
-build/luaposix/%.o: CFLAGS += -DPACKAGE='"luaposix"'
-build/luaposix/%.o: CFLAGS += -DVERSION='"$(LUAPOSIX_VERSION)"'
-build/luaposix/%.o: CFLAGS += -D_POSIX_C_SOURCE=200809L
-build/luaposix/%.o: CFLAGS += -D_XOPEN_SOURCE=700
+build/$(ARCH)/luaposix/%.o: CFLAGS += -D_POSIX_C_SOURCE=200809L
+build/$(ARCH)/luaposix/%.o: CFLAGS += -D_XOPEN_SOURCE=700
 ifeq ($(PLATFORM),linux)
-build/luaposix/%.o: CFLAGS += -D_BSD_SOURCE=1
-build/luaposix/%.o: CFLAGS += -D_DEFAULT_SOURCE=1
+build/$(ARCH)/luaposix/%.o: CFLAGS += -D_BSD_SOURCE=1
+build/$(ARCH)/luaposix/%.o: CFLAGS += -D_DEFAULT_SOURCE=1
 endif
+build/$(ARCH)/luaposix/%.o: CFLAGS += -DPACKAGE='"luaposix"'
+build/$(ARCH)/luaposix/%.o: CFLAGS += -DVERSION='"$(LUAPOSIX_VERSION)"'
+build/$(ARCH)/luaposix/%.o: INCLUDES += -Ibuild/$(ARCH)/luaposix/ext/include
 
-build/%.o: CFLAGS += -I$(LUAINC)
 build/%.o: build/%.c | $(LUAINC)/
-	$(CC) -c $^ $(CFLAGS) -o $@
+	$(CC) $(INCLUDES) -c $^ $(CFLAGS) -o $@
 
 # build/shell.lua: | $(LUABIN)/lua
 # 	echo '#!$(abspath $(LUABIN)/lua)' > $@
@@ -84,9 +93,9 @@ build/%.o: build/%.c | $(LUAINC)/
 
 # build/lua/%: | lua; test -f $@
 
-# .PHONY: modlocate
-# modlocate: private SHELL := build/shell.lua
-# modlocate: | build/shell.lua
+# .PHONY: pkgencode
+# pkgencode: private SHELL := build/shell.lua
+# pkgencode: | build/shell.lua
 # 	file = ('posix.unistd'):gsub("%.", "/")
 # 	for tmpl in ('$(MOD_PATH)'):gmatch("%S+") do
 # 		path = tmpl:gsub("?", file)
