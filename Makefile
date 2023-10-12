@@ -31,8 +31,8 @@ CFLAGS := -fPIC
 LDFLAGS := -rdynamic -lm -ldl
 INCLUDES := -I$(LUAINC)
 
-MOD_PATH := src/?.lua
-MOD_PATH += src/?/init.lua
+MOD_PATH := build/$(ARCH)/src/?.o
+MOD_PATH += build/$(ARCH)/src/?/init.o
 MOD_PATH += build/$(ARCH)/luaposix/ext/posix/?.o
 
 MODULES := $(call pkgencode,src/,lua)
@@ -83,8 +83,15 @@ build/$(ARCH)/luaposix/%.o: CFLAGS += -DPACKAGE='"luaposix"'
 build/$(ARCH)/luaposix/%.o: CFLAGS += -DVERSION='"$(LUAPOSIX_VERSION)"'
 build/$(ARCH)/luaposix/%.o: INCLUDES += -Ibuild/$(ARCH)/luaposix/ext/include
 
+build/$(ARCH)/%.luab: %.lua | $(LUABIN)/luac
+	mkdir -p $(dir $@)
+	$(LUABIN)/luac -o $@ $<
+
 build/%.o: build/%.c | $(LUAINC)/
 	$(CC) $(INCLUDES) -c $^ $(CFLAGS) -o $@
+
+build/%.o: build/%.luab
+	false $@ $<
 
 # build/shell.lua: | $(LUABIN)/lua
 # 	echo '#!$(abspath $(LUABIN)/lua)' > $@
@@ -139,9 +146,6 @@ build/%.o: build/%.c | $(LUAINC)/
 # 	$(MAKE) -C build/$@ -f Makefile all; \
 # 	$(MAKE) -C build/$@ -f Makefile install
 
-build/%.luab: %.lua | $(LUABIN)/luac
-	@mkdir -p $(dir $@)
-	$(LUABIN)/luac -o $@ $<
 
 # luawk: src/luawk.c $(LUALIB)/liblua.a $(patsubst %.c,%.o,$(wildcard $(LUAPOSIX)/ext/posix/*.c))
 # 	$(CC) $^ $(LUAWK_CFLAGS) -o $@ $(LUAWK_LDFLAGS)
