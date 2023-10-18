@@ -6,9 +6,9 @@ space := $(subst ,, )
 2 = $(word 2,$(subst /,$(space),$@))
 3 = $(word 3,$(subst /,$(space),$@))
 
-enumerate = $(sort $(subst /,.,$(patsubst %/init,%,$(patsubst $(1)%.lua,%,$(shell find $(1) -name '*.$(2)')))))
-pkgencode = $(firstword $(foreach pat,$(MOD_PATH),$(if $(patsubst $(pat),,$(1)),,$(subst /,.,$(patsubst $(pat),%,$(1))))))
-pkgdecode = $(firstword $(wildcard $(foreach pat,$(MOD_PATH),$(patsubst %,$(pat),$(subst .,/,$(1))))))
+enumerate = $(sort $(subst /,.,$(patsubst %/init,%,$(patsubst $(1)%.lua,%,$(shell find $(1) -type f -name '*.$(2)')))))
+pkgencode = $(foreach pkg,$(1),$(firstword $(foreach pat,$(MOD_PATH),$(if $(patsubst $(pat),,$(pkg)),,$(subst /,.,$(patsubst $(pat),%,$(pkg)))))))
+pkgdecode = $(foreach path,$(1),$(firstword $(wildcard $(foreach pat,$(MOD_PATH),$(patsubst %,$(pat),$(subst .,/,$(path)))))))
 
 PROGRAM := luawk
 
@@ -34,14 +34,16 @@ CFLAGS := -fPIC -Wall
 LDFLAGS := -rdynamic -lm -ldl
 INCLUDES := -I$(LUAINC)
 
-MOD_PATH := build/$(ARCH)/src/%/init.o
-MOD_PATH += build/$(ARCH)/src/%.o
-MOD_PATH += build/$(ARCH)/luaposix/lib/%.o
-MOD_PATH += build/$(ARCH)/luaposix/ext/%.o
+MOD_PATH := build/$(ARCH)/src/%/init.c
+MOD_PATH += build/$(ARCH)/src/%.c
+MOD_PATH += build/$(ARCH)/luaposix/lib/%.c
+MOD_PATH += build/$(ARCH)/luaposix/ext/%.c
 
 MODULES := $(call enumerate,src/,lua)
 MODULES += posix.stdlib
 MODULES += posix.unistd
+
+SOURCES := $(patsubst %.lua,build/$(ARCH)/%.c,$(shell find src/ -type f -name '*.lua'))
 
 .SHELLFLAGS := -ec
 
@@ -77,6 +79,7 @@ build/$(ARCH)/lua/src/luac build/$(ARCH)/lua/src/liblua.a: build/$(ARCH)/lua/Mak
 build/$(ARCH)/luaposix/lib/%.lua: | build/$(ARCH)/luaposix/; @stat $@ >/dev/null 
 build/$(ARCH)/luaposix/ext/%.c:   | build/$(ARCH)/luaposix/; @stat $@ >/dev/null 
 
+build/$(ARCH)/luaposix/%.o: CFLAGS := -fPIC
 build/$(ARCH)/luaposix/%.o: CFLAGS += -D_POSIX_C_SOURCE=200809L
 build/$(ARCH)/luaposix/%.o: CFLAGS += -D_XOPEN_SOURCE=700
 ifeq ($(PLATFORM),linux)
@@ -102,11 +105,17 @@ build/$(ARCH)/%.c: build/$(ARCH)/%.luab
 	echo 'static const char module[] = {'
 	$(OD) -vtx1 -An -w16 $< | $(AWK) -vOFS=',0x' '{ NF=NF; print "0x"$$0"," }'
 	echo '};'
-	echo 'int luaopen_$(subst .,_,$(call pkgencode,$(basename $@).o))(lua_State *L) {'
-	echo '  luaL_loadbuffer(L, module, sizeof(module), "$(call pkgencode,$(basename $@).o)");'
+	echo 'int luaopen_$(subst .,_,$(call pkgencode,$@))(lua_State *L) {'
+	echo '  luaL_loadbuffer(L, module, sizeof(module), "$(call pkgencode,$@)");'
+	echo '  lua_call(L, 0, 1);'
 	echo '  return 1;'
 	echo '};'
 
+build/$(ARCH)/loadall.o: $(patsubst %.c,%.o,$(call pkgdecode,$(MODULES)))
+
+.PHONY: luawk
+luawk: | $(LUALIB)/liblua.a build/$(ARCH)/luaposix/ $(SOURCES)
+	$(MAKE) build/$(ARCH)/loadall.o
 
 # build/shell.lua: | $(LUABIN)/lua
 # 	echo '#!$(abspath $(LUABIN)/lua)' > $@
@@ -161,9 +170,8 @@ build/$(ARCH)/%.c: build/$(ARCH)/%.luab
 # 	$(MAKE) -C build/$@ -f Makefile all; \
 # 	$(MAKE) -C build/$@ -f Makefile install
 
-
-luawk: src/luawk.c $(LUALIB)/liblua.a build/$(ARCH)/src/luawk/type/init.o # $(patsubst %.c,%.o,$(wildcard $(LUAPOSIX)/ext/posix/*.c))
-	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
+# luawk: src/luawk.c $(LUALIB)/liblua.a build/$(ARCH)/src/luawk/type/init.o # $(patsubst %.c,%.o,$(wildcard $(LUAPOSIX)/ext/posix/*.c))
+# 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 .NOTPARALLEL:
 
