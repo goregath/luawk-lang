@@ -96,7 +96,7 @@ build/$(ARCH)/%.luab: %.lua | $(LUAC)
 build/%.o: build/%.c | $(LUAINC)/
 	$(CC) $(INCLUDES) -c $^ $(CFLAGS) -o $@
 
-build/$(ARCH)/%.c: build/$(ARCH)/%.luab
+build/$(ARCH)/%.c: build/$(ARCH)/%.luab ;@ $(info generating $@)
 	mkdir -p $(dir $@)
 	exec 1>$@
 	echo '#include "lua.h"'
@@ -110,7 +110,7 @@ build/$(ARCH)/%.c: build/$(ARCH)/%.luab
 	echo '  return 1;'
 	echo '};'
 
-build/$(ARCH)/preload.c:
+build/$(ARCH)/preload.c: ;@ $(info generating $@)
 	mkdir -p $(dir $@)
 	exec 1>$@
 	echo   '#include "lua.h"'
