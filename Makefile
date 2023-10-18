@@ -32,22 +32,21 @@ LUALIB := build/$(ARCH)/lua/src
 
 CFLAGS := -fPIC -Wall
 LDFLAGS := -rdynamic -lm -ldl
-INCLUDES := -I$(LUAINC)
+INCLUDES := -I $(LUAINC)
 
 MOD_PATH := build/$(ARCH)/src/%/init.c
 MOD_PATH += build/$(ARCH)/src/%.c
 MOD_PATH += build/$(ARCH)/luaposix/lib/%.c
 MOD_PATH += build/$(ARCH)/luaposix/ext/%.c
 
-MODULES := $(call enumerate,src/,lua)
+# MODULES := $(call enumerate,src/,lua)
+MODULES := $(filter-out luawk,$(call enumerate,src/,lua))
 MODULES += posix.stdlib
 MODULES += posix.unistd
 
 SOURCES := $(patsubst %.lua,build/$(ARCH)/%.c,$(shell find src/ -type f -name '*.lua'))
 
 .SHELLFLAGS := -ec
-
-.PHONY: all clean clean-all doc test
 
 .ONESHELL:
 .NOTINTERMEDIATE:
@@ -88,7 +87,7 @@ build/$(ARCH)/luaposix/%.o: CFLAGS += -D_DEFAULT_SOURCE=1
 endif
 build/$(ARCH)/luaposix/%.o: CFLAGS += -DPACKAGE='"luaposix"'
 build/$(ARCH)/luaposix/%.o: CFLAGS += -DVERSION='"$(LUAPOSIX_VERSION)"'
-build/$(ARCH)/luaposix/%.o: INCLUDES += -Ibuild/$(ARCH)/luaposix/ext/include
+build/$(ARCH)/luaposix/%.o: INCLUDES += -I build/$(ARCH)/luaposix/ext/include
 
 build/$(ARCH)/%.luab: %.lua | $(LUAC)
 	mkdir -p $(dir $@)
@@ -111,69 +110,30 @@ build/$(ARCH)/%.c: build/$(ARCH)/%.luab
 	echo '  return 1;'
 	echo '};'
 
-build/$(ARCH)/loadall.o: $(patsubst %.c,%.o,$(call pkgdecode,$(MODULES)))
+build/$(ARCH)/preload.c:
+	mkdir -p $(dir $@)
+	exec 1>$@
+	echo   '#include "lua.h"'
+	echo   '#define REG(f,n) '"\\"
+	echo   '  lua_pushcfunction(L, f); '"\\"
+	echo   '  lua_setfield(L, -2, n);'
+	printf 'LUALIB_API int luaopen_%s(lua_State *L);\n' $(subst .,_,$(MODULES))
+	echo   'LUALIB_API int luawk_preload(lua_State *L) {'
+	echo   '  lua_getglobal(L, "package");'
+	echo   '  lua_getfield(L, -1, "preload");'
+	printf '  REG(luaopen_%s, "%s")\n' $(foreach mod,$(MODULES),$(subst .,_,$(mod)) $(mod))
+	echo   '  lua_pop(L, 2);'
+	echo   '  return 0;'
+	echo   '};'
 
-.PHONY: luawk
-luawk: | $(LUALIB)/liblua.a build/$(ARCH)/luaposix/ $(SOURCES)
-	$(MAKE) build/$(ARCH)/loadall.o
-
-# build/shell.lua: | $(LUABIN)/lua
-# 	echo '#!$(abspath $(LUABIN)/lua)' > $@
-# 	echo 'print(assert(assert((loadstring or load)(arg[2]:gsub("\\\n", "\n")))()))' >> $@
-# 	chmod +x $@
-
-# build/lua/%: | lua; test -f $@
-
-# .PHONY: enumerate
-# enumerate: private SHELL := build/shell.lua
-# enumerate: | build/shell.lua
-# 	file = ('posix.unistd'):gsub("%.", "/")
-# 	for tmpl in ('$(MOD_PATH)'):gmatch("%S+") do
-# 		path = tmpl:gsub("?", file)
-# 		if io.open(path, "r") then return path end
-# 	end
-
-# build/%/Makefile: private SHELL := build/shell.lua
-# build/%/Makefile: | build/shell.lua build/%
-# 	loadfile "$(wildcard $(dir $@)/*.rockspec)" () \
-# 	function P(...) io.open("$@", "w"):write(string.format(...)):close() end \
-# 	function E(str) return str:gsub('%\n', '$$\\\n') end \
-# 	assert(build.type == 'command') \
-# 	P('.PHONY: all install\nall:;%s\ninstall:;%s', \
-# 	  E(build.build_command or 'make all'),\
-# 	  E(build.install_command or 'make install'))
-# 
-# build/lua/src/lua build/lua/src/luac: | lua
-# 
-# lua: | build/lua
-# 	$(MAKE) -C build/lua $(PLATFORM)
-# 
-# luaposix: export CFLAGS := $(CFLAGS) -fPIC
-# luaposix: export LIB_EXTENSION := so
-# luaposix: export OBJ_EXTENSION := o
-# luaposix: | build/luaposix build/luaposix/Makefile
-# 
-# $(PACKAGES): | $(LUABIN)/lua
-# 	set -e; \
-# 	mkdir -p build/pkg; \
-# 	export LIBFLAG="-c";\
-# 	export LUA="$(abspath $(LUABIN)/lua)"; \
-# 	export LUALIB="$(abspath $(LUALIB)/liblua.a)"; \
-# 	export LUA_LIBDIR="$(abspath $(LUALIB))"; \
-# 	export LUA_BINDIR="$(abspath $(LUABIN))"; \
-# 	export LUA_INCDIR="$(abspath $(LUAINC))"; \
-# 	export PREFIX="../pkg"; \
-# 	export BINDIR="../pkg"; \
-# 	export LIBDIR="../pkg"; \
-# 	export LUADIR="../pkg"; \
-# 	export CONFDIR="../pkg"; \
-# 	$(MAKE) -C build/$@ -f Makefile all; \
-# 	$(MAKE) -C build/$@ -f Makefile install
-
-# luawk: src/luawk.c $(LUALIB)/liblua.a build/$(ARCH)/src/luawk/type/init.o # $(patsubst %.c,%.o,$(wildcard $(LUAPOSIX)/ext/posix/*.c))
-# 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
+build/$(ARCH)/luawk: src/luawk.c $(LUALIB)/liblua.a build/$(ARCH)/preload.o $(patsubst %.c,%.o,$(call pkgdecode,$(MODULES)))
+	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 .NOTPARALLEL:
+.PHONY: all clean clean-all doc test luawk
+
+luawk: | $(LUALIB)/liblua.a build/$(ARCH)/luaposix/ $(SOURCES)
+	$(MAKE) build/$(ARCH)/luawk
 
 clean:
 	rm -rf -- build/ doc/

@@ -78,16 +78,12 @@ static int docall (lua_State *L, int narg, int nres) {
 	return status;
 }
 
-LUALIB_API int luaopen_posix_unistd(lua_State *L);
+LUALIB_API int luawk_preload(lua_State *L);
 
 int main(int argc, char *argv[]) {
 	lua_State *L = luaL_newstate();
 	luaL_openlibs(L);
-    lua_getglobal(L, "package");
-    lua_getfield(L, -1, "preload");
-    lua_pushcfunction(L, luaopen_posix_unistd);
-    lua_setfield(L, -2, "posix.unistd");
-    lua_pop(L, 2);
+    luawk_preload(L);
     createargtable(L, argv, argc, 0);
    
     // dummy
