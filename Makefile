@@ -126,7 +126,8 @@ build/$(ARCH)/preload.c: ;@ $(info generating $@)
 	echo   '  return 0;'
 	echo   '};'
 
-build/$(ARCH)/luawk: src/luawk.c $(LUALIB)/liblua.a build/$(ARCH)/preload.o $(patsubst %.c,%.o,$(call pkgdecode,$(MODULES)))
+build/$(ARCH)/luawk: src/luawk.c $(LUALIB)/liblua.a build/$(ARCH)/preload.o
+build/$(ARCH)/luawk: src/luawk.c $(patsubst %.c,%.o,$(call pkgdecode,luawk $(MODULES)))
 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 .NOTPARALLEL:

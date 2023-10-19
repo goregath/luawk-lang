@@ -78,6 +78,7 @@ static int docall (lua_State *L, int narg, int nres) {
 	return status;
 }
 
+LUALIB_API int luaopen_luawk(lua_State *L);
 LUALIB_API int luawk_preload(lua_State *L);
 
 int main(int argc, char *argv[]) {
@@ -85,9 +86,7 @@ int main(int argc, char *argv[]) {
 	luaL_openlibs(L);
     luawk_preload(L);
     createargtable(L, argv, argc, 0);
-   
-    // dummy
-    luaL_loadstring(L, argc > 1 ? argv[1] : "print('no input')");
+    lua_pushcfunction(L, luaopen_luawk);
     if (docall(L, 0, LUA_MULTRET)) {
     	const char *errmsg = lua_tostring(L, 1);
     	if (errmsg) {

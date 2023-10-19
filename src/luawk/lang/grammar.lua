@@ -358,18 +358,18 @@ function M.parse(source)
 	end
 end
 
-if (...) ~= "luawk.lang.grammar" then
-	local ins = require 'inspect'
-	for _,chunk in ipairs(arg) do
-		local program, msg, _, line, col = M.parse(chunk)
-		print(chunk)
-		print(('-'):rep(#chunk < 8 and 8 or #chunk))
-		if program then
-			io.stdout:write(ins(program), "\n")
-		else
-			io.stderr:write("error: ", msg, " at line ", line or "?", " col ", col or "?", "\n")
-		end
-	end
-end
+-- if (...) ~= "luawk.lang.grammar" then
+-- 	local ins = require 'inspect'
+-- 	for _,chunk in ipairs(arg) do
+-- 		local program, msg, _, line, col = M.parse(chunk)
+-- 		print(chunk)
+-- 		print(('-'):rep(#chunk < 8 and 8 or #chunk))
+-- 		if program then
+-- 			io.stdout:write(ins(program), "\n")
+-- 		else
+-- 			io.stderr:write("error: ", msg, " at line ", line or "?", " col ", col or "?", "\n")
+-- 		end
+-- 	end
+-- end
 
 return M
