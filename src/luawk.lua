@@ -142,7 +142,16 @@ end
 -- ---------------------------------------------------------
 
 local sources = {}
--- getopt stage 1 - special flags and options
+if type(arg) == "userdata" then
+    -- wrap arg userdata into table
+    -- TODO very very ugly
+    arg = { [0] = arg[0], table.unpack(arg) }
+    -- arg = setmetatable({}, {
+    --   __index = function(_,i) return _arg[i] end,
+    --   __len = function() return #_arg end,
+    --   __metatable = false,
+    -- })
+end
 for r, optarg, optind in getopt(arg, optstring) do
     if r == ':' then
         usage(io.stderr)
