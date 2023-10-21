@@ -1,4 +1,10 @@
+# luawk binary
+luawk
+
+# build files
 doc/
+build/
+tmp/
 
 # luacov files
 *.lcov

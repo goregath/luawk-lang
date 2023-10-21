@@ -142,7 +142,18 @@ end
 -- ---------------------------------------------------------
 
 local sources = {}
--- getopt stage 1 - special flags and options
+if type(arg) == "userdata" then
+    -- wrap arg userdata into table
+    -- TODO refactor qnd solution
+    arg = { [0] = arg[0], table.unpack(arg) }
+    -- arg = setmetatable({}, {
+    --   __index = function(_,i) return _arg[i] end,
+    --   __len = function() return #_arg end,
+    --   __metatable = false,
+    -- })
+end
+-- FIXME getopt can only handle a raw arg table
+-- This is due to how getopt determines the length of `arg` with lua_objlen which does not test for metatables.
 for r, optarg, optind in getopt(arg, optstring) do
     if r == ':' then
         usage(io.stderr)
