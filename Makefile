@@ -23,9 +23,10 @@ LUACOV := luacov
 OD := od
 PROVE := prove
 
-LUA_VERSION := 5.4.6
-LUAPOSIX_VERSION := 36.2.1
 ERDE_VERSION := 1.0.0-1
+LPEGLABEL_VERSION := 1.6.2-1
+LUAPOSIX_VERSION := 36.2.1
+LUA_VERSION := 5.4.6
 
 LUABIN := build/$(ARCH)/lua/src
 LUAINC := build/$(ARCH)/lua/src
@@ -39,13 +40,18 @@ MOD_PATH := build/$(ARCH)/src/%/init
 MOD_PATH += build/$(ARCH)/src/%
 MOD_PATH += build/$(ARCH)/erde/%/init
 MOD_PATH += build/$(ARCH)/erde/%
+MOD_PATH += build/$(ARCH)/lpeglabel/%/init
+MOD_PATH += build/$(ARCH)/lpeglabel/%
 MOD_PATH += build/$(ARCH)/luaposix/lib/%
 MOD_PATH += build/$(ARCH)/luaposix/ext/%
-
-MOD_PATH := $(addsuffix .c,$(MOD_PATH)) $(addsuffix .luac,$(MOD_PATH)) $(addsuffix .lua,$(MOD_PATH))
+MOD_PATH += build/$(ARCH)/%/init
+MOD_PATH := $(foreach suffix,a o c luac lua,$(addsuffix .$(suffix),$(MOD_PATH)))
 
 MODULES := $(filter-out erde.cli,$(filter erde erde.%,$(call enumerate,build/$(ARCH)/erde/,lua)))
 MODULES += $(filter-out luawk,$(call enumerate,src/,lua))
+MODULES += lpeglabel
+MODULES += relabel
+MODULES += posix.stdio
 MODULES += posix.stdlib
 MODULES += posix.unistd
 
@@ -58,10 +64,12 @@ SOURCES += $(patsubst %.lua,%.c,$(shell find build/$(ARCH)/erde/erde/ -type f -n
 .NOTINTERMEDIATE:
 
 tmp/erde-$(ERDE_VERSION).tar.gz: URL := https://github.com/erde-lang/erde/archive/refs/tags/$(ERDE_VERSION).tar.gz
+tmp/lpeglabel-$(LPEGLABEL_VERSION).tar.gz: URL := https://github.com/sqmedeiros/lpeglabel/archive/refs/tags/v$(LPEGLABEL_VERSION).tar.gz
 tmp/lua-$(LUA_VERSION).tar.gz: URL := https://www.lua.org/ftp/lua-$(LUA_VERSION).tar.gz
 tmp/luaposix-$(LUAPOSIX_VERSION).tar.gz: URL := https://github.com/luaposix/luaposix/archive/refs/tags/v$(LUAPOSIX_VERSION).tar.gz
 
 build/$(ARCH)/erde/: tmp/erde-$(ERDE_VERSION).tar.gz
+build/$(ARCH)/lpeglabel/: tmp/lpeglabel-$(LPEGLABEL_VERSION).tar.gz
 build/$(ARCH)/lua/: tmp/lua-$(LUA_VERSION).tar.gz
 build/$(ARCH)/luaposix/: tmp/luaposix-$(LUAPOSIX_VERSION).tar.gz
 
@@ -71,7 +79,10 @@ build/$(ARCH)/luaposix/: tmp/luaposix-$(LUAPOSIX_VERSION).tar.gz
 tmp/%.tar.gz: | tmp/
 	curl -fsSL "$(URL)" -o "$@"
 
-build/$(ARCH)/erde/ build/$(ARCH)/lua/ build/$(ARCH)/luaposix/: | build/$(ARCH)/
+build/%.a:
+	$(AR) $(ARFLAGS) $@ $?
+
+build/$(ARCH)/erde/ build/$(ARCH)/lua/ build/$(ARCH)/luaposix/ build/$(ARCH)/lpeglabel/: | build/$(ARCH)/
 	tar -C $1/$2 -xzf $<
 	cd $1/$2
 	ln -s $3-* $3
@@ -96,6 +107,14 @@ endif
 build/$(ARCH)/luaposix/%.o: CFLAGS += -DPACKAGE='"luaposix"'
 build/$(ARCH)/luaposix/%.o: CFLAGS += -DVERSION='"$(LUAPOSIX_VERSION)"'
 build/$(ARCH)/luaposix/%.o: INCLUDES += -I build/$(ARCH)/luaposix/ext/include
+
+build/$(ARCH)/lpeglabel/%.o: INCLUDES += -I build/$(ARCH)/lpeglabel
+
+build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lplcap.o
+build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lplcode.o
+build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lplprint.o
+build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lpltree.o
+build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lplvm.o
 
 build/$(ARCH)/src/%.luab: src/%.lua | $(LUAC)
 	mkdir -p $(dir $@)
@@ -142,6 +161,7 @@ build/$(ARCH)/luawk: | info
 build/$(ARCH)/luawk: src/luawk.c
 build/$(ARCH)/luawk: $(LUALIB)/liblua.a
 build/$(ARCH)/luawk: build/$(ARCH)/preload.o
+build/$(ARCH)/luawk: build/$(ARCH)/lpeglabel/init.a
 build/$(ARCH)/luawk: $(call pkgdecode,luawk $(MODULES))
 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
@@ -153,6 +173,7 @@ info: ;@
 
 luawk: | build/$(ARCH)/erde/
 luawk: | build/$(ARCH)/luaposix/
+luawk: | build/$(ARCH)/lpeglabel/
 luawk: | $(SOURCES)
 luawk: | $(LUALIB)/liblua.a
 luawk: | info
