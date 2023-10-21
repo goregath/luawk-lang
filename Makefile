@@ -94,8 +94,8 @@ build/$(ARCH)/lua/src/: | build/$(ARCH)/lua/; @stat $@ >/dev/null
 build/$(ARCH)/lua/src/luac build/$(ARCH)/lua/src/liblua.a: build/$(ARCH)/lua/Makefile
 	$(MAKE) -C build/$2/lua $(PLATFORM)
 
-build/$(ARCH)/luaposix/lib/%.lua: | build/$(ARCH)/luaposix/; @stat $@ >/dev/null 
-build/$(ARCH)/luaposix/ext/%.c:   | build/$(ARCH)/luaposix/; @stat $@ >/dev/null 
+build/$(ARCH)/luaposix/lib/%.lua: ; @stat $@ >/dev/null
+build/$(ARCH)/luaposix/ext/%.c:   ; @stat $@ >/dev/null
 
 build/$(ARCH)/luaposix/%.o: CFLAGS := -fPIC
 build/$(ARCH)/luaposix/%.o: CFLAGS += -D_POSIX_C_SOURCE=200809L
@@ -166,17 +166,18 @@ build/$(ARCH)/luawk: $(call pkgdecode,luawk $(MODULES))
 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 .NOTPARALLEL:
-.PHONY: all clean clean-all doc info test luawk
+.PHONY: all clean clean-all deps doc info test luawk
 
 info: ;@
 	printf 'Module: %-24s %s\n' $(foreach mod,luawk $(MODULES),$(mod) "$(call pkgdecode,$(mod))")
 
-luawk: | build/$(ARCH)/erde/
-luawk: | build/$(ARCH)/luaposix/
-luawk: | build/$(ARCH)/lpeglabel/
-luawk: | $(SOURCES)
-luawk: | $(LUALIB)/liblua.a
-luawk: | info
+deps: | build/$(ARCH)/erde/
+deps: | build/$(ARCH)/luaposix/
+deps: | build/$(ARCH)/lpeglabel/
+deps: | $(LUALIB)/liblua.a
+deps: | $(SOURCES)
+
+luawk: | deps info
 	$(MAKE) build/$(ARCH)/luawk
 
 clean:
