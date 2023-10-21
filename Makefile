@@ -8,7 +8,7 @@ space := $(subst ,, )
 
 enumerate = $(sort $(subst /,.,$(patsubst %/init,%,$(patsubst $(1)%.lua,%,$(shell find $(1) -type f -name '*.$(2)')))))
 pkgencode = $(foreach pkg,$(1),$(firstword $(foreach pat,$(MOD_PATH),$(if $(patsubst $(pat),,$(pkg)),,$(subst /,.,$(patsubst $(pat),%,$(pkg)))))))
-pkgdecode = $(foreach path,$(1),$(firstword $(wildcard $(foreach pat,$(MOD_PATH),$(patsubst %,$(pat),$(subst .,/,$(path)))))))
+pkgdecode = $(addsuffix .o,$(basename $(foreach path,$(1),$(firstword $(wildcard $(foreach pat,$(MOD_PATH),$(patsubst %,$(pat),$(subst .,/,$(path)))))))))
 
 PROGRAM := luawk
 
@@ -25,6 +25,7 @@ PROVE := prove
 
 LUA_VERSION := 5.4.6
 LUAPOSIX_VERSION := 36.2.1
+ERDE_VERSION := 1.0.0-1
 
 LUABIN := build/$(ARCH)/lua/src
 LUAINC := build/$(ARCH)/lua/src
@@ -34,26 +35,33 @@ CFLAGS := -fPIC -Wall
 LDFLAGS := -rdynamic -lm -ldl
 INCLUDES := -I $(LUAINC)
 
-MOD_PATH := build/$(ARCH)/src/%/init.c
-MOD_PATH += build/$(ARCH)/src/%.c
-MOD_PATH += build/$(ARCH)/luaposix/lib/%.c
-MOD_PATH += build/$(ARCH)/luaposix/ext/%.c
+MOD_PATH := build/$(ARCH)/src/%/init
+MOD_PATH += build/$(ARCH)/src/%
+MOD_PATH += build/$(ARCH)/erde/%/init
+MOD_PATH += build/$(ARCH)/erde/%
+MOD_PATH += build/$(ARCH)/luaposix/lib/%
+MOD_PATH += build/$(ARCH)/luaposix/ext/%
 
-# MODULES := $(call enumerate,src/,lua)
-MODULES := $(filter-out luawk,$(call enumerate,src/,lua))
+MOD_PATH := $(addsuffix .c,$(MOD_PATH)) $(addsuffix .luac,$(MOD_PATH)) $(addsuffix .lua,$(MOD_PATH))
+
+MODULES := $(filter-out erde.cli,$(filter erde erde.%,$(call enumerate,build/$(ARCH)/erde/,lua)))
+MODULES += $(filter-out luawk,$(call enumerate,src/,lua))
 MODULES += posix.stdlib
 MODULES += posix.unistd
 
 SOURCES := $(patsubst %.lua,build/$(ARCH)/%.c,$(shell find src/ -type f -name '*.lua'))
+SOURCES += $(patsubst %.lua,%.c,$(shell find build/$(ARCH)/erde/erde/ -type f -name '*.lua'))
 
 .SHELLFLAGS := -ec
 
 .ONESHELL:
 .NOTINTERMEDIATE:
 
+tmp/erde-$(ERDE_VERSION).tar.gz: URL := https://github.com/erde-lang/erde/archive/refs/tags/$(ERDE_VERSION).tar.gz
 tmp/lua-$(LUA_VERSION).tar.gz: URL := https://www.lua.org/ftp/lua-$(LUA_VERSION).tar.gz
 tmp/luaposix-$(LUAPOSIX_VERSION).tar.gz: URL := https://github.com/luaposix/luaposix/archive/refs/tags/v$(LUAPOSIX_VERSION).tar.gz
 
+build/$(ARCH)/erde/: tmp/erde-$(ERDE_VERSION).tar.gz
 build/$(ARCH)/lua/: tmp/lua-$(LUA_VERSION).tar.gz
 build/$(ARCH)/luaposix/: tmp/luaposix-$(LUAPOSIX_VERSION).tar.gz
 
@@ -63,7 +71,7 @@ build/$(ARCH)/luaposix/: tmp/luaposix-$(LUAPOSIX_VERSION).tar.gz
 tmp/%.tar.gz: | tmp/
 	curl -fsSL "$(URL)" -o "$@"
 
-build/$(ARCH)/lua/ build/$(ARCH)/luaposix/: | build/$(ARCH)/
+build/$(ARCH)/erde/ build/$(ARCH)/lua/ build/$(ARCH)/luaposix/: | build/$(ARCH)/
 	tar -C $1/$2 -xzf $<
 	cd $1/$2
 	ln -s $3-* $3
@@ -89,7 +97,11 @@ build/$(ARCH)/luaposix/%.o: CFLAGS += -DPACKAGE='"luaposix"'
 build/$(ARCH)/luaposix/%.o: CFLAGS += -DVERSION='"$(LUAPOSIX_VERSION)"'
 build/$(ARCH)/luaposix/%.o: INCLUDES += -I build/$(ARCH)/luaposix/ext/include
 
-build/$(ARCH)/%.luab: %.lua | $(LUAC)
+build/$(ARCH)/src/%.luab: src/%.lua | $(LUAC)
+	mkdir -p $(dir $@)
+	$(LUAC) -o $@ $<
+
+build/$(ARCH)/%.luab: build/$(ARCH)/%.lua | $(LUAC)
 	mkdir -p $(dir $@)
 	$(LUAC) -o $@ $<
 
@@ -126,14 +138,24 @@ build/$(ARCH)/preload.c: ;@ $(info generating $@)
 	echo   '  return 0;'
 	echo   '};'
 
-build/$(ARCH)/luawk: src/luawk.c $(LUALIB)/liblua.a build/$(ARCH)/preload.o
-build/$(ARCH)/luawk: src/luawk.c $(patsubst %.c,%.o,$(call pkgdecode,luawk $(MODULES)))
+build/$(ARCH)/luawk: | info
+build/$(ARCH)/luawk: src/luawk.c
+build/$(ARCH)/luawk: $(LUALIB)/liblua.a
+build/$(ARCH)/luawk: build/$(ARCH)/preload.o
+build/$(ARCH)/luawk: $(call pkgdecode,luawk $(MODULES))
 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 .NOTPARALLEL:
-.PHONY: all clean clean-all doc test luawk
+.PHONY: all clean clean-all doc info test luawk
 
-luawk: | $(LUALIB)/liblua.a build/$(ARCH)/luaposix/ $(SOURCES)
+info: ;@
+	printf 'Module: %-24s %s\n' $(foreach mod,luawk $(MODULES),$(mod) "$(call pkgdecode,$(mod))")
+
+luawk: | build/$(ARCH)/erde/
+luawk: | build/$(ARCH)/luaposix/
+luawk: | $(SOURCES)
+luawk: | $(LUALIB)/liblua.a
+luawk: | info
 	$(MAKE) build/$(ARCH)/luawk
 
 clean:
