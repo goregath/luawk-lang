@@ -12,8 +12,6 @@
 --
 -- @script luawk
 
-local getopt = require 'posix.unistd'.getopt
-
 local compat53 = require 'luawk.compat53'
 local load = compat53.load
 local log = require 'luawk.log'
@@ -49,8 +47,6 @@ local program_mt = {
 -- ---------------------------------------------------------
 -- UTILITIES
 -- ---------------------------------------------------------
-
-local optstring = ':he:f:F:l:v:W:'
 
 local function usage(handle)
     handle:write(table.concat {
