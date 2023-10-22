@@ -6,7 +6,7 @@
 --      Usage: luawk.lua [-F value] [-v var=value] [--] 'program' [file ...]
 --             luawk.lua [-F value] [-v var=value] [-f file] [--] [file ...]
 --
---          -f file        Program text is read from file instead of from the command line.
+--          -f file        Program text is read from file instead of the command line.
 --          -F value       Sets the field separator, FS, to value.
 --          -v var=value   Assigns value to program variable var.
 --
@@ -63,7 +63,7 @@ end
 local function help(handle)
     usage(handle)
     handle:write(table.concat {
-        "   -f file        Program text is read from file instead of from the command line.\n",
+        "   -f file        Program text is read from file instead of the command line.\n",
         "   -F value       Sets the field separator, FS, to value.\n",
         "   -v var=value   Assigns value to program variable var.\n",
         "   -W flag\n",
@@ -73,6 +73,11 @@ local function help(handle)
         "   -W log=level\n",
         "\n",
     })
+end
+
+local function version(handle)
+    local ver = "0.1"
+    handle:write(name, " ", ver, "\n")
 end
 
 local function librequire(path)
@@ -141,6 +146,136 @@ end
 -- COMMAND LINE INTERFACE
 -- ---------------------------------------------------------
 
+local flags = {
+    h = function() help(io.stdout) os.exit() end,
+    V = function() version(io.stdout) os.exit() end,
+}
+
+local options = {
+    F = function(sep) print(sep) return false end,
+    W = function(def) print(def) return true end,
+    e = function(cmd) print(cmd) return true end,
+    f = function(src) print(src) return true end,
+    l = function(lib) print(lib) return true end,
+    v = function(def) print(def) return true end,
+}
+
+local long_options = {
+    ["--help"] = "-h",
+    ["--version"] = "-V",
+}
+
+local function argparse(argv)
+    local queue = {}
+    local last_index
+    local nextarg = coroutine.wrap(function()
+        for i = 1, #argv do
+            last_index = i
+            coroutine.yield(argv[i])
+        end
+    end)
+    local a = nextarg()
+    while a do
+        print(a)
+        if a:match("^%-%-.+") then
+            if long_options[a] then
+                a = long_options[a]
+            else
+                abort('%s: unknown option: `%s`\n', name, a)
+            end
+        end
+        if a:match("^%-[^%-]") then
+            local p = 2
+            for c in a:sub(2):gmatch(".") do
+                p = p + 1
+                if options[c] then
+                    local oa = a:sub(p)
+                    if #oa == 0 then
+                        oa = nextarg()
+                    end
+                    if not oa then
+                        abort('%s: missing argument: `-%s`\n', name, c)
+                    end
+                    if not options[c](oa) then
+                        abort('%s: invalid argument: `-%s %q`\n', name, c, oa)
+                    end
+                    break
+                elseif flags[c] then
+                    if flags[c]() then
+                        abort('%s: invalid flag: `-%s`\n', name, c)
+                    end
+                else
+                    abort('%s: unknown option: `-%s`\n', name, c)
+                end
+            end
+        elseif a == "--" then
+            last_index = last_index + 1
+            break
+        else
+            break
+        end
+        a = nextarg()
+    end
+    for _, fn in ipairs(queue) do
+        
+    end
+    return last_index
+end
+
+
+for i = argparse(arg), #arg do
+    print(i, arg[i])
+end
+
+os.exit()
+
+-- local function getopts(argv, flags, options)
+--     local iter, st, ctl = ipairs(argv)
+--     local optiter = function(s,c)
+--         local i,v = iter(s,c)
+--         if not i then
+--             return nil
+--         end
+--         if v == '--' then
+--             return nil
+--         end
+--         local r, a
+--         r = string.match(v, "^-(%a)")
+--         if r then
+--             if string.find(flags, r, 1, true) then
+--                 print("flag", r)
+--                 return i, r
+--             elseif string.find(options, r, 1, true) then
+--                 print("option", r)
+--                 a = string.sub(v, 3)
+--                 if a then
+--                     return i, r, a
+--                 else
+--                     i, a = iter(i, c)
+--                     if i then
+--                         return i, r, a
+--                     else
+--                         return i, ':'
+--                     end
+--                 end
+--             end
+--             return 1, '?'
+--         end
+--         -- if not a then
+--         --     i, a = iter(i,c)
+--         --     if not a then
+--         --         r = ':'
+--         --     end
+--         -- end
+--         return nil
+--     end
+--     return optiter, st, ctl
+-- end
+
+for optind, opt, optarg in getopts(arg, "h", "fvFW") do
+    print(optind, opt, optarg)
+end
+
 local sources = {}
 if type(arg) == "userdata" then
     -- wrap arg userdata into table
@@ -154,7 +289,8 @@ if type(arg) == "userdata" then
 end
 -- FIXME getopt can only handle a raw arg table
 -- This is due to how getopt determines the length of `arg` with lua_objlen which does not test for metatables.
-for r, optarg, optind in getopt(arg, optstring) do
+-- for r, optarg, optind in getopt(arg, optstring) do
+for optind, r, optarg in getopts(arg, "h", "fvFW") do
     if r == ':' then
         usage(io.stderr)
         abort('%s: missing argument: %s\n', name, arg[optind-1])
@@ -187,7 +323,8 @@ local runenv = librunenv.new(_G)
 -- getopt stage 2 - runenv flags and options
 local oneliner = true
 local last_index = 1
-for r, optarg, optind in getopt(arg, optstring) do
+-- for r, optarg, optind in getopt(arg, optstring) do
+for optind, r, optarg in getopts(arg, "h", "fvFW") do
     if r == '?' then
         usage(io.stderr)
         abort('%s: invalid option: %s\n', name, arg[optind-1])
