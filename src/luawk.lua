@@ -212,7 +212,7 @@ local flags = {
 }
 
 local options = {
-    F = function(sep) print(sep) runenv.FS = sep end,
+    F = function(sep) runenv.FS = sep end,
     W = set_property,
     e = set_cmdstring,
     f = set_program,
