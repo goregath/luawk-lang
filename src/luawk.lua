@@ -288,33 +288,34 @@ if oneliner then
     last_index = last_index + 1
 end
 
--- TODO should fallback to stdin: awk 1 a=1
-runenv.ARGV[1] = "-"
-
-for i = last_index, #arg do
-    runenv.ARGV[i-last_index+1] = arg[i]
-end
-
 -- TODO add test
--- TODO calculate length if altered
--- local argc = 0
--- runenv.ARGV = setmetatable({}, {
---     __newindex = function(t,k,v) if tonumber(k) then rawset(t,k,v) argc = math.max(k, argc, #arg) end end,
---     __index = function(_,k) if tonumber(k) then return arg[last_index + k - 1] end end,
---     __len = function() return math.max(#arg - last_index + 1, argc) end,
---     __metatable = false,
--- })
--- runenv.ARGC = #runenv.ARGV
--- 
--- table.insert(runenv.ARGV, "1")
--- table.sort(runenv.ARGV)
--- 
--- for i, v in ipairs(runenv.ARGV) do
---     print(i,v)
--- end
--- print(require"inspect"(runenv.ARGV))
--- 
--- os.exit()
+-- Let ARGV be a proxy to arg
+local argc = #arg - last_index + 1
+runenv.ARGV = setmetatable({}, {
+    __newindex = function(t,k,v)
+        if tonumber(k) then
+            rawset(t,k,v)
+            if v == nil and k == argc then
+                argc = argc - 1
+            else
+                argc = math.max(argc, k)
+            end
+        end
+    end,
+    __index = function(_,k)
+        if tonumber(k) then
+            local i = last_index + k - 1
+            if i <= #arg then
+                return arg[i]
+            elseif k <= argc then
+                return ""
+            end
+        end
+    end,
+    __len = function() return argc end,
+    __metatable = false,
+})
+runenv.ARGC = #runenv.ARGV
 
 -- compile sources
 for _,srcobj in ipairs(sources) do
