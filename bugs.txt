@@ -1,3 +1,11 @@
+$ luawk 1 a=1
+result: exit (no file read)
+expected: defaults to read from stdin
 
-luawk -v and_=2 'BEGIN { print 1 and 3 }'
-result '123', expected '13'
+$ luawk -v and_=2 'BEGIN { print 1 and 3 }'
+result: 123
+expected 13
+
+$ echo 1 | luawk -f- /etc/passwd
+result: 'luawk: -: No such file or directory'
+exoected: read program from stdin and print file
