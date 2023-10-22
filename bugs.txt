@@ -13,8 +13,3 @@ expected 13
 $ echo 1 | luawk -f- /etc/passwd
 result: 'luawk: -: No such file or directory'
 expected: read program from stdin and print file
-
-$ luawk -Fa=1
-result: luawk: error: expected ')' got '='
-expcted: error: missing program (show usage)
-

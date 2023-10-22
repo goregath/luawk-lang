@@ -179,6 +179,7 @@ end
 
 local function set_program(optarg)
     local stat, handle, msg
+    oneliner = false
     handle, msg = io.open(optarg)
     if handle == nil then
         abort('%s: %s\n', name, msg)
@@ -189,7 +190,6 @@ local function set_program(optarg)
     if not stat then
         return false
     end
-    oneliner = false
 end
 
 local function set_library(optarg)
@@ -226,12 +226,13 @@ local long_options = {
 }
 
 local function argparse(argv)
-    local last_index
+    local last_index = 1
     local nextarg = coroutine.wrap(function()
         for i = 1, #argv do
             last_index = i
             coroutine.yield(argv[i])
         end
+        last_index = last_index + 1
     end)
     for a in nextarg do
         if a:match("^%-%-.+") then
