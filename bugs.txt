@@ -10,6 +10,11 @@ $ luawk 1 a=1
 result: exit (no file read)
 expected: defaults to read from stdin
 
+$ luawk 1 - -
+result: opens stdin twice
+expected: opens stdin once
+remark: not a bug?
+
 $ luawk -v and_=2 'BEGIN { print 1 and 3 }'
 result: 123
 expected 13
