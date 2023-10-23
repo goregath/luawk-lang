@@ -50,8 +50,8 @@ local program_mt = {
 
 local function usage(handle)
     handle:write(table.concat {
-        "Usage: ", name, " [-W option] [-F value] [-v var=value] [--] 'program' [file ...]\n",
-        "       ", name, " [-W option] [-F value] [-v var=value] [-f file] [--] [file ...]\n",
+        "Usage: ", name, " [OPTIONS] [-F value] [-v var=value] [--] 'program' [file ...]\n",
+        "       ", name, " [OPTIONS] [-F value] [-v var=value] [-f file] [--] [file ...]\n",
         "\n",
     })
 end
@@ -59,14 +59,18 @@ end
 local function help(handle)
     usage(handle)
     handle:write(table.concat {
-        "   -f file        Program text is read from file instead of the command line.\n",
         "   -F value       Sets the field separator, FS, to value.\n",
+        "   -e program     Add source code to program.\n",
+        "   -f file        Program text is read from file instead of the command line.\n",
+        "   -m name        Import a program using LUAWK_PATH.\n",
+        "   -l name        Require a lua module name.\n",
+        "   -l var=name    Require a lua module name to global var.\n",
+        "   -o option      Modify runtime environment.\n",
         "   -v var=value   Assigns value to program variable var.\n",
-        "   -W flag\n",
-        "   -W var=value\n",
         "\n",
-        "   -W regex=module\n",
-        "   -W log=level\n",
+        "Configuration Options:\n",
+        "   -o regex=module\n",
+        "   -o log=level\n",
         "\n",
     })
 end
@@ -76,7 +80,7 @@ local function version(handle)
     handle:write(name, " ", ver, "\n")
 end
 
-local function librequire(path)
+local function luawk_require(path)
     local var = name:gsub("%A", ""):upper()
     local env = os.getenv(var .. "_PATH") or "?.luawk"
     local lib = path:gsub("%.", "/")
@@ -146,7 +150,7 @@ local oneliner = true
 local sources = {}
 local runenv = librunenv.new(_G)
 
-local function set_property(optarg)
+local function opt_property(optarg)
     local k,v = string.match(optarg, "^(%w+)=?(.*)$")
     if k then
         if k == "regex" then
@@ -168,7 +172,7 @@ local function set_property(optarg)
     end
 end
 
-local function set_var(optarg)
+local function opt_var(optarg)
     local k,v = string.match(optarg, "^([_%a][_%w]*)=(.*)$")
     if k and v then
         runenv[k] = v
@@ -177,7 +181,18 @@ local function set_var(optarg)
     end
 end
 
-local function set_program(optarg)
+local function opt_require(optarg)
+    local k,v = string.match(optarg, "^([_%a][_%w]*)=?(.*)$")
+    if k and #v > 0 then
+        runenv[k] = require(v)
+    elseif k then
+        runenv[k] = require(k)
+    else
+        return false
+    end
+end
+
+local function opt_program(optarg)
     local stat, handle, msg
     oneliner = false
     handle, msg = io.open(optarg)
@@ -192,17 +207,16 @@ local function set_program(optarg)
     end
 end
 
-local function set_library(optarg)
+local function opt_module(optarg)
     -- TODO add to usage string
-    local src = librequire(optarg)
+    local src = luawk_require(optarg)
     if not src then
         abort('%s: library not found: %s\n', name, optarg)
     end
     table.insert(sources, { optarg, src })
 end
 
-local function set_cmdstring(optarg)
-    -- TODO add to usage string
+local function opt_cmdstring(optarg)
     table.insert(sources, { "cmdline", optarg })
 end
 
@@ -213,11 +227,12 @@ local flags = {
 
 local options = {
     F = function(sep) runenv.FS = sep end,
-    W = set_property,
-    e = set_cmdstring,
-    f = set_program,
-    l = set_library,
-    v = set_var,
+    o = opt_property,
+    e = opt_cmdstring,
+    f = opt_program,
+    m = opt_module,
+    l = opt_require,
+    v = opt_var,
 }
 
 local long_options = {
@@ -316,7 +331,6 @@ runenv.ARGV = setmetatable({}, {
     __len = function() return argc end,
     __metatable = false,
 })
-runenv.ARGC = #runenv.ARGV
 
 -- compile sources
 for _,srcobj in ipairs(sources) do
