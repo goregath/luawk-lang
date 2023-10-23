@@ -65,12 +65,19 @@ local function help(handle)
         "   -m name        Import a program using LUAWK_PATH.\n",
         "   -l name        Require a lua module name.\n",
         "   -l var=name    Require a lua module name to global var.\n",
-        "   -o option      Modify runtime environment.\n",
+        "   -o option      Modify runtime environment, see `-o help`.\n",
         "   -v var=value   Assigns value to program variable var.\n",
         "\n",
-        "Configuration Options:\n",
-        "   -o regex=module\n",
-        "   -o log=level\n",
+    })
+end
+
+local function options_help(handle)
+    handle:write(table.concat {
+        "Runtime Options:\n",
+        "\n",
+        "   help\n",
+        "   log=level (one of: error,warn,info,debug,trace)\n",
+        "   regex=module\n",
         "\n",
     })
 end
@@ -150,25 +157,30 @@ local oneliner = true
 local sources = {}
 local runenv = librunenv.new(_G)
 
-local function opt_property(optarg)
-    local k,v = string.match(optarg, "^(%w+)=?(.*)$")
-    if k then
-        if k == "regex" then
-            -- TODO refactor
-            local relib =
-                utils.requireany(v, "rex_" .. v)
-                or abort('%s: cannot find regex library for %q\n', name, v)
-            require("luawk.regex").find = relib.find
-            -- package.loaded["luawk.regex"] =
-            --     utils.requireany(v, "rex_" .. v)
-            --     or abort('%s: cannot find regex library for %q\n', name, v)
-        elseif k == "log" then
-            acall(log.level, v)
+local function opt_option(optargs)
+    for optarg in optargs:gmatch("[^,]+") do
+        local k,v = string.match(optarg, "^(%w+)=?(.*)$")
+        if k then
+            if k == "help" then
+               options_help(io.stdout)
+               os.exit()
+            elseif k == "regex" then
+                -- TODO refactor
+                local relib =
+                    utils.requireany(v, "rex_" .. v)
+                    or abort('%s: cannot find regex library for %q\n', name, v)
+                require("luawk.regex").find = relib.find
+                -- package.loaded["luawk.regex"] =
+                --     utils.requireany(v, "rex_" .. v)
+                --     or abort('%s: cannot find regex library for %q\n', name, v)
+            elseif k == "log" then
+                acall(log.level, v)
+            else
+                return false
+            end
         else
             return false
         end
-    else
-        return false
     end
 end
 
@@ -227,7 +239,7 @@ local flags = {
 
 local options = {
     F = function(sep) runenv.FS = sep end,
-    o = opt_property,
+    o = opt_option,
     e = opt_cmdstring,
     f = opt_program,
     m = opt_module,
