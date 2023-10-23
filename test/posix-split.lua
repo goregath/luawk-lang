@@ -47,7 +47,7 @@ end)
 
 group:add("simple one-chacter pattern", function(R)
 	local a = {}
-	assert_equal(R.split(",,a,b,c,", a, ","), 6)
+	assert_equal(R.split("..a.b,c.", a, "."), 6)
 	assert_equal(table.concat(a, ";"), ";;a;b;c;")
 end)
 
