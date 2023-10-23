@@ -45,7 +45,7 @@ MOD_PATH += build/$(ARCH)/lpeglabel/%
 MOD_PATH += build/$(ARCH)/luaposix/lib/%
 MOD_PATH += build/$(ARCH)/luaposix/ext/%
 MOD_PATH += build/$(ARCH)/%/init
-MOD_PATH := $(foreach suffix,a o c luac lua,$(addsuffix .$(suffix),$(MOD_PATH)))
+MOD_PATH := $(foreach suffix,o c luac lua,$(addsuffix .$(suffix),$(MOD_PATH)))
 
 MODULES := $(filter-out erde.cli,$(filter erde erde.%,$(call enumerate,build/$(ARCH)/erde/,lua)))
 MODULES += $(filter-out luawk,$(call enumerate,src/,lua))
@@ -177,7 +177,7 @@ deps: | build/$(ARCH)/lpeglabel/
 deps: | $(LUALIB)/liblua.a
 deps: | $(SOURCES)
 
-luawk: | deps info
+luawk: | deps
 	$(MAKE) build/$(ARCH)/luawk
 
 clean:

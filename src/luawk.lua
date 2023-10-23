@@ -6,13 +6,11 @@
 --      Usage: luawk.lua [-F value] [-v var=value] [--] 'program' [file ...]
 --             luawk.lua [-F value] [-v var=value] [-f file] [--] [file ...]
 --
---          -f file        Program text is read from file instead of from the command line.
+--          -f file        Program text is read from file instead of the command line.
 --          -F value       Sets the field separator, FS, to value.
 --          -v var=value   Assigns value to program variable var.
 --
 -- @script luawk
-
-local getopt = require 'posix.unistd'.getopt
 
 local compat53 = require 'luawk.compat53'
 local load = compat53.load
@@ -50,12 +48,10 @@ local program_mt = {
 -- UTILITIES
 -- ---------------------------------------------------------
 
-local optstring = ':he:f:F:l:v:W:'
-
 local function usage(handle)
     handle:write(table.concat {
-        "Usage: ", name, " [-W option] [-F value] [-v var=value] [--] 'program' [file ...]\n",
-        "       ", name, " [-W option] [-F value] [-v var=value] [-f file] [--] [file ...]\n",
+        "Usage: ", name, " [OPTIONS] [-F value] [-v var=value] [--] 'program' [file ...]\n",
+        "       ", name, " [OPTIONS] [-F value] [-v var=value] [-f file] [--] [file ...]\n",
         "\n",
     })
 end
@@ -63,19 +59,35 @@ end
 local function help(handle)
     usage(handle)
     handle:write(table.concat {
-        "   -f file        Program text is read from file instead of from the command line.\n",
         "   -F value       Sets the field separator, FS, to value.\n",
+        "   -e program     Add source code to program.\n",
+        "   -f file        Program text is read from file instead of the command line.\n",
+        "   -m name        Import a program using LUAWK_PATH.\n",
+        "   -l name        Require a lua module name.\n",
+        "   -l var=name    Require a lua module name to global var.\n",
+        "   -o option      Modify runtime environment, see `-o help`.\n",
         "   -v var=value   Assigns value to program variable var.\n",
-        "   -W flag\n",
-        "   -W var=value\n",
-        "\n",
-        "   -W regex=module\n",
-        "   -W log=level\n",
         "\n",
     })
 end
 
-local function librequire(path)
+local function options_help(handle)
+    handle:write(table.concat {
+        "Runtime Options:\n",
+        "\n",
+        "   help\n",
+        "   log=level (one of: error,warn,info,debug,trace)\n",
+        "   regex=module\n",
+        "\n",
+    })
+end
+
+local function version(handle)
+    local ver = "0.1"
+    handle:write(name, " ", ver, "\n")
+end
+
+local function luawk_require(path)
     local var = name:gsub("%A", ""):upper()
     local env = os.getenv(var .. "_PATH") or "?.luawk"
     local lib = path:gsub("%.", "/")
@@ -141,30 +153,18 @@ end
 -- COMMAND LINE INTERFACE
 -- ---------------------------------------------------------
 
+local oneliner = true
 local sources = {}
-if type(arg) == "userdata" then
-    -- wrap arg userdata into table
-    -- TODO refactor qnd solution
-    arg = { [0] = arg[0], table.unpack(arg) }
-    -- arg = setmetatable({}, {
-    --   __index = function(_,i) return _arg[i] end,
-    --   __len = function() return #_arg end,
-    --   __metatable = false,
-    -- })
-end
--- FIXME getopt can only handle a raw arg table
--- This is due to how getopt determines the length of `arg` with lua_objlen which does not test for metatables.
-for r, optarg, optind in getopt(arg, optstring) do
-    if r == ':' then
-        usage(io.stderr)
-        abort('%s: missing argument: %s\n', name, arg[optind-1])
-    elseif r == 'h' then
-        help(io.stdout)
-        os.exit(0)
-    elseif r == 'W' then
+local runenv = librunenv.new(_G)
+
+local function opt_option(optargs)
+    for optarg in optargs:gmatch("[^,]+") do
         local k,v = string.match(optarg, "^(%w+)=?(.*)$")
         if k then
-            if k == "regex" then
+            if k == "help" then
+               options_help(io.stdout)
+               os.exit()
+            elseif k == "regex" then
                 -- TODO refactor
                 local relib =
                     utils.requireany(v, "rex_" .. v)
@@ -176,65 +176,135 @@ for r, optarg, optind in getopt(arg, optstring) do
             elseif k == "log" then
                 acall(log.level, v)
             else
-                abort('%s: invalid argument: %s\n', name, optarg)
+                return false
             end
         else
-            abort('%s: invalid argument: %s\n', name, optarg)
+            return false
         end
     end
 end
-local runenv = librunenv.new(_G)
--- getopt stage 2 - runenv flags and options
-local oneliner = true
-local last_index = 1
-for r, optarg, optind in getopt(arg, optstring) do
-    if r == '?' then
-        usage(io.stderr)
-        abort('%s: invalid option: %s\n', name, arg[optind-1])
+
+local function opt_var(optarg)
+    local k,v = string.match(optarg, "^([_%a][_%w]*)=(.*)$")
+    if k and v then
+        runenv[k] = v
+    else
+        return false
     end
-    if r == ':' then
-        usage(io.stderr)
-        abort('%s: missing argument: %s\n', name, arg[optind-1])
+end
+
+local function opt_require(optarg)
+    local k,v = string.match(optarg, "^([_%a][_%w]*)=?(.*)$")
+    if k and #v > 0 then
+        runenv[k] = require(v)
+    elseif k then
+        runenv[k] = require(k)
+    else
+        return false
     end
-    last_index = optind
-    if r == 'F' then
-        runenv.FS = optarg
-    elseif r == 'v' then
-        local k,v = string.match(optarg, "^([_%a][_%w]*)=(.*)$")
-        if k and v then
-            runenv[k] = v
+end
+
+local function opt_program(optarg)
+    local stat, handle, msg
+    oneliner = false
+    handle, msg = io.open(optarg)
+    if handle == nil then
+        abort('%s: %s\n', name, msg)
+    end
+    local src = handle:read("*a")
+    table.insert(sources, { optarg, src })
+    stat = pcall(io.close, handle)
+    if not stat then
+        return false
+    end
+end
+
+local function opt_module(optarg)
+    -- TODO add to usage string
+    local src = luawk_require(optarg)
+    if not src then
+        abort('%s: library not found: %s\n', name, optarg)
+    end
+    table.insert(sources, { optarg, src })
+end
+
+local function opt_cmdstring(optarg)
+    table.insert(sources, { "cmdline", optarg })
+end
+
+local flags = {
+    h = function() help(io.stdout) os.exit() end,
+    V = function() version(io.stdout) os.exit() end,
+}
+
+local options = {
+    F = function(sep) runenv.FS = sep end,
+    o = opt_option,
+    e = opt_cmdstring,
+    f = opt_program,
+    m = opt_module,
+    l = opt_require,
+    v = opt_var,
+}
+
+local long_options = {
+    ["--help"] = "-h",
+    ["--version"] = "-V",
+}
+
+local function argparse(argv)
+    local last_index = 1
+    local nextarg = coroutine.wrap(function()
+        for i = 1, #argv do
+            last_index = i
+            coroutine.yield(argv[i])
+        end
+        last_index = last_index + 1
+    end)
+    for a in nextarg do
+        if a:match("^%-%-.+") then
+            if long_options[a] then
+                a = long_options[a]
+            else
+                abort('%s: unknown option: `%s`\n', name, a)
+            end
+        end
+        if a:match("^%-[^%-]") then
+            local p = 2
+            for c in a:sub(2):gmatch(".") do
+                p = p + 1
+                if options[c] then
+                    local oa = a:sub(p)
+                    if #oa == 0 then
+                        oa = nextarg()
+                    end
+                    if not oa then
+                        abort('%s: missing argument: `-%s`\n', name, c)
+                    end
+                    if options[c](oa) == false then
+                        abort('%s: invalid argument: `-%s %q`\n', name, c, oa)
+                    end
+                    break
+                elseif flags[c] then
+                    if flags[c]() == false then
+                        abort('%s: invalid flag: `-%s`\n', name, c)
+                    end
+                else
+                    abort('%s: unknown option: `%s`\n', name, c)
+                end
+            end
         else
-            abort('%s: invalid argument: %s\n', name, optarg)
+            if a == "--" then
+                last_index = last_index + 1
+            end
+            break
         end
-    elseif r == 'f' then
-        local stat, handle, msg
-        handle, msg = io.open(optarg)
-        if handle == nil then
-            abort('%s: %s\n', name, msg)
-        end
-        local src = handle:read("*a")
-        table.insert(sources, { optarg, src })
-        stat, msg = pcall(io.close, handle)
-        if not stat then
-            abort('%s: %s\n', name, msg)
-        end
-        oneliner = false
-    elseif r == 'l' then
-        -- TODO add to usage string
-        local src = librequire(optarg)
-        if not src then
-            abort('%s: library not found: %s\n', name, optarg)
-        end
-        table.insert(sources, { optarg, src })
-    elseif r == 'e' then
-        -- TODO add to usage string
-        table.insert(sources, { "cmdline", optarg })
     end
+    return last_index
 end
--- handle arguments
-if arg[last_index] == '--' then
-    last_index = last_index + 1
-end
+
+local last_index = argparse(arg)
+
 if oneliner then
     -- first argument is the program
     local src = arg[last_index]
@@ -245,12 +315,35 @@ if oneliner then
     table.insert(sources, { "cmdline", src })
     last_index = last_index + 1
 end
--- TODO should fallback to stdin: awk 1 a=1
-runenv.ARGV[1] = "-"
--- remaining arguments are files
-for i = last_index, #arg do
-    runenv.ARGV[i-last_index+1] = arg[i]
-end
+
+-- TODO add test
+-- Let ARGV be a proxy to arg
+local argc = #arg - last_index + 1
+runenv.ARGV = setmetatable({}, {
+    __newindex = function(t,k,v)
+        if tonumber(k) then
+            rawset(t,k,v)
+            if v == nil and k == argc then
+                argc = argc - 1
+            else
+                argc = math.max(argc, k)
+            end
+        end
+    end,
+    __index = function(_,k)
+        if tonumber(k) then
+            local i = last_index + k - 1
+            if i <= #arg then
+                return arg[i]
+            elseif k <= argc then
+                return ""
+            end
+        end
+    end,
+    __len = function() return argc end,
+    __metatable = false,
+})
+
 -- compile sources
 for _,srcobj in ipairs(sources) do
     local awkgrammar = require 'luawk.lang.grammar'
