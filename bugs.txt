@@ -22,3 +22,7 @@ expected 13
 $ echo 1 | luawk -f- /etc/passwd
 result: 'luawk: -: No such file or directory'
 expected: read program from stdin and print file
+
+$ echo abc | luawk -F. '{ print NF }' -
+result: 4
+expected: 1 (single char FS is a literal not an regex expression)
