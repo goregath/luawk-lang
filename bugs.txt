@@ -2,6 +2,10 @@ $ luawk 1
 result: exit (no file read)
 expected: defaults to read from stdin
 
+$ luawk 1 ''
+result: exit (no file read)
+expected: defaults to read from stdin
+
 $ luawk 1 a=1
 result: exit (no file read)
 expected: defaults to read from stdin
