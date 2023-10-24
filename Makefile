@@ -60,7 +60,7 @@ MOD_PATH += build/$(ARCH)/lpeglabel/%/init
 MOD_PATH += build/$(ARCH)/lpeglabel/%
 MOD_PATH += build/$(ARCH)/luaposix/lib/%
 MOD_PATH += build/$(ARCH)/luaposix/ext/%
-MOD_PATH := $(foreach suffix,o c luac lua,$(addsuffix .$(suffix),$(MOD_PATH)))
+MOD_PATH := $(foreach suffix,c luac lua,$(addsuffix .$(suffix),$(MOD_PATH)))
 
 MODULES := $(call enumerate,bin/,lua)
 MODULES += $(call enumerate,lib/,lua)
@@ -185,7 +185,7 @@ build/$(ARCH)/preload.c:
 	echo   '};'
 
 build/$(ARCH)/$(PROGRAM): | info
-build/$(ARCH)/$(PROGRAM): src/luawk.c $(LUALIB)/liblua.a build/$(ARCH)/preload.o build/$(ARCH)/lpeglabel/init.a $(call pkgdecode,$(MODULES))
+build/$(ARCH)/$(PROGRAM): src/bootstrap.c $(LUALIB)/liblua.a build/$(ARCH)/preload.o build/$(ARCH)/lpeglabel/init.a $(call pkgdecode,$(MODULES))
 	@echo CC $<
 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
