@@ -139,17 +139,17 @@ build/$(ARCH)/lpeglabel/lpeglabel.o:
 build/$(ARCH)/bin/%.luab: bin/%.lua | $(LUAC)
 	@echo GEN $@
 	mkdir -p $(dir $@)
-	$(LUAC) -o $@ $<
+	$(LUAC) $(LUACFLAGS) -o $@ $<
 
 build/$(ARCH)/lib/%.luab: lib/%.lua | $(LUAC)
 	@echo GEN $@
 	mkdir -p $(dir $@)
-	$(LUAC) -o $@ $<
+	$(LUAC) $(LUACFLAGS) -o $@ $<
 
 build/$(ARCH)/%.luab: build/$(ARCH)/%.lua | $(LUAC)
 	@echo GEN $@
 	mkdir -p $(dir $@)
-	$(LUAC) -o $@ $<
+	$(LUAC) $(LUACFLAGS) -o $@ $<
 
 build/%.o: build/%.c | $(LUAINC)/
 	@echo CC $<
@@ -196,11 +196,34 @@ build/$(ARCH)/$(PROGRAM): src/bootstrap.c $(LUALIB)/liblua.a build/$(ARCH)/prelo
 .PHONY: all clean clean-all deps doc info install test $(PROGRAM)
 
 info: ;@
-	printf '┌──────────────────────────┬──────────────────────────────────────────────────┐\n'
-	printf '│ %-24s │ %-48s │\n' PACKAGE VERSION
-	printf '├──────────────────────────┼──────────────────────────────────────────────────┤\n'
-	printf '│ %-24s │ %-48s │\n' $(foreach pkg,LUA ERDE LUAPOSIX LPEGLABEL,$(pkg) $($(pkg)_VERSION))
-	printf '└──────────────────────────┴──────────────────────────────────────────────────┘\n'
+	printf '┌───────────┬─────────────────────────────────────────────────────────────────┐\n'
+	printf '│ %-9s │ %-63s │\n' PROGRAM "$(PROGRAM)"
+	printf '│ %-9s │ %-63s │\n' PLATFORM "$(PLATFORM)"
+	printf '│ %-9s │ %-63s │\n' ARCH "$(ARCH)"
+	printf '│ %-9s │ %-63s │\n' HOST "$(HOST)"
+	printf '│ %-9s │ %-63s │\n' PREFIX "$(PREFIX)"
+	printf '├───────────┼─────────────────────────────────────────────────────────────────┤\n'
+	printf '│ %-9s │ %-63s │\n' LUABIN "$(LUABIN)"
+	printf '│ %-9s │ %-63s │\n' LUALIB "$(LUALIB)"
+	printf '│ %-9s │ %-63s │\n' LUAINC "$(LUAINC)"
+	printf '├───────────┼─────────────────────────────────────────────────────────────────┤\n'
+	printf '│ %-9s │ %-63s │\n' AR "$(AR)"
+	printf '│ %-9s │ %-63s │\n' CC "$(CC)"
+	printf '│ %-9s │ %-63s │\n' INSTALL "$(INSTALL)"
+	printf '│ %-9s │ %-63s │\n' LD "$(LD)"
+	printf '│ %-9s │ %-63s │\n' LUAC "$(LUAC)"
+	printf '│ %-9s │ %-63s │\n' OD "$(OD)"
+	printf '├───────────┼─────────────────────────────────────────────────────────────────┤\n'
+	printf '│ %-9s │ %-63s │\n' ARFLAGS "$(ARFLAGS)"
+	printf '│ %-9s │ %-63s │\n' CFLAGS "$(CFLAGS)"
+	printf '│ %-9s │ %-63s │\n' LDFLAGS "$(LDFLAGS)"
+	printf '│ %-9s │ %-63s │\n' LUACFLAGS "$(LUACFLAGS)"
+	printf '└───────────┴─────────────────────────────────────────────────────────────────┘\n'
+	printf '┌───────────┬─────────────────────────────────────────────────────────────────┐\n'
+	printf '│ %-9s │ %-63s │\n' PACKAGE VERSION
+	printf '├───────────┼─────────────────────────────────────────────────────────────────┤\n'
+	printf '│ %-9s │ %-63s │\n' $(foreach pkg,LUA ERDE LUAPOSIX LPEGLABEL,$(pkg) $($(pkg)_VERSION))
+	printf '└───────────┴─────────────────────────────────────────────────────────────────┘\n'
 	printf '┌──────────────────────────┬──────────────────────────────────────────────────┐\n'
 	printf '│ %-24s │ %-48s │\n' MODULE PATH
 	printf '├──────────────────────────┼──────────────────────────────────────────────────┤\n'
