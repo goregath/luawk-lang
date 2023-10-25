@@ -179,7 +179,7 @@ build/$(ARCH)/preload.c:
 	echo   '  lua_pushcfunction(L, f); '"\\"
 	echo   '  lua_setfield(L, -2, n);'
 	printf 'LUALIB_API int luaopen_%s(lua_State *L);\n' $(subst .,_,$(MODULES))
-	echo   'LUALIB_API int $(PROGRAM)_preload(lua_State *L) {'
+	echo   'LUALIB_API int app_preloadlibs(lua_State *L) {'
 	echo   '  lua_getglobal(L, "package");'
 	echo   '  lua_getfield(L, -1, "preload");'
 	printf '  REG(luaopen_%s, "%s")\n' $(foreach mod,$(MODULES),$(subst .,_,$(mod)) $(mod))
@@ -187,16 +187,22 @@ build/$(ARCH)/preload.c:
 	echo   '  return 0;'
 	echo   '};'
 
-build/$(ARCH)/$(PROGRAM): | info
+build/$(ARCH)/$(PROGRAM): CFLAGS += -DAPP_OPEN=luaopen_luawk
+build/$(ARCH)/$(PROGRAM): | print-modules
 build/$(ARCH)/$(PROGRAM): src/bootstrap.c $(LUALIB)/liblua.a build/$(ARCH)/preload.o $(call pkgdecode,$(MODULES))
 	@echo CC $<
 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 .NOTPARALLEL:
-.PHONY: all clean clean-all deps doc info install test $(PROGRAM)
+.PHONY: all build clean clean-all doc help install test
+.PHONY: print-parameters
+.PHONY: print-packages
+.PHONY: print-modules
 
-info: ;@
-	printf '┌───────────┬─────────────────────────────────────────────────────────────────┐\n'
+print-parameters: ;@
+	printf '┌─────────────────────────────────────────────────────────────────────────────┐\n'
+	printf '│ %-75s │\n' PARAMETERS
+	printf '├───────────┬─────────────────────────────────────────────────────────────────┤\n'
 	printf '│ %-9s │ %-63s │\n' PROGRAM "$(PROGRAM)"
 	printf '│ %-9s │ %-63s │\n' PLATFORM "$(PLATFORM)"
 	printf '│ %-9s │ %-63s │\n' ARCH "$(ARCH)"
@@ -219,25 +225,31 @@ info: ;@
 	printf '│ %-9s │ %-63s │\n' LDFLAGS "$(LDFLAGS)"
 	printf '│ %-9s │ %-63s │\n' LUACFLAGS "$(LUACFLAGS)"
 	printf '└───────────┴─────────────────────────────────────────────────────────────────┘\n'
+
+print-packages: ;@
 	printf '┌───────────┬─────────────────────────────────────────────────────────────────┐\n'
 	printf '│ %-9s │ %-63s │\n' PACKAGE VERSION
 	printf '├───────────┼─────────────────────────────────────────────────────────────────┤\n'
 	printf '│ %-9s │ %-63s │\n' $(foreach pkg,LUA ERDE LUAPOSIX LPEGLABEL,$(pkg) $($(pkg)_VERSION))
 	printf '└───────────┴─────────────────────────────────────────────────────────────────┘\n'
+
+print-modules: ;@
 	printf '┌──────────────────────────┬──────────────────────────────────────────────────┐\n'
 	printf '│ %-24s │ %-48s │\n' MODULE PATH
 	printf '├──────────────────────────┼──────────────────────────────────────────────────┤\n'
 	printf '│ %-24s │ %-48s │\n' $(foreach mod,$(sort $(MODULES)),$(mod) "$(call pkgdecode,$(mod))")
 	printf '└──────────────────────────┴──────────────────────────────────────────────────┘\n'
 
-deps: | $(LUALIB)/liblua.a
-deps: | build/$(ARCH)/erde/
-deps: | build/$(ARCH)/luaposix/
-deps: | build/$(ARCH)/lpeglabel/
-deps: | build/$(ARCH)/lpeglabel/lpeglabel.o
-deps: | $(SOURCES)
+help: | print-parameters print-packages print-modules
 
-$(PROGRAM): | deps
+build: | print-parameters print-packages
+build: | $(LUALIB)/liblua.a
+build: | build/$(ARCH)/erde/
+build: | build/$(ARCH)/luaposix/
+build: | build/$(ARCH)/lpeglabel/
+build: | build/$(ARCH)/lpeglabel/lpeglabel.o
+build: | $(SOURCES)
+build:
 	$(MAKE) build/$(ARCH)/$(PROGRAM)
 
 install: $(PROGRAM)
@@ -258,4 +270,4 @@ doc: | doc/
 	$(LDOC) .
 	$(LUACOV)
 
-all: $(PROGRAM) test doc
+all: build test doc
