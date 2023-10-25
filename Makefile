@@ -60,7 +60,7 @@ MOD_PATH += build/$(ARCH)/lpeglabel/%/init
 MOD_PATH += build/$(ARCH)/lpeglabel/%
 MOD_PATH += build/$(ARCH)/luaposix/lib/%
 MOD_PATH += build/$(ARCH)/luaposix/ext/%
-MOD_PATH := $(foreach suffix,c luac lua,$(addsuffix .$(suffix),$(MOD_PATH)))
+MOD_PATH := $(foreach suffix,o c luac lua,$(addsuffix .$(suffix),$(MOD_PATH)))
 
 MODULES := $(call enumerate,bin/,lua)
 MODULES += $(call enumerate,lib/,lua)
@@ -127,11 +127,14 @@ build/$(ARCH)/luaposix/%.o: INCLUDES += -I build/$(ARCH)/luaposix/ext/include
 
 build/$(ARCH)/lpeglabel/%.o: INCLUDES += -I build/$(ARCH)/lpeglabel
 
-build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lplcap.o
-build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lplcode.o
-build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lplprint.o
-build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lpltree.o
-build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lplvm.o
+build/$(ARCH)/lpeglabel/lpeglabel.o: build/$(ARCH)/lpeglabel/lplcap.o
+build/$(ARCH)/lpeglabel/lpeglabel.o: build/$(ARCH)/lpeglabel/lplcode.o
+build/$(ARCH)/lpeglabel/lpeglabel.o: build/$(ARCH)/lpeglabel/lplprint.o
+build/$(ARCH)/lpeglabel/lpeglabel.o: build/$(ARCH)/lpeglabel/lpltree.o
+build/$(ARCH)/lpeglabel/lpeglabel.o: build/$(ARCH)/lpeglabel/lplvm.o
+build/$(ARCH)/lpeglabel/lpeglabel.o:
+	@echo LD $@ "($(notdir $^))"
+	$(LD) -r $^ -o $@
 
 build/$(ARCH)/bin/%.luab: bin/%.lua | $(LUAC)
 	@echo GEN $@
@@ -185,7 +188,7 @@ build/$(ARCH)/preload.c:
 	echo   '};'
 
 build/$(ARCH)/$(PROGRAM): | info
-build/$(ARCH)/$(PROGRAM): src/bootstrap.c $(LUALIB)/liblua.a build/$(ARCH)/preload.o build/$(ARCH)/lpeglabel/init.a $(call pkgdecode,$(MODULES))
+build/$(ARCH)/$(PROGRAM): src/bootstrap.c $(LUALIB)/liblua.a build/$(ARCH)/preload.o $(call pkgdecode,$(MODULES))
 	@echo CC $<
 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
@@ -199,10 +202,11 @@ info: ;@
 	printf '│ %-24s │ %-48s │\n' $(foreach mod,$(sort $(MODULES)),$(mod) "$(call pkgdecode,$(mod))")
 	printf '└──────────────────────────┴──────────────────────────────────────────────────┘\n'
 
+deps: | $(LUALIB)/liblua.a
 deps: | build/$(ARCH)/erde/
 deps: | build/$(ARCH)/luaposix/
 deps: | build/$(ARCH)/lpeglabel/
-deps: | $(LUALIB)/liblua.a
+deps: | build/$(ARCH)/lpeglabel/lpeglabel.o
 deps: | $(SOURCES)
 
 $(PROGRAM): | deps
