@@ -87,6 +87,57 @@ local function version(handle)
     handle:write(name, " ", ver, "\n")
 end
 
+local function getopts(argv, flags, options, long_options)
+    local last_index = 1
+    local nextarg = coroutine.wrap(function()
+        for i = 1, #argv do
+            last_index = i
+            coroutine.yield(argv[i])
+        end
+        last_index = last_index + 1
+    end)
+    for a in nextarg do
+        if a:match("^%-%-.+") then
+            if long_options[a] then
+                a = long_options[a]
+            else
+                abort('%s: unknown option: `%s`\n', name, a)
+            end
+        end
+        if a:match("^%-[^%-]") then
+            local p = 2
+            for c in a:sub(2):gmatch(".") do
+                p = p + 1
+                if options[c] then
+                    local oa = a:sub(p)
+                    if #oa == 0 then
+                        oa = nextarg()
+                    end
+                    if not oa then
+                        abort('%s: missing argument: `-%s`\n', name, c)
+                    end
+                    if options[c](oa) == false then
+                        abort('%s: invalid argument: `-%s %q`\n', name, c, oa)
+                    end
+                    break
+                elseif flags[c] then
+                    if flags[c]() == false then
+                        abort('%s: invalid flag: `-%s`\n', name, c)
+                    end
+                else
+                    abort('%s: unknown option: `%s`\n', name, c)
+                end
+            end
+        else
+            if a == "--" then
+                last_index = last_index + 1
+            end
+            break
+        end
+    end
+    return last_index
+end
+
 local function luawk_require(path)
     local var = name:gsub("%A", ""):upper()
     local env = os.getenv(var .. "_PATH") or "?.luawk"
@@ -252,58 +303,7 @@ local long_options = {
     ["--version"] = "-V",
 }
 
-local function argparse(argv)
-    local last_index = 1
-    local nextarg = coroutine.wrap(function()
-        for i = 1, #argv do
-            last_index = i
-            coroutine.yield(argv[i])
-        end
-        last_index = last_index + 1
-    end)
-    for a in nextarg do
-        if a:match("^%-%-.+") then
-            if long_options[a] then
-                a = long_options[a]
-            else
-                abort('%s: unknown option: `%s`\n', name, a)
-            end
-        end
-        if a:match("^%-[^%-]") then
-            local p = 2
-            for c in a:sub(2):gmatch(".") do
-                p = p + 1
-                if options[c] then
-                    local oa = a:sub(p)
-                    if #oa == 0 then
-                        oa = nextarg()
-                    end
-                    if not oa then
-                        abort('%s: missing argument: `-%s`\n', name, c)
-                    end
-                    if options[c](oa) == false then
-                        abort('%s: invalid argument: `-%s %q`\n', name, c, oa)
-                    end
-                    break
-                elseif flags[c] then
-                    if flags[c]() == false then
-                        abort('%s: invalid flag: `-%s`\n', name, c)
-                    end
-                else
-                    abort('%s: unknown option: `%s`\n', name, c)
-                end
-            end
-        else
-            if a == "--" then
-                last_index = last_index + 1
-            end
-            break
-        end
-    end
-    return last_index
-end
-
-local last_index = argparse(arg)
+local last_index = getopts(arg, flags, options, long_options)
 
 if oneliner then
     -- first argument is the program
