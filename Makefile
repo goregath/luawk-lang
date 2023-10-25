@@ -197,6 +197,11 @@ build/$(ARCH)/$(PROGRAM): src/bootstrap.c $(LUALIB)/liblua.a build/$(ARCH)/prelo
 
 info: ;@
 	printf '┌──────────────────────────┬──────────────────────────────────────────────────┐\n'
+	printf '│ %-24s │ %-48s │\n' PACKAGE VERSION
+	printf '├──────────────────────────┼──────────────────────────────────────────────────┤\n'
+	printf '│ %-24s │ %-48s │\n' $(foreach pkg,LUA ERDE LUAPOSIX LPEGLABEL,$(pkg) $($(pkg)_VERSION))
+	printf '└──────────────────────────┴──────────────────────────────────────────────────┘\n'
+	printf '┌──────────────────────────┬──────────────────────────────────────────────────┐\n'
 	printf '│ %-24s │ %-48s │\n' MODULE PATH
 	printf '├──────────────────────────┼──────────────────────────────────────────────────┤\n'
 	printf '│ %-24s │ %-48s │\n' $(foreach mod,$(sort $(MODULES)),$(mod) "$(call pkgdecode,$(mod))")
