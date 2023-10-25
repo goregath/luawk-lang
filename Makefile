@@ -109,7 +109,7 @@ build/$(ARCH)/lua/Makefile: | build/$(ARCH)/lua/; @stat $@ >/dev/null
 build/$(ARCH)/lua/src/: | build/$(ARCH)/lua/; @stat $@ >/dev/null
 
 build/$(ARCH)/lua/src/luac build/$(ARCH)/lua/src/liblua.a: build/$(ARCH)/lua/Makefile
-	$(MAKE) -C build/$2/lua $(PLATFORM)
+	$(MAKE) -s -C build/$2/lua $(PLATFORM)
 
 build/$(ARCH)/luaposix/lib/%.lua: ; @stat $@ >/dev/null
 build/$(ARCH)/luaposix/ext/%.c:   ; @stat $@ >/dev/null
@@ -218,12 +218,14 @@ print-parameters: ;@
 	printf '│ %-9s │ %-63s │\n' INSTALL "$(INSTALL)"
 	printf '│ %-9s │ %-63s │\n' LD "$(LD)"
 	printf '│ %-9s │ %-63s │\n' LUAC "$(LUAC)"
+	printf '│ %-9s │ %-63s │\n' MAKE "$(MAKE)"
 	printf '│ %-9s │ %-63s │\n' OD "$(OD)"
 	printf '├───────────┼─────────────────────────────────────────────────────────────────┤\n'
 	printf '│ %-9s │ %-63s │\n' ARFLAGS "$(ARFLAGS)"
 	printf '│ %-9s │ %-63s │\n' CFLAGS "$(CFLAGS)"
 	printf '│ %-9s │ %-63s │\n' LDFLAGS "$(LDFLAGS)"
 	printf '│ %-9s │ %-63s │\n' LUACFLAGS "$(LUACFLAGS)"
+	printf '│ %-9s │ %-63s │\n' MAKEFLAGS "$(MAKEFLAGS)"
 	printf '└───────────┴─────────────────────────────────────────────────────────────────┘\n'
 
 print-packages: ;@
