@@ -218,15 +218,15 @@ print-parameters: ;@
 	printf '│ %-9s │ %-63s │\n' INSTALL "$(INSTALL)"
 	printf '│ %-9s │ %-63s │\n' LD "$(LD)"
 	printf '│ %-9s │ %-63s │\n' LUAC "$(LUAC)"
-	printf '│ %-9s │ %-63s │\n' MAKE "$(MAKE)"
 	printf '│ %-9s │ %-63s │\n' OD "$(OD)"
 	printf '├───────────┼─────────────────────────────────────────────────────────────────┤\n'
 	printf '│ %-9s │ %-63s │\n' ARFLAGS "$(ARFLAGS)"
 	printf '│ %-9s │ %-63s │\n' CFLAGS "$(CFLAGS)"
 	printf '│ %-9s │ %-63s │\n' LDFLAGS "$(LDFLAGS)"
 	printf '│ %-9s │ %-63s │\n' LUACFLAGS "$(LUACFLAGS)"
-	printf '│ %-9s │ %-63s │\n' MAKEFLAGS "$(MAKEFLAGS)"
-	printf '└───────────┴─────────────────────────────────────────────────────────────────┘\n'
+	printf '├───────────┴────────┬────────────────────────────────────────────────────────┤\n'
+	printf '│ %-18s │ %-54s │\n' $(foreach pkg,LUA ERDE LUAPOSIX LPEGLABEL,$(pkg)_VERSION "$($(pkg)_VERSION)")
+	printf '└────────────────────┴────────────────────────────────────────────────────────┘\n'
 
 print-packages: ;@
 	printf '┌───────────┬─────────────────────────────────────────────────────────────────┐\n'
@@ -254,7 +254,7 @@ build: | $(SOURCES)
 build:
 	$(MAKE) build/$(ARCH)/$(PROGRAM)
 
-install: $(PROGRAM)
+install: build
 	$(INSTALL) -m 0755 -t "$(PREFIX)" build/$(ARCH)/$(PROGRAM)
 
 clean:
