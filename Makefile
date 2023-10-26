@@ -198,6 +198,7 @@ build/$(ARCH)/$(PROGRAM): src/bootstrap.c $(LUALIB)/liblua.a build/$(ARCH)/prelo
 .PHONY: print-parameters
 .PHONY: print-packages
 .PHONY: print-modules
+.DEFAULT_GOAL := build
 
 print-parameters: ;@
 	printf '┌─────────────────────────────────────────────────────────────────────────────┐\n'

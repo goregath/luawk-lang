@@ -3,11 +3,16 @@
 --- Luawk interpreter.
 --
 --  @usage
---      Usage: luawk.lua [-F value] [-v var=value] [--] 'program' [file ...]
---             luawk.lua [-F value] [-v var=value] [-f file] [--] [file ...]
+--      Usage: luawk [OPTIONS] [-F value] [-v var=value] [--] 'program' [file ...]
+--             luawk [OPTIONS] [-F value] [-v var=value] [-f file] [--] [file ...]
 --
---          -f file        Program text is read from file instead of the command line.
 --          -F value       Sets the field separator, FS, to value.
+--          -e program     Add source code to program.
+--          -f file        Program text is read from file instead of the command line.
+--          -m name        Import a program using LUAWK_PATH.
+--          -l name        Require a lua module name.
+--          -l var=name    Require a lua module name to global var.
+--          -o option      Modify runtime environment, see `-o help`.
 --          -v var=value   Assigns value to program variable var.
 --
 -- @script luawk
