@@ -8,33 +8,37 @@ Luawk Beta
 
 State of Development
 --------------------
-Despite all efforts to support *Lua 5.1* and *LuaJIT*, this project is tested against a more recent version of *Lua 5.4* with [luaposix].
+Despite all efforts to support *Lua 5.1* and *LuaJIT*, this project is tested against a more recent version of *Lua 5.4*
+with [luaposix].
 
-Please have a look at the [test/] folder to see what features are currently supported. There are two kinds of tests, unit test use a simple Lua test suite (see `test/*.lua`), integration and command-line tests are run with [bats] (see `test/*.bats`).
+Please have a look at the [test/] folder to see what features are currently supported. There are two kinds of tests,
+unit test use a simple Lua test suite (see `test/*.lua`), integration and command-line tests are run with [bats] (see
+`test/*.bats`).
 
-There are also ongoing attempts to switch from pure Lua to a more elegant dialect for Luawk. A very intereseting candidate would be [erde-lang/erde][erde-lang] that has recently become stable.
+There are also ongoing attempts to switch from pure Lua to a more elegant dialect for Luawk. A very intereseting
+candidate would be [erde-lang/erde][erde-lang] that has recently become stable.
 
 ---
 
 Synopsis
 ========
 
-LUAWK is an AWK-alike, data-driven programming language written in Lua.
+Luawk is an AWK-alike, data-driven programming language written in Lua.
 
 This project is currently in an alpha stage and may introduce breaking changes in the future.
 
 ```plain
-Usage: luawk [-W option] [-F value] [-v var=value] [--] 'program' [file ...]
-       luawk [-W option] [-F value] [-v var=value] [-f file] [--] [file ...]
+Usage: luawk [OPTIONS] [-F value] [-v var=value] [--] 'program' [file ...]
+       luawk [OPTIONS] [-F value] [-v var=value] [-f file] [--] [file ...]
 
-   -f file        Program text is read from file instead of from the command line.
    -F value       Sets the field separator, FS, to value.
+   -e program     Add source code to program.
+   -f file        Program text is read from file instead of the command line.
+   -m name        Import a program using LUAWK_PATH.
+   -l name        Require a lua module name.
+   -l var=name    Require a lua module name to global var.
+   -o option      Modify runtime environment, see `-o help`.
    -v var=value   Assigns value to program variable var.
-   -W flag
-   -W var=value
-
-   -W regex=module
-   -W loglevel=level
 ```
 
 Example:
@@ -46,28 +50,15 @@ echo 'a:b:c' | luawk -F: '{ print $2 }' # yields: b
 Description
 ===========
 
-At its core LUAWK is a domain-specific language for processing textutal data.
-Although not a direct clone of AWK, many ideas and concepts apply for LUAWK.
-The overall program structure for example is very close to AWK while the actions itself are expressed in a grammar very close to Lua.
+At its core Luawk is a domain-specific language for processing textutal data. Although not a direct clone of AWK, many
+ideas and concepts apply for Luawk. The overall program structure for example is very close to AWK while the actions
+itself are expressed in a grammar very close to Lua.
+
+Luawk builds on top of [erde][erde-lang] with extended grammar written in [LPeg][lpeg] combining language features from
+Lua and Awk.
 
 * GNU AWK Extensions
 * POSIX
-
-Motiviation
------------
-
-LUAWK is an ongoing attempt to create a highly extensible version of AWK.
-
-* Idea: Combine compactness of AWK with an extension language like Lua
-* Benefit from Lua ecosystem
-* Learn both langugaes
-* Both great languages
-* Lua is influenced by AWK in some ways
-* Both languages naturally combine
-* Combine the strengths and weaknesses of both
-* Filter for structured data
-* Initial idea: patch tarballs with awk
-* Unsatisfactory Attempts: Patching busybox AWK, using libmawk
 
 Language Features
 -----------------
@@ -88,7 +79,7 @@ So far we looked at the dollar operator from an AWK point of view.
 Syntax
 ------
 
-The syntax of LUAWK is a superset of Lua 5.1 with additional syntactic sugar from AWK.
+The syntax of Luawk is a superset of Lua 5.1 with additional syntactic sugar from AWK.
 
 Program Structure
 -----------------
@@ -130,8 +121,8 @@ TODO
 ## Supported I/O Statements
 
 The following statements are syntactically equivalent to a lua *return statement*, thus no parenthesis are required.
-They can appear anywhere in code, that are expressions or statements, in contrast to a return statement that is only valid as a last statement in a block.
-There are some exceptions to the rule as you can see in the following table.
+They can appear anywhere in code, that are expressions or statements, in contrast to a return statement that is only
+valid as a last statement in a block. There are some exceptions to the rule as you can see in the following table.
 
 |                      | **exit** | **getline** | **next** | **nextfile\*** | **print** | **printf** |
 |---------------------:|:--------:|:-----------:|:--------:|:--------------:|:---------:|:----------:|
@@ -146,5 +137,7 @@ There are some exceptions to the rule as you can see in the following table.
 
 [test/]: test/
 [bats]: https://bats-core.readthedocs.io/
-[luaposix]: http://luaposix.github.io/luaposix
 [erde-lang]: https://erde-lang.github.io/
+[lpeg]: https://www.inf.puc-rio.br/~roberto/lpeg/
+[lpeglabel]: https://github.com/sqmedeiros/lpeglabel
+[luaposix]: http://luaposix.github.io/luaposix
