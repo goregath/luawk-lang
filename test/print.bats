@@ -27,6 +27,11 @@ teardown() {
 # >> expression
 # | expression
 
+@test "nil is evaluated to empty string" {
+	run luawk -vOFS=, 'BEGIN { print nil,nil,nil }'
+	assert_output ',,'
+}
+
 @test "redirect and truncate" {
 	skip "not implemented"
 	local file="$TEST_TMPDIR"/out
