@@ -344,14 +344,16 @@ end
 function class:print(...)
     local ofs = tostring(self.OFS)
     local ors = tostring(self.ORS)
-    if select('#', ...) > 0 then
-        -- FIXME implementation far from optimal
-        local args = {...}
-        local stab = setmetatable({}, {
-            __index = function(_,k) return args[k] and tostring(args[k]) or "" end,
-            __len = function() return #args end
-        })
-        io.stdout:write(table.concat(stab, ofs), ors)
+    local n = select('#', ...)
+    if n > 0 then
+        local sep, args = "", { ... }
+        for i = 1, n do
+            local arg = args[i]
+            print("log", string.format("%q", type(arg)))
+            io.stdout:write(sep, arg == nil and "" or tostring(arg))
+            sep = ofs
+        end
+        io.stdout:write(ors)
     else
         io.stdout:write(self[0], ors)
     end

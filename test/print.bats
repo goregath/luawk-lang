@@ -27,6 +27,11 @@ teardown() {
 # >> expression
 # | expression
 
+@test "types" {
+	run luawk -vOFS=, 'BEGIN { print nil,"a",1,true,table,io.stdin }'
+	assert_output -e ',a,1,true,table[^,]+,file[^,]+'
+}
+
 @test "nil is evaluated to empty string" {
 	run luawk -vOFS=, 'BEGIN { print nil,nil,nil }'
 	assert_output ',,'
