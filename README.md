@@ -23,7 +23,7 @@ candidate would be [erde-lang/erde][erde-lang] that has recently become stable.
 Synopsis
 ========
 
-Luawk is an AWK-alike, data-driven programming language written in Lua.
+Luawk is an Awk-alike, data-driven programming language written in Lua.
 
 This project is currently in an alpha stage and may introduce breaking changes in the future.
 
@@ -50,14 +50,14 @@ echo 'a:b:c' | luawk -F: '{ print $2 }' # yields: b
 Description
 ===========
 
-At its core Luawk is a domain-specific language for processing textutal data. Although not a direct clone of AWK, many
-ideas and concepts apply for Luawk. The overall program structure for example is very close to AWK while the actions
+At its core Luawk is a domain-specific language for processing textutal data. Although not a direct clone of Awk, many
+ideas and concepts apply for Luawk. The overall program structure for example is very close to Awk while the actions
 itself are expressed in a grammar very close to Lua.
 
 Luawk builds on top of [erde][erde-lang] with extended grammar written in [LPeg][lpeg] combining language features from
 Lua and Awk.
 
-* GNU AWK Extensions
+* GNU Awk Extensions
 * POSIX
 
 Language Features
@@ -65,21 +65,21 @@ Language Features
 
 ### Field Reference / Dollar Sign Operator `$`
 
-The dollar sign operator `$` is an unary operator that denotes a field reference in AWK, that is an expression prefixed
+The dollar sign operator `$` is an unary operator that denotes a field reference in Awk, that is an expression prefixed
 with `$` evaluates to an index of a field in the current record. A field reference in turn is a non-negative integer
 constant. For example `$1` references the first field of the current record and `$NF` is last one. Here `NF` is a
 special variable linked to the total number of fields of the current record. The special field `$0` is the current
 record itself. An expression of `$(NF-1)` could be used to get the second last field. Please note the use of parenthesis
 here, the `$` operator has the highest precedence of all operators.
 
-So far we looked at the dollar operator from an AWK point of view.
+So far we looked at the dollar operator from an Awk point of view.
 
 *TODO*
 
 Syntax
 ------
 
-The syntax of Luawk is a superset of Lua 5.1 with additional syntactic sugar from AWK.
+The syntax of Luawk is a superset of Lua 5.1 with additional syntactic sugar from Awk.
 
 Program Structure
 -----------------
@@ -114,7 +114,7 @@ The listing above is equivalent to the following construct.
 
 TODO
 
-# AWK Compatibility
+# Awk Compatibility
 
 TODO
 
@@ -135,9 +135,29 @@ valid as a last statement in a block. There are some exceptions to the rule as y
 
 \* *GNU extension*
 
+Build Instructions
+==================
+
+Running Tests
+-------------
+
+There are two kinds of tests, unit test use a simple Lua test suite (see `test/*.lua`), integration and command-line
+tests are run with [bats] (see `test/*.bats`), the latter requires you to checkout all submodules.
+
+    $ git submodule update --init --recursive
+
+You should now be able to directly run any test on command line by calling the file directly. Another option is to use
+[prove] to invoke all test at once (plese check the [.proverc] for reference). The *Makefile* also comes with a *test*
+target that uses the configured lua version (built on demand) and a luawk binary.
+
+    $ test/posix-split.lua
+    $ prove -v
+    $ make test
+
 [test/]: test/
 [bats]: https://bats-core.readthedocs.io/
 [erde-lang]: https://erde-lang.github.io/
 [lpeg]: https://www.inf.puc-rio.br/~roberto/lpeg/
 [lpeglabel]: https://github.com/sqmedeiros/lpeglabel
 [luaposix]: http://luaposix.github.io/luaposix
+[prove]: https://perldoc.perl.org/prove
