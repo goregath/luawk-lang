@@ -15,8 +15,13 @@ setup() {
 }
 
 @test "empty arguments list defaults to stdin" {
-    run luawk -vOFS=, 'BEGINFILE { print FILENAME,ARGC,ARGIND; exit }'
-	assert_output '-,1,0'
+    run luawk -vOFS=, 'BEGINFILE { print FILENAME,ARGC,ARGIND,ARGV[ARGIND]; exit }'
+	assert_output '-,1,0,luawk'
+}
+
+@test "arguments list defaults to stdin" {
+    run luawk -vOFS=, 'BEGINFILE { print FILENAME,ARGC,ARGIND,ARGV[ARGIND]; exit }' a=1
+	assert_output '-,2,1,a=1'
 }
 
 @test "arguments rodeo" {
@@ -24,4 +29,3 @@ setup() {
 	assert_line -n 0 'x,/dev/null,6,2,/dev/null'
 	assert_line -n 1 'y,/dev/null,6,5,/dev/null'
 }
-
