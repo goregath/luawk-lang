@@ -6,7 +6,7 @@ export BATS_TEST_TIMEOUT=1
 export LUAWK_PATH="examples/modules/?.luawk"
 
 luawk() {
-	timeout 3 /usr/bin/env luawk -lluacov "$@"
+	timeout 3 luawk -lluacov "$@"
 }
 
 cd "${BATS_TEST_DIRNAME}/.."
