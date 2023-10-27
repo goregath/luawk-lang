@@ -127,7 +127,7 @@ function intmt.__pow(l, r) return  (atoi(l) or l and 1 or 0) ^  (atoi(r) or r an
 function intmt.__lt (l, r) return  (atoi(l) or l and 1 or 0) <  (atoi(r) or r and 1 or 0)  end
 function intmt.__le (l, r) return  (atoi(l) or l and 1 or 0) <= (atoi(r) or r and 1 or 0)  end
 function intmt.__unm(l)    return -(atoi(l) or l and 1 or 0)  end
-function intmt.__tostring(l) return (tonumber(l) or "")  end
+function intmt.__tostring(l) return (l == true and "true" or l == false and "false" or tonumber(l) or "")  end
 intmt.__concat = concat
 
 --- Enable AWK type system emulation.

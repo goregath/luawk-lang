@@ -342,16 +342,14 @@ end
 --  @class function
 --  @name class:print
 function class:print(...)
-    local ofs = tostring(self.OFS)
-    local ors = tostring(self.ORS)
     local n = select('#', ...)
+    local ors = tostring(self.ORS)
     if n > 0 then
-        local sep, args = "", { ... }
-        for i = 1, n do
-            local arg = args[i]
-            print("log", string.format("%q", type(arg)))
-            io.stdout:write(sep, arg == nil and "" or tostring(arg))
-            sep = ofs
+        local ofs = tostring(self.OFS)
+        local args = { ... }
+        io.stdout:write(tostring(args[1]))
+        for i = 2, n do
+            io.stdout:write(ofs, tostring(args[i]))
         end
         io.stdout:write(ors)
     else
