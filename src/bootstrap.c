@@ -60,8 +60,8 @@ static int docall (lua_State *L, int narg, int nres) {
   return status;
 }
 
-LUALIB_API int luaopen_luawk(lua_State *L);
-LUALIB_API int luawk_preload(lua_State *L);
+LUALIB_API int APP_OPEN(lua_State *L);
+LUALIB_API int app_preloadlibs(lua_State *L);
 
 typedef struct argv_t {
   int argc;
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
   lua_State *L = luaL_newstate();
   argv_t *a;
   luaL_openlibs(L);
-  luawk_preload(L);
+  app_preloadlibs(L);
   // arg table is implemented as userdata due to a bug during bulk copying
   a = (argv_t *) lua_newuserdata(L, sizeof(argv_t));
   a->argc = argc;
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
   lua_setfield(L, -2, "__len");
   lua_setmetatable(L, -2);
   lua_setglobal(L, "arg");
-  lua_pushcfunction(L, luaopen_luawk);
+  lua_pushcfunction(L, APP_OPEN);
   if (docall(L, 0, LUA_MULTRET)) {
     const char *errmsg = lua_tostring(L, 1);
     if (errmsg) {

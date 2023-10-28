@@ -342,16 +342,16 @@ end
 --  @class function
 --  @name class:print
 function class:print(...)
-    local ofs = tostring(self.OFS)
+    local n = select('#', ...)
     local ors = tostring(self.ORS)
-    if select('#', ...) > 0 then
-        -- FIXME implementation far from optimal
-        local args = {...}
-        local stab = setmetatable({}, {
-            __index = function(_,k) return args[k] and tostring(args[k]) or "" end,
-            __len = function() return #args end
-        })
-        io.stdout:write(table.concat(stab, ofs), ors)
+    if n > 0 then
+        local ofs = tostring(self.OFS)
+        local args = { ... }
+        io.stdout:write(tostring(args[1]))
+        for i = 2, n do
+            io.stdout:write(ofs, tostring(args[i]))
+        end
+        io.stdout:write(ors)
     else
         io.stdout:write(self[0], ors)
     end

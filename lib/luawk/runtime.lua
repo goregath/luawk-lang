@@ -66,29 +66,38 @@ end
 --  This action may trigger BEGINFILE and ENDFILE actions.
 -- @return[2,type=true] state has been affected
 ctxclass.dogetline = coroutine.wrap(function(self)
-    local getline, state, var
-    for i=1,atoi(self.env.ARGC)-1 do
-        -- local getline, state, var
-        local filename = self.env.ARGV[i]
-        self.env.ARGIND = i
-
-        if filename == nil or filename == "" then
-            -- If the value of a particular element of ARGV is empty, skip over it.
-            goto SKIP
-        end
-
-        if type(filename) == "string" and filename:find("=") then
-            -- If an argument matches the format of an assignment operand, this
-            -- argument shall be treated as an assignment rather than a file argument.
-            local k,v = filename:match("^([_%a][_%w]*)=(.*)$")
-            if k then
-                self.env[k] = v
-                goto SKIP
+    local getline, filename, state, var
+    local argc = atoi(self.env.ARGC)
+    local nofile = true
+    for argind = 1, argc do
+        if argind == argc then
+            -- End of list
+            if nofile then
+                -- List had no file arguments, default to "-" (stdin)
+                filename, argind = "-", argc - 1
+            else
+                break
             end
+        else
+            filename = self.env.ARGV[argind]
+            if filename == nil or filename == "" then
+                -- If the value of a particular element of ARGV is empty, skip over it.
+                goto SKIP
+            elseif type(filename) == "string" and filename:find("=") then
+                -- If an argument matches the format of an assignment operand, this
+                -- argument shall be treated as an assignment rather than a file argument.
+                local k, v = filename:match("^([_%a][_%w]*)=(.*)$")
+                if k then
+                    self.env[k] = v
+                    goto SKIP
+                end
+            end
+            nofile = false
         end
 
         self.env.FNR = 0
         self.env.FILENAME = filename
+        self.env.ARGIND = argind
 
         -- BEGINFILE
         for _, action in ipairs(self.program.BEGINFILE) do
@@ -236,8 +245,6 @@ local function run(program, runenv)
             if ctx.status == "exit" then break end
         end
     end
-
-    -- print("exit", ctx.status, ctx.code)
 
     if ctx.status ~= nil and ctx.status ~= "exit" then
         abort("%s: error: %s not allowed in %s\n", name, ctx.status, ctx.action)

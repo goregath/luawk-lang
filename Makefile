@@ -1,5 +1,17 @@
 # LUAWK Makefile
 
+ifneq (4.1,$(firstword $(sort $(MAKE_VERSION) 4.1)))
+$(error expected at least GNU Make 4.1, got $(MAKE_VERSION))
+endif
+
+ifeq ($(filter oneshell,$(.FEATURES)),)
+$(error your version of make does not support the oneshell feature)
+endif
+
+ifeq ($(filter target-specific,$(.FEATURES)),)
+$(error your version of make does not support the target-specific feature)
+endif
+
 space := $(subst ,, )
 
 1 = $(word 1,$(subst /,$(space),$@))
@@ -11,12 +23,14 @@ pkgencode = $(foreach pkg,$(1),$(firstword $(foreach pat,$(MOD_PATH),$(if $(pats
 pkgdecode = $(addsuffix .o,$(basename $(foreach path,$(1),$(firstword $(wildcard $(foreach pat,$(MOD_PATH),$(patsubst %,$(pat),$(subst .,/,$(path)))))))))
 
 PROGRAM := luawk
+PREFIX := $(HOME)/.local/bin
 
 HOST != uname -m
 ARCH := $(HOST)
 PLATFORM != uname -s | tr '[:upper:]' '[:lower:]'
 
 AWK := awk
+INSTALL := install
 LDOC := ldoc
 LUAC = $(LUABIN)/luac
 LUACOV := luacov
@@ -36,26 +50,28 @@ CFLAGS := -fPIC -Wall
 LDFLAGS := -rdynamic -lm -ldl
 INCLUDES := -I $(LUAINC)
 
-MOD_PATH := build/$(ARCH)/src/%/init
-MOD_PATH += build/$(ARCH)/src/%
+MOD_PATH := build/$(ARCH)/bin/%/init
+MOD_PATH += build/$(ARCH)/bin/%
+MOD_PATH += build/$(ARCH)/lib/%/init
+MOD_PATH += build/$(ARCH)/lib/%
 MOD_PATH += build/$(ARCH)/erde/%/init
 MOD_PATH += build/$(ARCH)/erde/%
 MOD_PATH += build/$(ARCH)/lpeglabel/%/init
 MOD_PATH += build/$(ARCH)/lpeglabel/%
 MOD_PATH += build/$(ARCH)/luaposix/lib/%
 MOD_PATH += build/$(ARCH)/luaposix/ext/%
-MOD_PATH += build/$(ARCH)/%/init
 MOD_PATH := $(foreach suffix,o c luac lua,$(addsuffix .$(suffix),$(MOD_PATH)))
 
-MODULES := $(filter-out erde.cli,$(filter erde erde.%,$(call enumerate,build/$(ARCH)/erde/,lua)))
-MODULES += $(filter-out luawk,$(call enumerate,src/,lua))
+MODULES := $(call enumerate,bin/,lua)
+MODULES += $(call enumerate,lib/,lua)
+MODULES += $(filter-out erde.cli,$(filter erde erde.%,$(call enumerate,build/$(ARCH)/erde/,lua)))
 MODULES += lpeglabel
 MODULES += relabel
 MODULES += posix.stdio
 MODULES += posix.stdlib
 MODULES += posix.unistd
 
-SOURCES := $(patsubst %.lua,build/$(ARCH)/%.c,$(shell find src/ -type f -name '*.lua'))
+SOURCES := $(patsubst %.lua,build/$(ARCH)/%.c,$(shell find bin/ lib/ -type f -name '*.lua'))
 SOURCES += $(patsubst %.lua,%.c,$(shell find build/$(ARCH)/erde/erde/ -type f -name '*.lua'))
 
 .SHELLFLAGS := -ec
@@ -80,6 +96,7 @@ tmp/%.tar.gz: | tmp/
 	curl -fsSL "$(URL)" -o "$@"
 
 build/%.a:
+	@echo AR $@
 	$(AR) $(ARFLAGS) $@ $?
 
 build/$(ARCH)/erde/ build/$(ARCH)/lua/ build/$(ARCH)/luaposix/ build/$(ARCH)/lpeglabel/: | build/$(ARCH)/
@@ -92,7 +109,7 @@ build/$(ARCH)/lua/Makefile: | build/$(ARCH)/lua/; @stat $@ >/dev/null
 build/$(ARCH)/lua/src/: | build/$(ARCH)/lua/; @stat $@ >/dev/null
 
 build/$(ARCH)/lua/src/luac build/$(ARCH)/lua/src/liblua.a: build/$(ARCH)/lua/Makefile
-	$(MAKE) -C build/$2/lua $(PLATFORM)
+	$(MAKE) -s -C build/$2/lua $(PLATFORM)
 
 build/$(ARCH)/luaposix/lib/%.lua: ; @stat $@ >/dev/null
 build/$(ARCH)/luaposix/ext/%.c:   ; @stat $@ >/dev/null
@@ -110,24 +127,36 @@ build/$(ARCH)/luaposix/%.o: INCLUDES += -I build/$(ARCH)/luaposix/ext/include
 
 build/$(ARCH)/lpeglabel/%.o: INCLUDES += -I build/$(ARCH)/lpeglabel
 
-build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lplcap.o
-build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lplcode.o
-build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lplprint.o
-build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lpltree.o
-build/$(ARCH)/lpeglabel/init.a: build/$(ARCH)/lpeglabel/lplvm.o
+build/$(ARCH)/lpeglabel/lpeglabel.o: build/$(ARCH)/lpeglabel/lplcap.o
+build/$(ARCH)/lpeglabel/lpeglabel.o: build/$(ARCH)/lpeglabel/lplcode.o
+build/$(ARCH)/lpeglabel/lpeglabel.o: build/$(ARCH)/lpeglabel/lplprint.o
+build/$(ARCH)/lpeglabel/lpeglabel.o: build/$(ARCH)/lpeglabel/lpltree.o
+build/$(ARCH)/lpeglabel/lpeglabel.o: build/$(ARCH)/lpeglabel/lplvm.o
+build/$(ARCH)/lpeglabel/lpeglabel.o:
+	@echo LD $@ "($(notdir $^))"
+	$(LD) -r $^ -o $@
 
-build/$(ARCH)/src/%.luab: src/%.lua | $(LUAC)
+build/$(ARCH)/bin/%.luab: bin/%.lua | $(LUAC)
+	@echo GEN $@
 	mkdir -p $(dir $@)
-	$(LUAC) -o $@ $<
+	$(LUAC) $(LUACFLAGS) -o $@ $<
+
+build/$(ARCH)/lib/%.luab: lib/%.lua | $(LUAC)
+	@echo GEN $@
+	mkdir -p $(dir $@)
+	$(LUAC) $(LUACFLAGS) -o $@ $<
 
 build/$(ARCH)/%.luab: build/$(ARCH)/%.lua | $(LUAC)
+	@echo GEN $@
 	mkdir -p $(dir $@)
-	$(LUAC) -o $@ $<
+	$(LUAC) $(LUACFLAGS) -o $@ $<
 
 build/%.o: build/%.c | $(LUAINC)/
+	@echo CC $<
 	$(CC) $(INCLUDES) -c $^ $(CFLAGS) -o $@
 
-build/$(ARCH)/%.c: build/$(ARCH)/%.luab ;@ $(info generating $@)
+build/$(ARCH)/%.c: build/$(ARCH)/%.luab
+	@echo GEN $@
 	mkdir -p $(dir $@)
 	exec 1>$@
 	echo '#include "lua.h"'
@@ -141,7 +170,8 @@ build/$(ARCH)/%.c: build/$(ARCH)/%.luab ;@ $(info generating $@)
 	echo '  return 1;'
 	echo '};'
 
-build/$(ARCH)/preload.c: ;@ $(info generating $@)
+build/$(ARCH)/preload.c:
+	@echo GEN $@
 	mkdir -p $(dir $@)
 	exec 1>$@
 	echo   '#include "lua.h"'
@@ -149,7 +179,7 @@ build/$(ARCH)/preload.c: ;@ $(info generating $@)
 	echo   '  lua_pushcfunction(L, f); '"\\"
 	echo   '  lua_setfield(L, -2, n);'
 	printf 'LUALIB_API int luaopen_%s(lua_State *L);\n' $(subst .,_,$(MODULES))
-	echo   'LUALIB_API int luawk_preload(lua_State *L) {'
+	echo   'LUALIB_API int app_preloadlibs(lua_State *L) {'
 	echo   '  lua_getglobal(L, "package");'
 	echo   '  lua_getfield(L, -1, "preload");'
 	printf '  REG(luaopen_%s, "%s")\n' $(foreach mod,$(MODULES),$(subst .,_,$(mod)) $(mod))
@@ -157,28 +187,76 @@ build/$(ARCH)/preload.c: ;@ $(info generating $@)
 	echo   '  return 0;'
 	echo   '};'
 
-build/$(ARCH)/luawk: | info
-build/$(ARCH)/luawk: src/luawk.c
-build/$(ARCH)/luawk: $(LUALIB)/liblua.a
-build/$(ARCH)/luawk: build/$(ARCH)/preload.o
-build/$(ARCH)/luawk: build/$(ARCH)/lpeglabel/init.a
-build/$(ARCH)/luawk: $(call pkgdecode,luawk $(MODULES))
+build/$(ARCH)/$(PROGRAM): CFLAGS += -DAPP_OPEN=luaopen_luawk
+build/$(ARCH)/$(PROGRAM): | print-modules
+build/$(ARCH)/$(PROGRAM): src/bootstrap.c $(LUALIB)/liblua.a build/$(ARCH)/preload.o $(call pkgdecode,$(MODULES))
+	@echo CC $<
 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 .NOTPARALLEL:
-.PHONY: all clean clean-all deps doc info test luawk
+.PHONY: all build clean clean-all doc help install test
+.PHONY: print-parameters
+.PHONY: print-packages
+.PHONY: print-modules
+.DEFAULT_GOAL := build
 
-info: ;@
-	printf 'Module: %-24s %s\n' $(foreach mod,luawk $(MODULES),$(mod) "$(call pkgdecode,$(mod))")
+print-parameters: ;@
+	printf '┌─────────────────────────────────────────────────────────────────────────────┐\n'
+	printf '│ %-75s │\n' PARAMETERS
+	printf '├───────────┬─────────────────────────────────────────────────────────────────┤\n'
+	printf '│ %-9s │ %-63s │\n' PROGRAM "$(PROGRAM)"
+	printf '│ %-9s │ %-63s │\n' PLATFORM "$(PLATFORM)"
+	printf '│ %-9s │ %-63s │\n' ARCH "$(ARCH)"
+	printf '│ %-9s │ %-63s │\n' HOST "$(HOST)"
+	printf '│ %-9s │ %-63s │\n' PREFIX "$(PREFIX)"
+	printf '├───────────┼─────────────────────────────────────────────────────────────────┤\n'
+	printf '│ %-9s │ %-63s │\n' LUABIN "$(LUABIN)"
+	printf '│ %-9s │ %-63s │\n' LUALIB "$(LUALIB)"
+	printf '│ %-9s │ %-63s │\n' LUAINC "$(LUAINC)"
+	printf '├───────────┼─────────────────────────────────────────────────────────────────┤\n'
+	printf '│ %-9s │ %-63s │\n' AR "$(AR)"
+	printf '│ %-9s │ %-63s │\n' CC "$(CC)"
+	printf '│ %-9s │ %-63s │\n' INSTALL "$(INSTALL)"
+	printf '│ %-9s │ %-63s │\n' LD "$(LD)"
+	printf '│ %-9s │ %-63s │\n' LUAC "$(LUAC)"
+	printf '│ %-9s │ %-63s │\n' OD "$(OD)"
+	printf '├───────────┼─────────────────────────────────────────────────────────────────┤\n'
+	printf '│ %-9s │ %-63s │\n' ARFLAGS "$(ARFLAGS)"
+	printf '│ %-9s │ %-63s │\n' CFLAGS "$(CFLAGS)"
+	printf '│ %-9s │ %-63s │\n' LDFLAGS "$(LDFLAGS)"
+	printf '│ %-9s │ %-63s │\n' LUACFLAGS "$(LUACFLAGS)"
+	printf '├───────────┴────────┬────────────────────────────────────────────────────────┤\n'
+	printf '│ %-18s │ %-54s │\n' $(foreach pkg,LUA ERDE LUAPOSIX LPEGLABEL,$(pkg)_VERSION "$($(pkg)_VERSION)")
+	printf '└────────────────────┴────────────────────────────────────────────────────────┘\n'
 
-deps: | build/$(ARCH)/erde/
-deps: | build/$(ARCH)/luaposix/
-deps: | build/$(ARCH)/lpeglabel/
-deps: | $(LUALIB)/liblua.a
-deps: | $(SOURCES)
+print-packages: ;@
+	printf '┌───────────┬─────────────────────────────────────────────────────────────────┐\n'
+	printf '│ %-9s │ %-63s │\n' PACKAGE VERSION
+	printf '├───────────┼─────────────────────────────────────────────────────────────────┤\n'
+	printf '│ %-9s │ %-63s │\n' $(foreach pkg,LUA ERDE LUAPOSIX LPEGLABEL,$(pkg) $($(pkg)_VERSION))
+	printf '└───────────┴─────────────────────────────────────────────────────────────────┘\n'
 
-luawk: | deps
-	$(MAKE) build/$(ARCH)/luawk
+print-modules: ;@
+	printf '┌──────────────────────────┬──────────────────────────────────────────────────┐\n'
+	printf '│ %-24s │ %-48s │\n' MODULE PATH
+	printf '├──────────────────────────┼──────────────────────────────────────────────────┤\n'
+	printf '│ %-24s │ %-48s │\n' $(foreach mod,$(sort $(MODULES)),$(mod) "$(call pkgdecode,$(mod))")
+	printf '└──────────────────────────┴──────────────────────────────────────────────────┘\n'
+
+help: | print-parameters print-packages print-modules
+
+build: | print-parameters print-packages
+build: | $(LUALIB)/liblua.a
+build: | build/$(ARCH)/erde/
+build: | build/$(ARCH)/luaposix/
+build: | build/$(ARCH)/lpeglabel/
+build: | build/$(ARCH)/lpeglabel/lpeglabel.o
+build: | $(SOURCES)
+build:
+	$(MAKE) build/$(ARCH)/$(PROGRAM)
+
+install: build
+	$(INSTALL) -m 0755 -t "$(PREFIX)" build/$(ARCH)/$(PROGRAM)
 
 clean:
 	rm -rf -- build/ doc/
@@ -195,4 +273,4 @@ doc: | doc/
 	$(LDOC) .
 	$(LUACOV)
 
-all: luawk test doc
+all: build test doc
