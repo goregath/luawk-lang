@@ -69,29 +69,35 @@ ctxclass.dogetline = coroutine.wrap(function(self)
     local getline, filename, state, var
     local argc = atoi(self.env.ARGC)
     local nofile = true
-    for i=1,argc do
-        filename = self.env.ARGV[i]
-
-        if i == argc and nofile then
-            -- List contains no file arguments, default to "-" (stdin)
-            filename, i = "-", argc -1
-        elseif filename == nil or filename == "" then
-            -- If the value of a particular element of ARGV is empty, skip over it.
-            goto SKIP
-        elseif type(filename) == "string" and filename:find("=") then
-            -- If an argument matches the format of an assignment operand, this
-            -- argument shall be treated as an assignment rather than a file argument.
-            local k,v = filename:match("^([_%a][_%w]*)=(.*)$")
-            if k then
-                self.env[k] = v
-                goto SKIP
+    for argind = 1, argc do
+        if argind == argc then
+            -- End of list
+            if nofile then
+                -- List had no file arguments, default to "-" (stdin)
+                filename, argind = "-", argc - 1
+            else
+                break
             end
+        else
+            filename = self.env.ARGV[argind]
+            if filename == nil or filename == "" then
+                -- If the value of a particular element of ARGV is empty, skip over it.
+                goto SKIP
+            elseif type(filename) == "string" and filename:find("=") then
+                -- If an argument matches the format of an assignment operand, this
+                -- argument shall be treated as an assignment rather than a file argument.
+                local k, v = filename:match("^([_%a][_%w]*)=(.*)$")
+                if k then
+                    self.env[k] = v
+                    goto SKIP
+                end
+            end
+            nofile = false
         end
 
-        nofile = false
         self.env.FNR = 0
         self.env.FILENAME = filename
-        self.env.ARGIND = i
+        self.env.ARGIND = argind
 
         -- BEGINFILE
         for _, action in ipairs(self.program.BEGINFILE) do
