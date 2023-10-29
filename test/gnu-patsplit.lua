@@ -2,7 +2,7 @@
 
 if true --[[; then
 	cd "${0%/*}/.."
-	exec /usr/bin/env lua -lluacov "test/${0##*/}" "$@"
+	exec /usr/bin/env lua "test/${0##*/}" "$@"
 fi; --]] then
 	package.path = "lib/?.lua;lib/?/init.lua;test/lua/lib/?.lua;" .. package.path
 end

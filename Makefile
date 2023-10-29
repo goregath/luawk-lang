@@ -32,6 +32,7 @@ PLATFORM != uname -s | tr '[:upper:]' '[:lower:]'
 AWK := awk
 INSTALL := install
 LDOC := ldoc
+LUA = $(LUABIN)/lua
 LUAC = $(LUABIN)/luac
 LUACOV := luacov
 OD := od
@@ -187,14 +188,19 @@ build/$(ARCH)/preload.c:
 	echo   '  return 0;'
 	echo   '};'
 
+build/$(ARCH)/loadall.so: $(call pkgdecode,$(filter-out luawk,$(MODULES)))
+build/$(ARCH)/loadall.so:
+	@echo LD $@
+	$(LD) -shared $^ -o $@
+
 build/$(ARCH)/$(PROGRAM): CFLAGS += -DAPP_OPEN=luaopen_luawk
 build/$(ARCH)/$(PROGRAM): | print-modules
 build/$(ARCH)/$(PROGRAM): src/bootstrap.c $(LUALIB)/liblua.a build/$(ARCH)/preload.o $(call pkgdecode,$(MODULES))
-	@echo CC $<
+	@echo CC $@
 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 .NOTPARALLEL:
-.PHONY: all build clean clean-all doc help install test
+.PHONY: all build clean clean-all doc help install test testlib testbin
 .PHONY: print-parameters
 .PHONY: print-packages
 .PHONY: print-modules
@@ -218,6 +224,7 @@ print-parameters: ;@
 	printf '│ %-9s │ %-63s │\n' CC "$(CC)"
 	printf '│ %-9s │ %-63s │\n' INSTALL "$(INSTALL)"
 	printf '│ %-9s │ %-63s │\n' LD "$(LD)"
+	printf '│ %-9s │ %-63s │\n' LUA "$(LUA)"
 	printf '│ %-9s │ %-63s │\n' LUAC "$(LUAC)"
 	printf '│ %-9s │ %-63s │\n' OD "$(OD)"
 	printf '├───────────┼─────────────────────────────────────────────────────────────────┤\n'
@@ -253,7 +260,7 @@ build: | build/$(ARCH)/lpeglabel/
 build: | build/$(ARCH)/lpeglabel/lpeglabel.o
 build: | $(SOURCES)
 build:
-	$(MAKE) build/$(ARCH)/$(PROGRAM)
+	$(MAKE) build/$(ARCH)/$(PROGRAM) build/$(ARCH)/loadall.so
 
 install: build
 	$(INSTALL) -m 0755 -t "$(PREFIX)" build/$(ARCH)/$(PROGRAM)
@@ -264,8 +271,16 @@ clean:
 clean-all: clean
 	rm -rf -- tmp/
 
-test:
-	$(PROVE)
+test: | testlib testbin
+
+testbin: export PATH:=build/$(ARCH)/luawk:$(PATH)
+testbin: | build
+	find test/ -maxdepth 1 -name '*.bats' -type f -executable -exec {} \;
+
+testlib: export LUA_CPATH:=build/$(ARCH)/loadall.so
+testlib: | build
+testlib:
+	find test/ -maxdepth 1 -name '*.lua' -type f -executable -exec $(LUA) {} \;
 
 doc: | doc/
 	mkdir -p doc/examples doc/test
