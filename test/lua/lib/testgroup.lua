@@ -35,7 +35,7 @@ function M:skip(label, test, reason)
 	table.insert(self, obj)
 end
 
-function M:run()
+function M:run(noexit)
 	local failed = {}
 	io.stdout:write(ansi_green)
 	io.stdout:write(string.format("1..%d\n", #self))
@@ -64,7 +64,11 @@ function M:run()
 			end
 		end
 	end
-	return #failed == 0
+    if noexit then
+	    return #failed == 0
+    else
+        os.exit(#failed == 0 and 0 or 1)
+    end
 end
 
 function M.new(name)
