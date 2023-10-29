@@ -147,7 +147,7 @@ tests are run with [bats] (see `test/*.bats`), the latter requires you to checko
     $ git submodule update --init --recursive
 
 You should now be able to directly run any test on command line by calling the file directly. Another option is to use
-[prove] to invoke all test at once (plese check the [.proverc] for reference). The *Makefile* also comes with a *test*
+[prove] to invoke all test at once (plese check the [.proverc](.proverc) for reference). The *Makefile* also comes with a *test*
 target that uses the configured lua version (built on demand) and a luawk binary.
 
     $ test/posix-split.lua
