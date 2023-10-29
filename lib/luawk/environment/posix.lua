@@ -374,7 +374,7 @@ end
 --
 --  @param[type=string] s  input string
 --  @param[type=string] p  pattern
---  @return[type=number] position of first match, or nil
+--  @return[type=number] begin and end of the first match, or zero
 --
 --  @see RSTART
 --  @see RLENGTH
@@ -396,12 +396,12 @@ function class:match(...)
     if rstart then
         self.RSTART = rstart
         self.RLENGTH = rend - rstart + 1
-        return rstart
+        return rstart, rend
     else
         self.RSTART = 0
         self.RLENGTH = -1
     end
-    return nil
+    return 0, 0
 end
 
 --- Split string `s` into array `a` by `fs` and return `n`.
