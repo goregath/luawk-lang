@@ -30,6 +30,7 @@ ARCH := $(HOST)
 PLATFORM != uname -s | tr '[:upper:]' '[:lower:]'
 
 AWK := awk
+BASH := bash
 INSTALL := install
 LDOC := ldoc
 LUA = $(LUABIN)/lua
@@ -271,16 +272,23 @@ clean:
 clean-all: clean
 	rm -rf -- tmp/
 
-test: | testlib testbin
+LIB_TEST := $(patsubst test/%.lua,test-%,$(wildcard test/*.lua))
+BIN_TEST := $(patsubst test/%.bats,test-%,$(wildcard test/*.bats))
+.PHONY: test-bats $(BIN_TEST) test-lua $(LIB_TEST)
 
-testbin: export PATH:=build/$(ARCH)/luawk:$(PATH)
-testbin: | build
-	find test/ -maxdepth 1 -name '*.bats' -type f -executable -exec {} \;
+$(BIN_TEST): export PATH:=build/$(ARCH)/luawk:$(PATH)
+$(BIN_TEST): | build
+$(BIN_TEST): test/bats/bats-core/bin/bats
+	$(BASH) $< --tap test/$(patsubst test-%,%,$@).bats
 
-testlib: export LUA_CPATH:=build/$(ARCH)/loadall.so
-testlib: | build
-testlib:
-	find test/ -maxdepth 1 -name '*.lua' -type f -executable -exec $(LUA) {} \;
+$(LIB_TEST): export LUA_CPATH:=build/$(ARCH)/loadall.so
+$(LIB_TEST): | build
+	$(LUA) test/$(patsubst test-%,%,$@).lua
+
+test-lua: $(LIB_TEST)
+test-bats: $(BIN_TEST)
+
+test: | test-lua test-bats
 
 doc: | doc/
 	mkdir -p doc/examples doc/test
