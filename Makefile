@@ -12,6 +12,8 @@ ifeq ($(filter target-specific,$(.FEATURES)),)
 $(error your version of make does not support the target-specific feature)
 endif
 
+MAKEFLAGS := -Otarget
+
 space := $(subst ,, )
 
 1 = $(word 1,$(subst /,$(space),$@))
@@ -75,6 +77,9 @@ MODULES += posix.unistd
 
 SOURCES := $(patsubst %.lua,build/$(ARCH)/%.c,$(shell find bin/ lib/ -type f -name '*.lua'))
 SOURCES += $(patsubst %.lua,%.c,$(shell find build/$(ARCH)/erde/erde/ -type f -name '*.lua'))
+
+LIBTESTS := $(patsubst test/%.lua,test-%,$(wildcard test/*.lua))
+BINTESTS := $(patsubst test/%.bats,test-%,$(wildcard test/*.bats))
 
 .SHELLFLAGS := -ec
 
@@ -200,11 +205,13 @@ build/$(ARCH)/$(PROGRAM): src/bootstrap.c $(LUALIB)/liblua.a build/$(ARCH)/prelo
 	@echo CC $@
 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
-.NOTPARALLEL:
-.PHONY: all build clean clean-all doc help install test testlib testbin
+.PHONY: all build clean clean-all doc help install test
 .PHONY: print-parameters
 .PHONY: print-packages
 .PHONY: print-modules
+.PHONY: test-bats $(BINTESTS) test-lua $(LIBTESTS)
+
+.NOTPARALLEL:
 .DEFAULT_GOAL := build
 
 print-parameters: ;@
@@ -253,6 +260,22 @@ print-modules: ;@
 
 help: | print-parameters print-packages print-modules
 
+$(BINTESTS): export PATH:=build/$(ARCH)/luawk:$(PATH)
+$(BINTESTS): | build
+$(BINTESTS): test/bats/bats-core/bin/bats
+	@echo TEST $@.bats
+	$(BASH) $< --tap test/$(patsubst test-%,%,$@).bats
+
+$(LIBTESTS): export LUA_CPATH:=build/$(ARCH)/loadall.so
+$(LIBTESTS): build/$(ARCH)/loadall.so
+$(LIBTESTS): | build
+	@echo TEST $@.lua
+	$(LUA) test/$(patsubst test-%,%,$@).lua
+
+test: | test-lua test-bats
+test-lua: $(LIBTESTS)
+test-bats: $(BINTESTS)
+
 build: | print-parameters print-packages
 build: | $(LUALIB)/liblua.a
 build: | build/$(ARCH)/erde/
@@ -261,7 +284,7 @@ build: | build/$(ARCH)/lpeglabel/
 build: | build/$(ARCH)/lpeglabel/lpeglabel.o
 build: | $(SOURCES)
 build:
-	$(MAKE) build/$(ARCH)/$(PROGRAM) build/$(ARCH)/loadall.so
+	$(MAKE) build/$(ARCH)/$(PROGRAM)
 
 install: build
 	$(INSTALL) -m 0755 -t "$(PREFIX)" build/$(ARCH)/$(PROGRAM)
@@ -271,24 +294,6 @@ clean:
 
 clean-all: clean
 	rm -rf -- tmp/
-
-LIB_TEST := $(patsubst test/%.lua,test-%,$(wildcard test/*.lua))
-BIN_TEST := $(patsubst test/%.bats,test-%,$(wildcard test/*.bats))
-.PHONY: test-bats $(BIN_TEST) test-lua $(LIB_TEST)
-
-$(BIN_TEST): export PATH:=build/$(ARCH)/luawk:$(PATH)
-$(BIN_TEST): | build
-$(BIN_TEST): test/bats/bats-core/bin/bats
-	$(BASH) $< --tap test/$(patsubst test-%,%,$@).bats
-
-$(LIB_TEST): export LUA_CPATH:=build/$(ARCH)/loadall.so
-$(LIB_TEST): | build
-	$(LUA) test/$(patsubst test-%,%,$@).lua
-
-test-lua: $(LIB_TEST)
-test-bats: $(BIN_TEST)
-
-test: | test-lua test-bats
 
 doc: | doc/
 	mkdir -p doc/examples doc/test
