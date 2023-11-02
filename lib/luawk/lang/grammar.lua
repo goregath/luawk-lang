@@ -206,7 +206,7 @@ local grammar = {
 		  Cg(Cc(nil) * sp * C(P'!') * sp * Cs(V'tier01')) / eval * sp
 		+ Cs(P'-' * sp * V'tier01') * sp
 		+ V'tier01';
-	tier01 = Cf(Cs(V'tier00') * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval);
+	tier01 = Cf(Cs(V'tier00') * Cg(C(S'^.:') * sp * Cs(V'tier00'))^0, eval);
 	tier00 = Cg(Cs(V'value') * sp * (C(S'-=' * P'>') * sp * Cs(V'value'))^0);
 
 	value =
@@ -317,7 +317,7 @@ local grammar = {
 		;
 
 	awkfieldref =
-		  P'$' * sp * Cs(V'value') / '_ENV[%1]'
+		  P'$' * sp * Cs(V'value') / '(_ENV[%1])'
 		;
 
 	awkregex =
