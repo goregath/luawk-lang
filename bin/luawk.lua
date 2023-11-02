@@ -263,6 +263,9 @@ end
 local function opt_program(optarg)
     local stat, handle, msg
     oneliner = false
+    if optarg == "-" then
+        optarg = "/dev/stdin"
+    end
     handle, msg = io.open(optarg)
     if handle == nil then
         abort('%s: %s\n', name, msg)
