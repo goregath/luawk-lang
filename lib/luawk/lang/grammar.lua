@@ -111,15 +111,16 @@ local token = {
 	["!~"] = "match",
 }
 local function eval(acc,op,v)
+	local prefix = 'L:'
 	local fn = token[op]
 	if fn then
 		if op == "!~" then
-			return string.format("%s(%s(%s,%s))", token["!"], fn, acc, v)
+			return string.format("%s%s(%s(%s,%s))", prefix, token["!"], fn, acc, v)
 		end
 		if op == "!" then
-			return string.format("%s(%s)", fn, v)
+			return string.format("%s%s(%s)", prefix, fn, v)
 		end
-		return string.format("%s(%s,%s)", fn, acc, v)
+		return string.format("%s%s(%s,%s)", prefix, fn, acc, v)
 	end
 	return string.format("%s%s%s", acc, op, v)
 end
@@ -207,7 +208,7 @@ local grammar = {
 		+ Cs(P'-' * sp * V'tier01') * sp
 		+ V'tier01';
 	tier01 = Cf(Cs(V'tier00') * Cg(C(S'^.:') * sp * Cs(V'tier00'))^0, eval);
-	tier00 = Cg(Cs(V'value') * sp * (C(S'-=' * P'>') * sp * Cs(V'value'))^0);
+	tier00 = Cg(Cs(V'value') * (sp * C(S'-=' * P'>') * sp * Cs(V'value'))^0);
 
 	value =
 		  V'simple' * (sp * V'subvalue')^0
@@ -279,7 +280,7 @@ local grammar = {
 	name =
 		  (locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword'
 		+ P'...' * sp * V'name'^0
-		+ P'$@' / '_ENV'
+		+ P'$@' / '(_ENV)'
 		;
 
 	longstring = C(P{ -- from Roberto Ierusalimschy's lpeg examples
