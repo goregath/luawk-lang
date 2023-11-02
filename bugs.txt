@@ -6,6 +6,7 @@ remark: not a bug?
 $ luawk -v and_=2 'BEGIN { print 1 and 3 }'
 result: 123
 expected 13
+note: not a bug but a necessity of erde to replace variables named after keywords
 
 $ luawk -olog=trace '{(""):sub(1)}' 
 result:   trace: bin/luawk.lua:167: action: ("")..:sub(1) 
