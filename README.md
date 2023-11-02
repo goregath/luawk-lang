@@ -146,13 +146,21 @@ tests are run with [bats] (see `test/*.bats`), the latter requires you to checko
 
     $ git submodule update --init --recursive
 
-You should now be able to directly run any test on command line by calling the file directly. Another option is to use
-[prove] to invoke all test at once (plese check the [.proverc](.proverc) for reference). The *Makefile* also comes with a *test*
-target that uses the configured lua version (built on demand) and a luawk binary.
+The intended way to run all tests is by using the *Makefile* with the *test* target. This will compile Luawk and all
+dependencies and run all tests against this version. Your system does not need to have Lua or [luarocks] to be installed
+for this.
+
+    $ make -k test
+
+Another method is to directly call the tests from within the [test/ folder](test/), all enabled tests have the
+executable bit set and can be run standalone.
 
     $ test/posix-split.lua
-    $ prove -v
-    $ make test
+    $ test/function.bats
+
+Another option is to use [prove] to invoke all test at once (plese check the [.proverc](.proverc) for reference).
+
+
 
 [test/]: test/
 [bats]: https://bats-core.readthedocs.io/
@@ -160,4 +168,5 @@ target that uses the configured lua version (built on demand) and a luawk binary
 [lpeg]: https://www.inf.puc-rio.br/~roberto/lpeg/
 [lpeglabel]: https://github.com/sqmedeiros/lpeglabel
 [luaposix]: http://luaposix.github.io/luaposix
+[luarocks]: https://luarocks.org/
 [prove]: https://perldoc.perl.org/prove
