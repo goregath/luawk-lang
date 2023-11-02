@@ -495,15 +495,20 @@ function class:split(...)
         end
         return #a
     else
-        -- GAWK: If RS is null, […] a <newline> shall always be a field
-        -- separator, no matter what the value of FS is.
-        local find = not rsmode and regex.find or function(c, p, i)
-            local m, n = regex.find(c, p, i)
-            local x, y = string.find(c, '\n', i, true)
-            if not m or x and x < m then
-                return x, y
+        local find = regex.find
+        if #fs == 1 then
+           find = function(c, p, i) return string.find(c, p, i, true) end
+        elseif rsmode then
+            -- GAWK: If RS is null, […] a <newline> shall always be a field
+            -- separator, no matter what the value of FS is.
+            find = function(c, p, i)
+                local m, n = regex.find(c, p, i)
+                local x, y = string.find(c, '\n', i, true)
+                if not m or x and x < m then
+                    return x, y
+                end
+                return m, n
             end
-            return m, n
         end
         -- pattern mode
         local i, j = 1, 1
