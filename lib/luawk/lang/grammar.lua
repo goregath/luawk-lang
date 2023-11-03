@@ -1,4 +1,32 @@
-#!/usr/bin/env lua
+#!/bin/sh -e
+
+if true --[[; then
+exec 3<"$0"
+cd "${0%/*}/../../../build/$(uname -m)"
+exec lua/src/lua - "$@" <<EOF
+	package.preload.lpeglabel = package.loadlib("./loadall.so", "luaopen_lpeglabel")
+	package.preload.relabel   = package.loadlib("./loadall.so", "luaopen_relabel")
+	local m = loadfile('/dev/fd/3')()
+	local function p(o,e)
+		if type(e) ~= "table" then
+			print(string.format("%-24s%s", o, e))
+		else
+			for k,v in pairs(e) do
+				p(string.format("%s[%s]", o, k), v)
+			end
+		end
+	end
+	for _, chunk in ipairs(arg) do
+		local program, msg, _, line, col = m.parse(chunk)
+		if program then
+			p("", program)
+		else
+			io.stderr:write("error: ", msg, " at line ", line or "?", " col ", col or "?", "\n")
+			os.exit(1)
+		end
+	end
+EOF
+fi; --]] then
 
 ---
 -- @alias M
@@ -359,18 +387,4 @@ function M.parse(source)
 	end
 end
 
--- if (...) ~= "luawk.lang.grammar" then
--- 	local ins = require 'inspect'
--- 	for _,chunk in ipairs(arg) do
--- 		local program, msg, _, line, col = M.parse(chunk)
--- 		print(chunk)
--- 		print(('-'):rep(#chunk < 8 and 8 or #chunk))
--- 		if program then
--- 			io.stdout:write(ins(program), "\n")
--- 		else
--- 			io.stderr:write("error: ", msg, " at line ", line or "?", " col ", col or "?", "\n")
--- 		end
--- 	end
--- end
-
-return M
+return M end
