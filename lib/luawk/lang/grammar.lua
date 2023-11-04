@@ -4,26 +4,18 @@ if true --[[; then
 exec 3<"$0"
 cd "${0%/*}/../../../build/$(uname -m)"
 exec lua/src/lua - "$@" <<EOF
-	package.preload.lpeglabel = package.loadlib("./loadall.so", "luaopen_lpeglabel")
-	package.preload.relabel   = package.loadlib("./loadall.so", "luaopen_relabel")
+	local f,i,p,t = string.format, pairs, print, type
+	local L, R = package.loadlib, package.preload
+	local function r(o,e)
+		if t(e) ~= "table" then p(f("%-24s%s", o, e))
+		else for k,v in i(e) do r(f("%s[%s]", o, k), v) end end end
+	R.lpeglabel = L("./loadall.so", "luaopen_lpeglabel")
+	R.relabel   = L("./loadall.so", "luaopen_relabel")
 	local m = loadfile('/dev/fd/3')()
-	local function p(o,e)
-		if type(e) ~= "table" then
-			print(string.format("%-24s%s", o, e))
-		else
-			for k,v in pairs(e) do
-				p(string.format("%s[%s]", o, k), v)
-			end
-		end
-	end
 	for _, chunk in ipairs(arg) do
 		local program, msg, _, line, col = m.parse(chunk)
-		if program then
-			p("", program)
-		else
-			io.stderr:write("error: ", msg, " at line ", line or "?", " col ", col or "?", "\n")
-			os.exit(1)
-		end
+		if program then r("", program)
+		else io.stderr:write("error: ", msg, " at line ", line or "?", " col ", col or "?", "\n") os.exit(1) end
 	end
 EOF
 fi; --]] then
@@ -120,13 +112,10 @@ local function awkregexunquote(s)
 end
 
 local token = {
+	["?"] = "and",
+	[":"] = "or",
 	["in"] = "in",
 	["!"] = "not",
-	-- ["*"] = "mul",
-	-- ["%"] = "fmod",
-	-- ["/"] = "div",
-	-- ["//"] = "floordiv",
-	-- ["^"]  = "pow",
 	["<"]  = "lt",
 	[">"]  = "gt",
 	["<="] = "le",
@@ -137,8 +126,14 @@ local token = {
 	["||"] = "or",
 	["~"] = "match",
 	["!~"] = "match",
+	-- ["*"] = "mul",
+	-- ["%"] = "fmod",
+	-- ["/"] = "div",
+	-- ["//"] = "floordiv",
+	-- ["^"]  = "pow",
 }
-local function eval(acc,op,v)
+
+local function eval(acc, op, v)
 	local prefix = 'L:'
 	local fn = token[op]
 	if fn then
@@ -150,7 +145,7 @@ local function eval(acc,op,v)
 		end
 		return string.format("%s%s(%s,%s)", prefix, fn, acc, v)
 	end
-	return string.format("%s%s%s", acc, op, v)
+	return string.format("%s%s%s", acc or "", op, v)
 end
 
 -- TODO proper comment and line break handling
@@ -214,6 +209,7 @@ local grammar = {
 	-- TODO ambiguous syntax: {}
 
 	exp =
+	-- Cf(V'tern02' * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tern02')^0, eval)
 		  Cf(V'tier11' * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier11')^0, eval)
 		;
 
@@ -231,20 +227,19 @@ local grammar = {
 	tier04 = Cf(V'tier03' * Cg(C(S'+-') * sp * V'tier03')^0, eval);
 	tier03 = Cf(V'tier02' * Cg(C(P'//' + S'*/%') * sp * V'tier02')^0, eval);
 	-- binary operators
-	tier02 =
-		  Cg(Cc(nil) * sp * C(P'!') * sp * Cs(V'tier01')) / eval * sp
-		+ Cs(P'-' * sp * V'tier01') * sp
-		+ V'tier01';
-	tier01 = Cf(Cs(V'tier00') * Cg(C(S'^.:') * sp * Cs(V'tier00'))^0, eval);
-	tier00 = Cg(Cs(V'value') * (sp * C(S'-=' * P'>') * sp * Cs(V'value'))^0);
+	tier02 = Cf(Cc(nil) * Cg(C(S'!+-') * sp * V'tier02'), eval) + V'tier01';
+	-- FIXME ("y"):sub(1) --> ("y")..:sub(1)
+	tier01 = Cf(Cs(V'tier00') * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval);
+	tier00 = Cs(V'value') * sp * (C(S'-=' * P'>') * sp * Cs(V'value'))^0;
 
 	value =
 		  V'simple' * (sp * V'subvalue')^0
-		+ V'subvalue'
+		+ V'subvalue'^1
 		+ V'awkbuiltins' * sp * P'(' * sp * V'explist'^0 * sp * P')'
 		+ V'awkbuiltins' * sp * Cc'(' * V'explist'^0 * sp * Cc')'
 		+ V'awkbuiltins' * Cc'()'
 		+ V'awkfieldref'
+		+ V'luawkrecordref'
 		;
 
 	subvalue =
@@ -308,7 +303,6 @@ local grammar = {
 	name =
 		  (locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword'
 		+ P'...' * sp * V'name'^0
-		+ P'$@' / '(_ENV)'
 		;
 
 	longstring = C(P{ -- from Roberto Ierusalimschy's lpeg examples
@@ -346,7 +340,11 @@ local grammar = {
 		;
 
 	awkfieldref =
-		  P'$' * sp * Cs(V'value') / '(_ENV[%1])'
+		  P'$' * sp * Cs(V'value') / '(_ENV)[%1]'
+		;
+
+	luawkrecordref =
+		  P'@' * sp * Cs(V'name') / '(_ENV)["@"].%1'
 		;
 
 	awkregex =
