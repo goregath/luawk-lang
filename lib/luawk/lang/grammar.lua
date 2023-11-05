@@ -261,11 +261,17 @@ local grammar = {
 		  V'source'^0
 		;
 
+	stmt =
+		  P'{' * sp * Cs(V'chunk') * sp * P'}' / 'do %1 end'
+		+ V'source'
+		;
+
 	source =
-		 '{' * sp * V'chunk' * sp * '}'
+		  (P'if' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * sp * Cs(V'stmt') * sp *
+			  Cs(P'else' * noident * sp * Cs(V'stmt') + Cc''))
+		  / 'if(%1)then;%2;%3;end'
 		+ P'for' * noident * sp * (V'namelist'^1 + P(-1)) * sp * P'in' * noident * sp * V'source'
 		+ V'explist'
-		+ V'keyword'
 		+ blank
 		+ eol
 		;
