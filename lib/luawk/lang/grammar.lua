@@ -134,7 +134,7 @@ local token = {
 }
 
 local function eval(acc, op, v)
-	local prefix = 'L:'
+	local prefix = ''
 	local fn = token[op]
 	if fn then
 		if op == "!~" then
@@ -228,9 +228,8 @@ local grammar = {
 	tier03 = Cf(V'tier02' * Cg(C(P'//' + S'*/%') * sp * V'tier02')^0, eval);
 	-- binary operators
 	tier02 = Cf(Cc(nil) * Cg(C(S'!+-') * sp * V'tier02'), eval) + V'tier01';
-	-- FIXME ("y"):sub(1) --> ("y")..:sub(1)
 	tier01 = Cf(Cs(V'tier00') * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval);
-	tier00 = Cs(V'value') * sp * (C(S'-=' * P'>') * sp * Cs(V'value'))^0;
+	tier00 = Cg(Cs(V'value') * sp * (C(S'-=' * P'>') * sp * Cs(V'value'))^0);
 
 	value =
 		  V'simple' * (sp * V'subvalue')^0
