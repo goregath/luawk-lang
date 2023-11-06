@@ -148,6 +148,10 @@ local function eval(acc, op, v)
 	return string.format("%s%s%s", acc or "", op, v)
 end
 
+local function concat(...)
+	return table.concat({...}, "..SUBSEP..")
+end
+
 -- TODO proper comment and line break handling
 -- TODO pattern,pattern to range-pattern
 -- TEST awk '$0 ~ /b/ ~ 1 { print }' <<<"a b c" --> "a b c"
@@ -243,9 +247,13 @@ local grammar = {
 
 	subvalue =
 		  S'.:' * sp * V'name' * sp * P'(' * sp * V'explist'^0 * sp * P')'
-		+ P'[' * sp * V'explist'^0 * sp * P']'
+		+ V'subscript'
 		+ P'(' * sp * V'explist'^0 * sp * P')'
 		+ P'.' * sp * V'value'
+		;
+
+	subscript =
+		  P'[' * sp * (Cg(Cs(V'exp') * (sp * P',' * sp * Cs(V'exp'))^0) / concat) * sp * P']'
 		;
 
 	simple =
@@ -258,20 +266,23 @@ local grammar = {
 		;
 
 	chunk =
-		  V'source'^0
+		  V'stmt'^0
 		;
 
 	stmt =
-		  P'{' * sp * Cs(V'chunk') * sp * P'}' / 'do %1 end'
+		  P'{' * sp * Cs(V'chunk') * sp * P'}' / 'do;%1;end;'
 		+ V'source'
 		;
 
 	source =
 		  (P'if' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * sp * Cs(V'stmt') * sp *
 			  Cs(P'else' * noident * sp * Cs(V'stmt') + Cc''))
-		  / 'if(%1)then;%2;%3;end'
+		  / 'if(%1)then;%2;%3;end;'
+		+ (P'delete' * noident * sp * C(V'name') * sp * Cs((sp * V'subscript')^1))
+		  / '%1%2=nil'
 		+ P'for' * noident * sp * (V'namelist'^1 + P(-1)) * sp * P'in' * noident * sp * V'source'
 		+ V'explist'
+		+ V'keyword'
 		+ blank
 		+ eol
 		;

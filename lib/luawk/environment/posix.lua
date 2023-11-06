@@ -215,6 +215,10 @@ class.OFS = '\32'
 --  @default `"\n"` (newline)
 class.ORS = '\n'
 
+--- The subscript separator string for multi-dimensional arrays.
+--  @default `"\28"` (ASCII CODE FS / file separator)
+class.SUBSEP = '\28'
+
 --- The length of the string matched by the match function.
 --  @default <code>0</code>
 class.RLENGTH = 0
