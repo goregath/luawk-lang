@@ -159,6 +159,10 @@ local function while_do(cond, stmt)
 	print("WHILE_DO", cond, stmt)
 end
 
+local function do_while(stmt, cond)
+	print("DO_WHILE", stmt, cond)
+end
+
 local function for_in(var1, var2, stmt)
 	print("FOR_IN", var1, var2, stmt)
 end
@@ -312,6 +316,8 @@ local grammar = {
 		  / if_else
 		+ P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * sp * Cs(V'stmt')
 		  / while_do
+		+ P'do' * noident * sp * Cs(V'stmt') * sp * P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')'
+		  / do_while
 		+ P'for' * noident * sp * P'(' * C(V'name') * sp *
 		  P'in' * noident * sp * C(V'name') * P')' * sp * Cs(V'stmt')
 		  / for_in
