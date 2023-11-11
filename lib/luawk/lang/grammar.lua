@@ -257,7 +257,7 @@ local grammar = {
 	tier12 = Cf(V'tier11' * Cg(C(P'||') * sp * V'tier11')^0, eval);
 	tier11 = Cf(V'tier10' * Cg(C(P'&&') * sp * V'tier10')^0, eval);
 	tier10 = Cf((P'(' * sp * V'arrayindex' * sp * P')' + V'tier09') * sp * Cg(C(P'in') * sp * V'tier09')^0, eval);
-	tier09 = Cf(V'tier08' * Cg(C(P'!~' + P'~') * sp * (V'awkregex' + V'tier08'))^0, eval);
+	tier09 = Cf(V'tier08' * Cg(C(P'!~' + P'~') * sp * (V'regex' + V'tier08'))^0, eval);
 	tier08 = Cf(V'tier07' * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier07')^0, eval);
 	-- TODO 'expr expr' (AWK, left-associative) 'expr .. expr' (Lua, right-associative)
 	tier07 = Cf(V'tier06' * Cg(Cc('..') * sp * V'tier06')^0, eval);
@@ -302,7 +302,7 @@ local grammar = {
 		;
 
 	simple_stmt =
-		  P'delete' * noident * sp * C(V'name') * (P'[' * sp * Cs(V'arrayindex') * sp * P']')^-1
+		  P'delete' * noident * sp * Cs(V'name') * (P'[' * sp * Cs(V'arrayindex') * sp * P']')^-1
 		  / delete
 		+ P'print' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
 		+ P'print' * noident * Cc'(' * sp * V'explist'^0 * Cc')'
@@ -317,8 +317,8 @@ local grammar = {
 		  / while_do
 		+ P'do' * noident * sp * Cs(V'stmt') * sp * P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')'
 		  / do_while
-		+ P'for' * noident * sp * P'(' * C(V'name') * sp *
-		  P'in' * noident * sp * C(V'name') * P')' * sp * Cs(V'stmt')
+		+ P'for' * noident * sp * P'(' * Cs(V'name') * sp *
+		  P'in' * noident * sp * Cs(V'name') * P')' * sp * Cs(V'stmt')
 		  / for_in
 		+ P'for' * noident * sp * P'(' * sp *
 		  Cs(V'simple_stmt') * sp * P';' * sp *
@@ -333,19 +333,6 @@ local grammar = {
 	["function"] =
 		  P'function' * noident * blank^1 * V'name' * sp * '(' * sp * V'explist'^0 * sp * ')' * sp
 		* '{' * sp * V'chunk' * sp * '}'
-		;
-
-	luareserved =
-		  P'elseif' * noident
-		+ P'end' * noident
-		+ P'false' * noident
-		+ P'goto' * noident
-		+ P'local' * noident
-		+ P'nil' * noident
-		+ P'repeat' * noident
-		+ P'then' * noident
-		+ P'true' * noident
-		+ P'until' * noident
 		;
 
 	keyword =
@@ -377,12 +364,13 @@ local grammar = {
 		  P'$' * sp * Cs(V'value') / '(_ENV)[%1]'
 		;
 
-	awkregex =
+	regex =
 		  '/' * Cs((P'\\' * P(1) + (1 - P'/'))^0) * '/' / awkregexunquote
 		;
 
 	name =
-		  (locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword'
+		  V'luareserved' / '%0_'
+		+ (locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword'
 		;
 
 	number =
@@ -393,11 +381,26 @@ local grammar = {
 	string =
 		  P'"' * ('\\' * P(1) + (P(1) - '"'))^0 * P'"'
 		+ P"'" * ("\\" * P(1) + (P(1) - "'"))^0 * P"'"
-		+ V'awkregex' / 'match(_ENV[0],%1)'
+		+ V'regex' / 'match(_ENV[0],%1)'
 		;
 
 	comment =
 		  '#' * (P(1) - nl)^0 * (nl + -P(1)) / '\n'
+		;
+
+	luareserved =
+		  P'elseif'
+		+ P'end'
+		+ P'false'
+		+ P'goto'
+		+ P'local'
+		+ P'nil'
+		+ P'repeat'
+		+ P'then'
+		+ P'true'
+		+ P'until'
+		+ P'and'
+		+ P'or'
 		;
 
 };
