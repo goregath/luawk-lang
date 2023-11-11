@@ -291,12 +291,14 @@ local grammar = {
 
 	chunk =
 		  (V'stmt' + eol + blank^1)^0
+		-- + P'{' * sp * Cs(V'chunk') * sp * P'}'
 		;
 
 	simple_stmt =
-		  V'delete_stmt'
-		+ V'awkbuiltins' * sp * P'(' * sp * V'explist'^0 * sp * P')'
-		+ V'awkbuiltins' * Cc'(' * sp * V'explist'^0 * Cc')'
+		  P'delete' * noident * sp * C(V'name') * (P'[' * sp * Cs(V'arrayindex') * sp * P']')^-1
+		  / delete
+		+ P'print' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
+		+ P'print' * noident * Cc'(' * sp * V'explist'^0 * Cc')'
 		+ V'exp'
 		;
 
@@ -313,12 +315,8 @@ local grammar = {
 		  Cs(V'simple_stmt') * sp * P')' * sp * Cs(V'stmt')
 		  / generic_for
 		+ V'simple_stmt'
-		+ P'{' * sp * Cs(V'chunk') * sp * P'}'
-		;
-
-	delete_stmt =
-		  P'delete' * noident * sp * C(V'name') * (P'[' * sp * Cs(V'arrayindex') * sp * P']')^-1
-		  / delete
+		+ V'action'
+		+ eol
 		;
 
 	["function"] =
