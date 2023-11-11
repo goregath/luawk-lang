@@ -155,6 +155,10 @@ local function if_else(cond, stmt1, stmt2)
 	print("IF_ELSE", cond, stmt1, stmt2)
 end
 
+local function while_do(cond, stmt)
+	print("WHILE_DO", cond, stmt)
+end
+
 local function for_in(var1, var2, stmt)
 	print("FOR_IN", var1, var2, stmt)
 end
@@ -306,6 +310,8 @@ local grammar = {
 		  P'if' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * sp * Cs(V'stmt') * sp *
 		  (P'else' * noident * sp * Cs(V'stmt'))^-1
 		  / if_else
+		+ P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * sp * Cs(V'stmt')
+		  / while_do
 		+ P'for' * noident * sp * P'(' * C(V'name') * sp *
 		  P'in' * noident * sp * C(V'name') * P')' * sp * Cs(V'stmt')
 		  / for_in
