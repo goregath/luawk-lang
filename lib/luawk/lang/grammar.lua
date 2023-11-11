@@ -1,6 +1,6 @@
 #!/bin/sh -e
-
 if true --[[; then
+# vim: sw=4:noexpandtab
 exec 3<"$0"
 cd "${0%/*}/../../../build/$(uname -m)"
 exec lua/src/lua - "$@" <<EOF
@@ -102,7 +102,7 @@ local Ct = lpeg.Ct
 
 local nl = P'\n'
 local blank = P(locale.space + V'comment' - nl)
-local sp = blank^0
+local sp = (blank^1)^-1
 local eol = (P';' + nl)^1
 local noident = -(locale.alnum + P'_')
 local shebang = P"#" * (P(1) - nl)^0 * nl
@@ -111,21 +111,19 @@ local function awkregexunquote(s)
 	return string.format("%q", s):gsub("\\\\", "\\"):gsub("\\/", "/")
 end
 
-local token = {
-	["?"] = "and",
-	[":"] = "or",
-	["in"] = "in",
-	["!"] = "not",
-	["<"]  = "lt",
-	[">"]  = "gt",
-	["<="] = "le",
-	[">="] = "ge",
-	["!="] = "ne",
-	["=="] = "eq",
+local evalfmt = {
+	-- TODO awk 'BEGIN { print 0.0=="0", ""=="" }' --> 1 1
+	["=" ] = "%1 = ... return (...)",
+	["?" ] = "and",
+	[":" ] = "or",
+	-- TODO awk 'BEGIN { print !"", !"0" }' --> 1 0
+	["!" ] = "%1return ???",
 	["&&"] = "and",
 	["||"] = "or",
-	["~"] = "match",
-	["!~"] = "match",
+	[ "~"] = "return match(...)+0~=0",
+	["!~"] = "return match(...)+0==0",
+	-- TODO [1] vs. ["1"]
+	["in"] = "(not %2[...])+0",
 	-- ["*"] = "mul",
 	-- ["%"] = "fmod",
 	-- ["/"] = "div",
@@ -133,19 +131,40 @@ local token = {
 	-- ["^"]  = "pow",
 }
 
-local function eval(acc, op, v)
-	local prefix = ''
-	local fn = token[op]
-	if fn then
-		if op == "!~" then
-			return string.format("%s%s(%s(%s,%s))", prefix, token["!"], fn, acc, v)
-		end
-		if op == "!" then
-			return string.format("%s%s(%s)", prefix, fn, v)
-		end
-		return string.format("%s%s(%s,%s)", prefix, fn, acc, v)
-	end
-	return string.format("%s%s%s", acc or "", op, v)
+local convfmt = {
+	-- ["+" ] = "%2",
+}
+
+local function prepare(fmt, ...)
+	local argt = {...}
+	return fmt:gsub("%%(%d+)", function(i)
+		return table.remove(argt, tonumber(i)) or ""
+	end), table.concat(argt, ",")
+end
+
+local function eval(l, op, r)
+	-- if evalfmt[op] then
+	-- 	return string.format("eval(%q,%s)", prepare(evalfmt[op], l, r))
+	-- elseif convfmt[op] then
+	-- 	return prepare(convfmt[op], l, r)
+	-- end
+	return string.format("(%s%s%s)", l or "", op, r)
+end
+
+local function if_else(cond, stmt1, stmt2)
+	print("IF_ELSE", cond, stmt1, stmt2)
+end
+
+local function for_in(var1, var2, stmt)
+	print("FOR_IN", var1, var2, stmt)
+end
+
+local function generic_for(exp1, exp2, exp3, stmt)
+	print("GENERIC_FOR", exp1, exp2, exp3, stmt)
+end
+
+local function delete(var, sub)
+	print("DELETE", var, sub)
 end
 
 local function concat(...)
@@ -209,141 +228,138 @@ local grammar = {
 		  V'name' * (sp * P',' * sp * V'name')^0 * sp
 		;
 
+	valuelist =
+		  V'value' * (sp * P',' * sp * V'value')^0 * sp
+		;
+
 	-- TODO ++a--
 	-- TODO ambiguous syntax: {}
 
 	exp =
-	-- Cf(V'tern02' * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tern02')^0, eval)
-		  Cf(V'tier11' * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier11')^0, eval)
+		--  P'++' * sp * Cs(V'tier14') / 'eval("%1=%1+1 return %1")' -- TODO ++a^1
+		  V'lvalue' * S'^%*/+-'^-1 * P'=' * sp * V'tier13'
+		+ V'tier13'
 		;
 
+	-- tier14 = Cf(C(V'lvalue') * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier13')^0, eval);
 	-- ternary operator / conditional expression
-	tier11 =
-		  Cf(Cf(V'tier10' * Cg(Cs(P'?'/'&&') * sp * V'tier10'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'tier10'), eval)
-		+ V'tier10';
-	tier10 = Cf(V'tier09' * Cg(C(P'||') * sp * V'tier09')^0, eval);
-	tier09 = Cf(V'tier08' * Cg(C(P'&&') * sp * V'tier08')^0, eval);
-	tier08 = Cf(V'tier07' * Cg(C(P'in') * sp * V'tier07')^0, eval);
-	tier07 = Cf(V'tier06' * Cg(C(P'!~' + P'~') * sp * (V'awkregex' + V'tier06'))^0, eval);
-	tier06 = Cf(V'tier05' * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier05')^0, eval);
+	tier13 =
+		  Cf(Cf(V'tier12' * Cg(Cs(P'?'/'&&') * sp * V'tier12'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'tier12'), eval)
+		+ V'tier12';
+	tier12 = Cf(V'tier11' * Cg(C(P'||') * sp * V'tier11')^0, eval);
+	tier11 = Cf(V'tier10' * Cg(C(P'&&') * sp * V'tier10')^0, eval);
+	tier10 = Cf((P'(' * sp * V'arrayindex' * sp * P')' + V'tier09') * sp * Cg(C(P'in') * sp * V'tier09')^0, eval);
+	tier09 = Cf(V'tier08' * Cg(C(P'!~' + P'~') * sp * (V'awkregex' + V'tier08'))^0, eval);
+	tier08 = Cf(V'tier07' * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier07')^0, eval);
 	-- TODO 'expr expr' (AWK, left-associative) 'expr .. expr' (Lua, right-associative)
-	tier05 = Cf(V'tier04' * Cg(Cc('..') * sp * V'tier04')^0, eval);
-	tier04 = Cf(V'tier03' * Cg(C(S'+-') * sp * V'tier03')^0, eval);
-	tier03 = Cf(V'tier02' * Cg(C(P'//' + S'*/%') * sp * V'tier02')^0, eval);
+	tier07 = Cf(V'tier06' * Cg(Cc('..') * sp * V'tier06')^0, eval);
+	tier06 = Cf(V'tier05' * Cg(C(S'+-') * sp * V'tier05')^0, eval);
+	tier05 = Cf(V'tier03' * Cg(C(P'//' + S'*/%') * sp * V'tier03')^0, eval);
 	-- binary operators
-	tier02 = Cf(Cc(nil) * Cg(C(S'!+-') * sp * V'tier02'), eval) + V'tier01';
-	tier01 = Cf(Cs(V'tier00') * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval);
-	tier00 = Cg(Cs(V'value') * sp * (C(S'-=' * P'>') * sp * Cs(V'value'))^0);
+	-- TODO !!a
+	-- tier04 = Cf(Cc(nil) * Cg(C(S'!+-') * sp * V'tier04'), eval) + V'tier03';
+	tier03 = Cf(Cs(V'value') * Cg(C(S'^') * sp * Cs(V'value'))^0, eval);
+
+	-- tier02 = Cs((P'++' * sp * V'tier00') / 'eval("%1=%1+1 return %1")') + V'tier00';
+	-- tier01 = Cf(Cs(V'tier00') * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval);
+	-- tier00 = Cg(Cs(V'value') * sp * (C(S'-=' * P'>') * sp * Cs(V'value'))^0);
 
 	value =
-		  V'simple' * (sp * V'subvalue')^0
-		+ V'subvalue'^1
-		+ V'awkbuiltins' * sp * P'(' * sp * V'explist'^0 * sp * P')'
-		+ V'awkbuiltins' * sp * Cc'(' * V'explist'^0 * sp * Cc')'
-		+ V'awkbuiltins' * Cc'()'
-		+ V'awkfieldref'
-		+ V'luawkrecordref'
+		  V'awkfieldref'
+		+ V'lvalue' + P'(' * sp * V'explist'^0 * sp * P')'
+		+ V'simple'
 		;
 
-	subvalue =
-		  S'.:' * sp * V'name' * sp * P'(' * sp * V'explist'^0 * sp * P')'
-		+ V'subscript'
-		+ P'(' * sp * V'explist'^0 * sp * P')'
-		+ P'.' * sp * V'value'
+	lvalue =
+		  V'name' * (sp * V'subscript')^-1
+		+ V'awkfieldref'
 		;
 
 	subscript =
-		  P'[' * sp * (Cg(Cs(V'exp') * (sp * P',' * sp * Cs(V'exp'))^0) / concat) * sp * P']'
+		  P'[' * sp * V'arrayindex' * sp * P']'
+		;
+
+	arrayindex =
+		  (Cs(V'exp') * (sp * P',' * sp * Cs(V'exp'))^0) / concat
 		;
 
 	simple =
 		  locale.digit * locale.alnum^0
 		+ V'string'
 		+ V'name'
-		+ P'nil'
-		+ P'true'
-		+ P'false'
 		;
 
 	chunk =
-		  V'stmt'^0
+		  (V'stmt' + eol + blank^1)^0
+		;
+
+	simple_stmt =
+		  V'delete_stmt'
+		+ V'awkbuiltins' * sp * P'(' * sp * V'explist'^0 * sp * P')'
+		+ V'awkbuiltins' * Cc'(' * sp * V'explist'^0 * Cc')'
+		+ V'exp'
 		;
 
 	stmt =
-		  P'{' * sp * Cs(V'chunk') * sp * P'}' / 'do;%1;end;'
-		+ V'source'
+		  P'if' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * sp * Cs(V'stmt') * sp *
+		  (P'else' * noident * sp * Cs(V'stmt'))^-1
+		  / if_else
+		+ P'for' * noident * sp * P'(' * C(V'name') * sp *
+		  P'in' * noident * sp * C(V'name') * P')' * sp * Cs(V'stmt')
+		  / for_in
+		+ P'for' * noident * sp * P'(' * sp *
+		  Cs(V'simple_stmt') * sp * P';' * sp *
+		  Cs(V'exp') * sp * P';' * sp *
+		  Cs(V'simple_stmt') * sp * P')' * sp * Cs(V'stmt')
+		  / generic_for
+		+ V'simple_stmt'
+		+ P'{' * sp * Cs(V'chunk') * sp * P'}'
 		;
 
-	source =
-		  (P'if' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * sp * Cs(V'stmt') * sp *
-			  Cs(P'else' * noident * sp * Cs(V'stmt') + Cc''))
-		  / 'if(%1)then;%2;%3;end;'
-		+ (P'delete' * noident * sp * C(V'name') * sp * Cs((sp * V'subscript')^1))
-		  / '%1%2=nil'
-		+ P'for' * noident * sp * (V'namelist'^1 + P(-1)) * sp * P'in' * noident * sp * V'source'
-		+ V'explist'
-		+ V'keyword'
-		+ blank
-		+ eol
+	delete_stmt =
+		  P'delete' * noident * sp * C(V'name') * (P'[' * sp * Cs(V'arrayindex') * sp * P']')^-1
+		  / delete
 		;
 
 	["function"] =
-		  P'function' * noident * blank^1
-		* (V'name' + V'awkbuiltins') * sp * '(' * sp * V'explist'^0 * sp * ')' * sp
+		  P'function' * noident * blank^1 * V'name' * sp * '(' * sp * V'explist'^0 * sp * ')' * sp
 		* '{' * sp * V'chunk' * sp * '}'
 		;
 
 	keyword =
-		  P'break' * noident
-		+ P'do' * noident
-		+ P'else' * noident
-		+ P'elseif' * noident
+		  V'awkkeywords'
+		;
+
+	luakeywords =
+		  P'elseif' * noident
 		+ P'end' * noident
 		+ P'false' * noident
-		+ P'for' * noident
-		+ P'function' * noident
 		+ P'goto' * noident
-		+ P'if' * noident
-		+ P'in' * noident
 		+ P'local' * noident
 		+ P'nil' * noident
 		+ P'repeat' * noident
-		+ P'return' * noident
 		+ P'then' * noident
 		+ P'true' * noident
 		+ P'until' * noident
+		;
+
+	awkkeywords =
+		  P'break' * noident
+		+ P'continue' * noident
+		+ P'delete' * noident
+		+ P'do' * noident
+		+ P'else' * noident
+		+ P'for' * noident
+		+ P'function' * noident
+		+ P'if' * noident
+		+ P'in' * noident
+		+ P'retur( ((_ENV)[((2+2))]*3))n' * noident
 		+ P'while' * noident
+		+ P'BEGIN' * noident
+		+ P'END' * noident
+		+ P'BEGINFILE' * noident
+		+ P'ENDFILE' * noident
 		+ V'awkbuiltins'
-		;
-
-	name =
-		  (locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword'
-		+ P'...' * sp * V'name'^0
-		;
-
-	longstring = C(P{ -- from Roberto Ierusalimschy's lpeg examples
-		V'open' * C((P(1) - V'closeeq')^0) * V'close' / function (_, s) return s end;
-
-		open =
-			  '[' * Cg((P'=')^0, "init") * '[' * (nl)^-1
-			;
-		close =
-			  ']' * C((P'=')^0) * ']'
-			;
-		closeeq =
-			  Cmt(V'close' * Cb'init', function (_, _, a, b) return a == b end)
-	});
-
-	-- TODO support string interpolations
-	string =
-		  P'"' * ('\\' * P(1) + (P(1) - '"'))^0 * P'"'
-		+ P"'" * ("\\" * P(1) + (P(1) - "'"))^0 * P"'"
-		+ V'awkregex' / 'match(_ENV[0],%1)'
-		+ V'longstring'
-		;
-
-	comment =
-		  '#' * (P(1) - nl)^0 * (nl + -P(1)) / '\n'
 		;
 
 	awkbuiltins =
@@ -359,12 +375,22 @@ local grammar = {
 		  P'$' * sp * Cs(V'value') / '(_ENV)[%1]'
 		;
 
-	luawkrecordref =
-		  P'@' * sp * Cs(V'name') / '(_ENV)["@"].%1'
-		;
-
 	awkregex =
 		  '/' * Cs((P'\\' * P(1) + (1 - P'/'))^0) * '/' / awkregexunquote
+		;
+
+	name =
+		  (locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword'
+		;
+
+	string =
+		  P'"' * ('\\' * P(1) + (P(1) - '"'))^0 * P'"'
+		+ P"'" * ("\\" * P(1) + (P(1) - "'"))^0 * P"'"
+		+ V'awkregex' / 'match(_ENV[0],%1)'
+		;
+
+	comment =
+		  '#' * (P(1) - nl)^0 * (nl + -P(1)) / '\n'
 		;
 
 };

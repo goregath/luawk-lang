@@ -1,5 +1,7 @@
 #!/usr/bin/env lua
 
+-- vim: sw=4,tabexpand
+
 --- Luawk interpreter.
 --
 --  @usage

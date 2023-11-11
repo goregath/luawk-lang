@@ -1,1 +1,31 @@
-TODO @ operator
+luawk
+-----
+
+THE RUNTIME should provide a module "awk" pointing to the current environment in use. This allows Lua modules to
+require the current environment from within functions, e.g. doing `require"awk".FS = ","`.
+
+luawk.environment.posix:
+------------------------
+
+ACCESSING UNDEFINED VARIABLES should case _ENV to automagically create a proxy object. The object shall implement the
+"unitialized" identity (empty string) by default. If the object is accessed by subscript an ordinary table should
+replace the proxy.
+
+THE EVAL FUNCTION should be the only predefined function that adds to the awk builtins. It is the only point of
+intersection between Awk and Lua. It should compile and execute Lua chunks with a standard Lua environment.
+
+KNOWN BUGS: _ENV[""] should be equal to _ENV[0], since $"" is equal to $0
+
+luawk.lang.grammar:
+-------------------
+
+IT IS IMPERATIVE that all variables are global, local definitions are not supported. This eases the implementation of
+assignment expressions and increment/decrement operators.
+
+ALL AVAILABLE BUILTINS should be protected keywords.
+
+THE EVAL FUNCTION should be a protected keyword. The transpiler must rely on its immutability.
+
+OPERATIONS on value types other than string or number shall result in an error.
+
+LUA KEYWORDS Should be converted, e.g. and to and_.
