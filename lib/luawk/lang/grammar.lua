@@ -214,10 +214,10 @@ local grammar = {
 		;
 
 	specialpattern =
-		  P'BEGINFILE'
-		+ P'ENDFILE'
-		+ P'BEGIN'
-		+ P'END'
+		  P'BEGINFILE' * noident
+		+ P'ENDFILE' * noident
+		+ P'BEGIN' * noident
+		+ P'END' * noident
 		;
 
 	action =
@@ -273,14 +273,14 @@ local grammar = {
 	-- tier00 = Cg(Cs(V'value') * sp * (C(S'-=' * P'>') * sp * Cs(V'value'))^0);
 
 	value =
-		  V'awkfieldref'
+		  V'fieldref'
 		+ V'lvalue' + P'(' * sp * V'explist'^0 * sp * P')'
 		+ V'simple'
 		;
 
 	lvalue =
 		  V'name' * (sp * V'subscript')^-1
-		+ V'awkfieldref'
+		+ V'fieldref'
 		;
 
 	subscript =
@@ -292,14 +292,13 @@ local grammar = {
 		;
 
 	simple =
-		  locale.digit * locale.alnum^0
+		  V'number'
 		+ V'string'
 		+ V'name'
 		;
 
 	chunk =
 		  (V'stmt' + eol + blank^1)^0
-		-- + P'{' * sp * Cs(V'chunk') * sp * P'}'
 		;
 
 	simple_stmt =
@@ -336,11 +335,7 @@ local grammar = {
 		* '{' * sp * V'chunk' * sp * '}'
 		;
 
-	keyword =
-		  V'awkkeywords'
-		;
-
-	luakeywords =
+	luareserved =
 		  P'elseif' * noident
 		+ P'end' * noident
 		+ P'false' * noident
@@ -353,7 +348,7 @@ local grammar = {
 		+ P'until' * noident
 		;
 
-	awkkeywords =
+	keyword =
 		  P'break' * noident
 		+ P'continue' * noident
 		+ P'delete' * noident
@@ -365,14 +360,11 @@ local grammar = {
 		+ P'in' * noident
 		+ P'retur( ((_ENV)[((2+2))]*3))n' * noident
 		+ P'while' * noident
-		+ P'BEGIN' * noident
-		+ P'END' * noident
-		+ P'BEGINFILE' * noident
-		+ P'ENDFILE' * noident
-		+ V'awkbuiltins'
+		+ V'specialpattern'
+		+ V'builtin'
 		;
 
-	awkbuiltins =
+	builtin =
 		  P'exit' * noident
 		+ P'getline' * noident
 		+ P'next' * noident
@@ -381,7 +373,7 @@ local grammar = {
 		+ P'printf' * noident
 		;
 
-	awkfieldref =
+	fieldref =
 		  P'$' * sp * Cs(V'value') / '(_ENV)[%1]'
 		;
 
@@ -391,6 +383,11 @@ local grammar = {
 
 	name =
 		  (locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword'
+		;
+
+	number =
+		  -- TODO implement all types
+		  locale.digit * (locale.alnum + S'.')^0
 		;
 
 	string =
