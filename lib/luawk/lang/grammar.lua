@@ -179,6 +179,10 @@ local function new_function(name, params, action)
 	print("NEW_FUNCTION", name, table.concat(params, ","), action)
 end
 
+local function print_special(name, params, op, exp)
+	print("PRINT", name, params, op, exp)
+end
+
 local function concat(...)
 	return table.concat({...}, "..SUBSEP..")
 end
@@ -251,9 +255,10 @@ local grammar = {
 	simple_stmt =
 		  P'delete' * noident * sp * Cs(V'name') * (P'[' * sp * Cs(V'arrayindex') * sp * P']')^-1
 		  / delete
-		  -- TODO print_stmt
-		+ P'print' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
-		+ P'print' * noident * Cc'(' * sp * V'explist'^0 * Cc')'
+		+ C(P'print' * P'f'^-1) * noident * sp * P'(' * sp * Cs(V'explist'^0) * sp * P')' * (sp * V'output_redirection')^-1
+		  / print_special
+		+ C(P'print' * P'f'^-1) * noident * sp * Cs(V'explist'^0) * (sp * V'output_redirection')^-1
+		  / print_special
 		+ V'exp'
 		;
 
@@ -311,6 +316,7 @@ local grammar = {
 	-- TODO awk 'BEGIN{print sqrt (-1)}' --> calls function, no concatenation
 	value =
 		  V'builtin_func' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
+		+ V'builtin_func' * noident / '%0()'
 		+ V'name' * noident * P'(' * sp * V'explist'^0 * sp * P')'
 		+ P'(' * sp * V'exp' * sp * P')'
 		+ V'fieldref'
@@ -329,6 +335,10 @@ local grammar = {
 
 	arrayindex =
 		  (Cs(V'exp') * (sp * P',' * sp * Cs(V'exp'))^0) / concat
+		;
+
+	output_redirection =
+		  C(P'>>' + S'>|') * sp * Cs(V'exp')
 		;
 
 	simple =
