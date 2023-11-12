@@ -304,8 +304,10 @@ local grammar = {
 	-- tier01 = Cf(Cs(V'tier00') * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval);
 	-- tier00 = Cg(Cs(V'value') * sp * (C(S'-=' * P'>') * sp * Cs(V'value'))^0);
 
+	-- TODO awk 'BEGIN{print sqrt (-1)}' --> calls function, no concatenation
 	value =
-		  V'name' * noident * P'(' * sp * V'explist'^0 * sp * P')'
+		  V'builtin_func' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
+		+ V'name' * noident * P'(' * sp * V'explist'^0 * sp * P')'
 		+ P'(' * sp * V'exp' * sp * P')'
 		+ V'fieldref'
 		+ V'lvalue'
@@ -387,6 +389,30 @@ local grammar = {
 
 	comment =
 		  '#' * (P(1) - nl)^0 * (nl + -P(1))
+		;
+
+	builtin_func =
+		  P'atan2'
+		+ P'cos'
+		+ P'sin'
+		+ P'exp'
+		+ P'log'
+		+ P'sqrt'
+		+ P'int'
+		+ P'rand'
+		+ P'srand'
+		+ P'gsub'
+		+ P'index'
+		+ P'length'
+		+ P'match'
+		+ P'split'
+		+ P'sprintf'
+		+ P'sub'
+		+ P'substr'
+		+ P'tolower'
+		+ P'toupper'
+		+ P'close'
+		+ P'system'
 		;
 
 	luareserved =
