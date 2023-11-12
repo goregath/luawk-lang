@@ -96,7 +96,6 @@ local Cb = lpeg.Cb
 local Cc = lpeg.Cc
 local Cf = lpeg.Cf
 local Cg = lpeg.Cg
-local Cmt = lpeg.Cmt
 local Cs = lpeg.Cs
 local Ct = lpeg.Ct
 
@@ -225,7 +224,7 @@ local grammar = {
 		;
 
 	actionblock =
-		  Cg('{' * sp * Cs(V'chunk') * sp * '}')
+		  Cg('{' * sp * Cs(V'chunk'^-1) * sp * '}')
 		;
 
 	explist =
@@ -240,12 +239,44 @@ local grammar = {
 		  V'value' * (sp * P',' * sp * V'value')^0 * sp
 		;
 
+	chunk =
+		  V'stmt' * (sp * eol * sp * V'stmt')^0 * (sp * eol)^0
+		;
+
+	simple_stmt =
+		  P'delete' * noident * sp * Cs(V'name') * (P'[' * sp * Cs(V'arrayindex') * sp * P']')^-1
+		  / delete
+		  -- TODO print_stmt
+		+ P'print' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
+		+ P'print' * noident * Cc'(' * sp * V'explist'^0 * Cc')'
+		+ V'exp'
+		;
+
+	stmt =
+		  P'if' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * sp * Cs(V'stmt'^-1) * sp *
+		  (P'else' * noident * sp * Cs(V'stmt'))^-1
+		  / if_else
+		+ P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * sp * Cs(V'stmt'^-1)
+		  / while_do
+		+ P'do' * noident * sp * Cs(V'stmt'^-1) * sp * P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')'
+		  / do_while
+		+ P'for' * noident * sp * P'(' * Cs(V'name') * sp *
+		  P'in' * noident * sp * Cs(V'name') * P')' * sp * Cs(V'stmt'^-1)
+		  / for_in
+		+ P'for' * noident * sp * P'(' * sp *
+		  Cs(V'simple_stmt') * sp * P';' * sp *
+		  Cs(V'exp') * sp * P';' * sp *
+		  Cs(V'simple_stmt') * sp * P')' * sp * Cs(V'stmt'^-1)
+		  / generic_for
+		+ V'simple_stmt'
+		+ V'action'
+		;
+
 	-- TODO ++a--
-	-- TODO ambiguous syntax: {}
+	-- TODO ++a^1
 
 	exp =
-		--  P'++' * sp * Cs(V'tier14') / 'eval("%1=%1+1 return %1")' -- TODO ++a^1
-		  V'lvalue' * S'^%*/+-'^-1 * P'=' * sp * V'tier13'
+		  V'lvalue' * sp * S'^%*/+-'^-1 * P'=' * sp * V'tier13'
 		+ V'tier13'
 		;
 
@@ -297,39 +328,6 @@ local grammar = {
 		+ V'name'
 		;
 
-	chunk =
-		  (V'stmt' + eol + blank^1)^0
-		;
-
-	simple_stmt =
-		  P'delete' * noident * sp * Cs(V'name') * (P'[' * sp * Cs(V'arrayindex') * sp * P']')^-1
-		  / delete
-		+ P'print' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
-		+ P'print' * noident * Cc'(' * sp * V'explist'^0 * Cc')'
-		+ V'exp'
-		;
-
-	stmt =
-		  P'if' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * sp * Cs(V'stmt') * sp *
-		  (P'else' * noident * sp * Cs(V'stmt'))^-1
-		  / if_else
-		+ P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * sp * Cs(V'stmt')
-		  / while_do
-		+ P'do' * noident * sp * Cs(V'stmt') * sp * P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')'
-		  / do_while
-		+ P'for' * noident * sp * P'(' * Cs(V'name') * sp *
-		  P'in' * noident * sp * Cs(V'name') * P')' * sp * Cs(V'stmt')
-		  / for_in
-		+ P'for' * noident * sp * P'(' * sp *
-		  Cs(V'simple_stmt') * sp * P';' * sp *
-		  Cs(V'exp') * sp * P';' * sp *
-		  Cs(V'simple_stmt') * sp * P')' * sp * Cs(V'stmt')
-		  / generic_for
-		+ V'simple_stmt'
-		+ V'action'
-		+ eol
-		;
-
 	["function"] =
 		  P'function' * noident * blank^1 * V'name' * sp * '(' * sp * V'explist'^0 * sp * ')' * sp
 		* '{' * sp * V'chunk' * sp * '}'
@@ -345,7 +343,7 @@ local grammar = {
 		+ P'function' * noident
 		+ P'if' * noident
 		+ P'in' * noident
-		+ P'retur( ((_ENV)[((2+2))]*3))n' * noident
+		+ P'return' * noident
 		+ P'while' * noident
 		+ V'specialpattern'
 		+ V'builtin'
@@ -385,7 +383,7 @@ local grammar = {
 		;
 
 	comment =
-		  '#' * (P(1) - nl)^0 * (nl + -P(1)) / '\n'
+		  '#' * (P(1) - nl)^0 * C(nl + -P(1)) / '%1'
 		;
 
 	luareserved =
