@@ -241,7 +241,7 @@ local grammar = {
 		;
 
 	chunk =
-		  V'stmt' * (sp * eol * sp * V'stmt')^0 * (sp * eol)^0
+		  V'stmt' * (sp * eol / ';' * sp * V'stmt')^0 * (sp * eol)^0
 		;
 
 	simple_stmt =
