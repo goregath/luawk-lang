@@ -102,6 +102,7 @@ local Ct = lpeg.Ct
 local nl = P'\n'
 local blank = P(locale.space + V'comment' - nl)
 local sp = (blank^1)^-1
+local brksp = ((blank + nl)^1)^-1
 local eol = (P';' + nl)^1
 local noident = -(locale.alnum + P'_')
 local shebang = P"#" * (P(1) - nl)^0 * nl
@@ -224,11 +225,11 @@ local grammar = {
 		;
 
 	actionblock =
-		  Cg('{' * sp * Cs(V'chunk'^-1) * sp * '}')
+		  Cg('{' * brksp * Cs(V'chunk'^-1) * sp * '}')
 		;
 
 	explist =
-		  V'exp' * (sp * P',' * sp * V'exp')^0 * sp
+		  V'exp' * (sp * P',' * brksp * V'exp')^0 * sp
 		;
 
 	namelist =
@@ -253,20 +254,20 @@ local grammar = {
 		;
 
 	stmt =
-		  P'if' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * sp * Cs(V'stmt'^-1) * sp *
+		  P'if' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * brksp * Cs(V'stmt'^-1) * sp *
 		  (P'else' * noident * sp * Cs(V'stmt'))^-1
 		  / if_else
-		+ P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * sp * Cs(V'stmt'^-1)
+		+ P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * brksp * Cs(V'stmt'^-1)
 		  / while_do
-		+ P'do' * noident * sp * Cs(V'stmt'^-1) * sp * P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')'
+		+ P'do' * noident * brksp * Cs(V'stmt'^-1) * sp * P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')'
 		  / do_while
 		+ P'for' * noident * sp * P'(' * Cs(V'name') * sp *
-		  P'in' * noident * sp * Cs(V'name') * P')' * sp * Cs(V'stmt'^-1)
+		  P'in' * noident * sp * Cs(V'name') * P')' * brksp * Cs(V'stmt'^-1)
 		  / for_in
 		+ P'for' * noident * sp * P'(' * sp *
 		  Cs(V'simple_stmt') * sp * P';' * sp *
 		  Cs(V'exp') * sp * P';' * sp *
-		  Cs(V'simple_stmt') * sp * P')' * sp * Cs(V'stmt'^-1)
+		  Cs(V'simple_stmt') * sp * P')' * brksp * Cs(V'stmt'^-1)
 		  / generic_for
 		+ V'simple_stmt'
 		+ V'action'
@@ -285,8 +286,8 @@ local grammar = {
 	tier13 =
 		  Cf(Cf(V'tier12' * Cg(Cs(P'?'/'&&') * sp * V'tier12'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'tier12'), eval)
 		+ V'tier12';
-	tier12 = Cf(V'tier11' * Cg(C(P'||') * sp * V'tier11')^0, eval);
-	tier11 = Cf(V'tier10' * Cg(C(P'&&') * sp * V'tier10')^0, eval);
+	tier12 = Cf(V'tier11' * Cg(C(P'||') * brksp * V'tier11')^0, eval);
+	tier11 = Cf(V'tier10' * Cg(C(P'&&') * brksp * V'tier10')^0, eval);
 	tier10 = Cf((P'(' * sp * V'arrayindex' * sp * P')' + V'tier09') * sp * Cg(C(P'in') * sp * V'tier09')^0, eval);
 	tier09 = Cf(V'tier08' * Cg(C(P'!~' + P'~') * sp * (V'regex' + V'tier08'))^0, eval);
 	tier08 = Cf(V'tier07' * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier07')^0, eval);
@@ -304,8 +305,10 @@ local grammar = {
 	-- tier00 = Cg(Cs(V'value') * sp * (C(S'-=' * P'>') * sp * Cs(V'value'))^0);
 
 	value =
-		  V'fieldref'
-		+ V'lvalue' + P'(' * sp * V'explist'^0 * sp * P')'
+		  V'name' * noident * P'(' * sp * V'explist'^0 * sp * P')'
+		+ P'(' * sp * V'exp' * sp * P')'
+		+ V'fieldref'
+		+ V'lvalue'
 		+ V'simple'
 		;
 
@@ -383,7 +386,7 @@ local grammar = {
 		;
 
 	comment =
-		  '#' * (P(1) - nl)^0 * C(nl + -P(1)) / '%1'
+		  '#' * (P(1) - nl)^0 * (nl + -P(1))
 		;
 
 	luareserved =
