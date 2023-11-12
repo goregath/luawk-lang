@@ -175,6 +175,10 @@ local function delete(var, sub)
 	print("DELETE", var, sub)
 end
 
+local function new_function(name, params, action)
+	print("NEW_FUNCTION", name, table.concat(params, ","), action)
+end
+
 local function concat(...)
 	return table.concat({...}, "..SUBSEP..")
 end
@@ -198,7 +202,7 @@ local grammar = {
 	);
 
 	globals =
-		  Cb('program') * Cc('BEGIN') / rawget * Cs(V'function')
+		  Cb('program') * Cc('BEGIN') / rawget * Cs(V'func_decl')
 		;
 
 	rule =
@@ -229,15 +233,15 @@ local grammar = {
 		;
 
 	explist =
-		  V'exp' * (sp * P',' * brksp * V'exp')^0 * sp
+		  V'exp' * (sp * P',' * brksp * V'exp')^0
 		;
 
 	namelist =
-		  V'name' * (sp * P',' * sp * V'name')^0 * sp
+		  V'name' * (sp * P',' * sp * V'name')^0
 		;
 
 	valuelist =
-		  V'value' * (sp * P',' * sp * V'value')^0 * sp
+		  V'value' * (sp * P',' * sp * V'value')^0
 		;
 
 	chunk =
@@ -288,7 +292,7 @@ local grammar = {
 		+ V'tier12';
 	tier12 = Cf(V'tier11' * sp * Cg(C(P'||') * brksp * V'tier11')^0, eval);
 	tier11 = Cf(V'tier10' * sp * Cg(C(P'&&') * brksp * V'tier10')^0, eval);
-	tier10 = Cf((P'(' * sp * V'arrayindex' * sp * P')' + V'tier09') * sp * Cg(C(P'in') * sp * V'tier09')^0, eval);
+	tier10 = Cf((P'(' * sp * V'arrayindex' * sp * P')' + V'tier09') * sp * Cg(C(P'in') * sp * Cs(V'name'))^0, eval);
 	tier09 = Cf(V'tier08' * sp * Cg(C(P'!~' + P'~') * sp * (V'regex' + V'tier08'))^0, eval);
 	tier08 = Cf(V'tier07' * sp * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier07')^0, eval);
 	-- TODO 'expr expr' (AWK, left-associative) 'expr .. expr' (Lua, right-associative)
@@ -333,9 +337,10 @@ local grammar = {
 		+ V'name'
 		;
 
-	["function"] =
-		  P'function' * noident * blank^1 * V'name' * sp * '(' * sp * V'explist'^0 * sp * ')' * sp
-		* '{' * sp * V'chunk' * sp * '}'
+	func_decl =
+		  P'function' * noident * blank^1 * Cs(V'name') * sp *
+		  '(' * sp * Ct(Cs(V'name') * (sp * P',' * sp * Cs(V'name'))^0) * sp * ')' * brksp * Cs(V'action')
+		  / new_function
 		;
 
 	keyword =
@@ -352,6 +357,7 @@ local grammar = {
 		+ P'while' * noident
 		+ V'specialpattern'
 		+ V'builtin'
+		+ (V'builtin_func' * noident)
 		;
 
 	builtin =
