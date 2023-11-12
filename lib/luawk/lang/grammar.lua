@@ -284,21 +284,21 @@ local grammar = {
 	-- tier14 = Cf(C(V'lvalue') * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier13')^0, eval);
 	-- ternary operator / conditional expression
 	tier13 =
-		  Cf(Cf(V'tier12' * Cg(Cs(P'?'/'&&') * sp * V'tier12'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'tier12'), eval)
+		  Cf(Cf(V'tier12' * sp * Cg(Cs(P'?'/'&&') * sp * V'tier12'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'tier12'), eval)
 		+ V'tier12';
-	tier12 = Cf(V'tier11' * Cg(C(P'||') * brksp * V'tier11')^0, eval);
-	tier11 = Cf(V'tier10' * Cg(C(P'&&') * brksp * V'tier10')^0, eval);
+	tier12 = Cf(V'tier11' * sp * Cg(C(P'||') * brksp * V'tier11')^0, eval);
+	tier11 = Cf(V'tier10' * sp * Cg(C(P'&&') * brksp * V'tier10')^0, eval);
 	tier10 = Cf((P'(' * sp * V'arrayindex' * sp * P')' + V'tier09') * sp * Cg(C(P'in') * sp * V'tier09')^0, eval);
-	tier09 = Cf(V'tier08' * Cg(C(P'!~' + P'~') * sp * (V'regex' + V'tier08'))^0, eval);
-	tier08 = Cf(V'tier07' * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier07')^0, eval);
+	tier09 = Cf(V'tier08' * sp * Cg(C(P'!~' + P'~') * sp * (V'regex' + V'tier08'))^0, eval);
+	tier08 = Cf(V'tier07' * sp * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier07')^0, eval);
 	-- TODO 'expr expr' (AWK, left-associative) 'expr .. expr' (Lua, right-associative)
-	tier07 = Cf(V'tier06' * Cg(Cc('..') * sp * V'tier06')^0, eval);
-	tier06 = Cf(V'tier05' * Cg(C(S'+-') * sp * V'tier05')^0, eval);
-	tier05 = Cf(V'tier03' * Cg(C(P'//' + S'*/%') * sp * V'tier03')^0, eval);
+	tier07 = Cf(V'tier06' * sp * Cg(Cc('..') * sp * V'tier06')^0, eval);
+	tier06 = Cf(V'tier05' * sp * Cg(C(S'+-') * sp * V'tier05')^0, eval);
+	tier05 = Cf(V'tier03' * sp * Cg(C(P'//' + S'*/%') * sp * V'tier03')^0, eval);
 	-- binary operators
 	-- TODO !!a
 	-- tier04 = Cf(Cc(nil) * Cg(C(S'!+-') * sp * V'tier04'), eval) + V'tier03';
-	tier03 = Cf(Cs(V'value') * Cg(C(S'^') * sp * Cs(V'value'))^0, eval);
+	tier03 = Cf(Cs(V'value') * sp * Cg(C(S'^') * sp * Cs(V'value'))^0, eval);
 
 	-- tier02 = Cs((P'++' * sp * V'tier00') / 'eval("%1=%1+1 return %1")') + V'tier00';
 	-- tier01 = Cf(Cs(V'tier00') * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval);
