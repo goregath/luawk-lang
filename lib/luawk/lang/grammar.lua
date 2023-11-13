@@ -100,7 +100,7 @@ local Cs = lpeg.Cs
 local Ct = lpeg.Ct
 
 local nl = P'\n'
-local blank = P(locale.space + V'comment' - nl)
+local blank = P(locale.space + P'\\\n' + V'comment' - nl)
 local sp = (blank^1)^-1
 local brksp = ((blank + nl)^1)^-1
 local eol = (P';' + nl)^1
@@ -249,7 +249,7 @@ local grammar = {
 		;
 
 	chunk =
-		  V'stmt' * (sp * eol / ';' * sp * V'stmt')^0 * (sp * eol)^0
+		  V'stmt' * (sp * eol * sp * V'stmt')^0 * (sp * eol)^0
 		;
 
 	simple_stmt =
