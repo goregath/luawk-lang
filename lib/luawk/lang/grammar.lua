@@ -264,7 +264,7 @@ local grammar = {
 
 	stmt =
 		  P'if' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * brksp * Cs(V'stmt'^-1) * sp *
-		  (P'else' * noident * sp * Cs(V'stmt'))^-1
+		  (P'else' * noident * brksp * Cs(V'stmt'))^-1
 		  / if_else
 		+ P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * brksp * Cs(V'stmt'^-1)
 		  / while_do
@@ -334,7 +334,7 @@ local grammar = {
 		;
 
 	arrayindex =
-		  (Cs(V'exp') * (sp * P',' * sp * Cs(V'exp'))^0) / concat
+		  (Cs(V'exp') * (sp * P',' * brksp * Cs(V'exp'))^0) / concat
 		;
 
 	output_redirection =
