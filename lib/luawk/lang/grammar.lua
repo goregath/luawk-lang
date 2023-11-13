@@ -100,7 +100,8 @@ local Cs = lpeg.Cs
 local Ct = lpeg.Ct
 
 local nl = P'\n'
-local blank = P(locale.space + P'\\\n' + V'comment' - nl)
+local brk = P'\\\n'
+local blank = P(locale.space + brk + V'comment' - nl)
 local sp = (blank^1)^-1
 local brksp = ((blank + nl)^1)^-1
 local eol = (P';' + nl)^1
@@ -343,17 +344,16 @@ local grammar = {
 		+ Cs(V'lvalue') * P'--' / post_decrement
 		+ P'++' * Cs(V'lvalue') / pre_increment
 		+ P'--' * Cs(V'lvalue') / pre_decrement
-		+ V'value'
-		;
-
-	-- TODO awk 'BEGIN{print sqrt (-1)}' --> calls function, no concatenation
-	value =
-		  V'lvalue'
-		+ V'simple'
-		+ P'getline' * noident
 		+ V'builtin_func' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
 		+ V'builtin_func' * noident / '%0()'
 		+ V'name' * noident * P'(' * sp * V'explist'^0 * sp * P')'
+		+ V'value'
+		;
+
+	value =
+		  P'getline' * noident
+		+ V'lvalue'
+		+ V'simple'
 		;
 
 	lvalue =
@@ -372,11 +372,6 @@ local grammar = {
 	output_redirection =
 		  C(P'>>' + S'>|') * sp * Cs(V'exp' - P'getline' * noident)
 		;
-
-	-- input_function =
-	-- 	  Cs(V'exp') * sp * P'|' * sp * P'getline' * noident / getline_process
-	-- 	+ P'getline' * noident * (sp * P'<' * sp * Cs(V'exp'))^-1 / getline_file
-	-- 	;
 
 	simple =
 		  V'number'
