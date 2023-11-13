@@ -407,8 +407,7 @@ local grammar = {
 		;
 
 	number =
-		  -- TODO implement all types
-		  locale.digit * (locale.alnum + S'.')^0
+		  S'+-'^-1 * locale.digit^1 * (P'.' * locale.digit^1)^-1 * (S'eE' * S'+-'^-1 * locale.digit^1)^-1
 		;
 
 	string =
