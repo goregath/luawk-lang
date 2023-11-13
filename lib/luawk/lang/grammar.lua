@@ -331,21 +331,24 @@ local grammar = {
 	-- binary operators
 	-- TODO !!a
 	-- tier04 = Cf(Cc(nil) * Cg(C(S'!+-') * sp * V'tier04'), eval) + V'tier03';
-	tier03 = Cf(Cs(V'value') * sp * Cg(C(S'^') * sp * Cs(V'value'))^0, eval);
+	tier03 = Cf(Cs(V'tier00') * sp * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval);
 
 	-- tier02 = Cs((P'++' * sp * V'tier00') / 'eval("%1=%1+1 return %1")') + V'tier00';
 	-- tier01 = Cf(Cs(V'tier00') * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval);
 	-- tier00 = Cg(Cs(V'value') * sp * (C(S'-=' * P'>') * sp * Cs(V'value'))^0);
 
-	-- TODO awk 'BEGIN{print sqrt (-1)}' --> calls function, no concatenation
-	value =
+	tier00 =
 		  P'(' * sp * V'exp' * sp * P')'
-		  -- TODO $x++ -> ($x)++
 		+ Cs(V'lvalue') * P'++' / post_increment
 		+ Cs(V'lvalue') * P'--' / post_decrement
 		+ P'++' * Cs(V'lvalue') / pre_increment
 		+ P'--' * Cs(V'lvalue') / pre_decrement
-		+ V'lvalue'
+		+ V'value'
+		;
+
+	-- TODO awk 'BEGIN{print sqrt (-1)}' --> calls function, no concatenation
+	value =
+		  V'lvalue'
 		+ V'simple'
 		+ P'getline' * noident
 		+ V'builtin_func' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
