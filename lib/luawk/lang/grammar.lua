@@ -111,6 +111,10 @@ local function awkregexunquote(s)
 	return string.format("%q", s):gsub("\\\\", "\\"):gsub("\\/", "/")
 end
 
+local function concat(...)
+	return table.concat({...}, "..SUBSEP..")
+end
+
 local evalfmt = {
 	-- TODO awk 'BEGIN { print 0.0=="0", ""=="" }' --> 1 1
 	["=" ] = "%1 = ... return (...)",
@@ -140,15 +144,6 @@ local function prepare(fmt, ...)
 	return fmt:gsub("%%(%d+)", function(i)
 		return table.remove(argt, tonumber(i)) or ""
 	end), table.concat(argt, ",")
-end
-
-local function eval(l, op, r)
-	-- if evalfmt[op] then
-	-- 	return string.format("eval(%q,%s)", prepare(evalfmt[op], l, r))
-	-- elseif convfmt[op] then
-	-- 	return prepare(convfmt[op], l, r)
-	-- end
-	return string.format("(%s%s%s)", l or "", op, r)
 end
 
 local function if_else(cond, stmt1, stmt2)
@@ -183,8 +178,19 @@ local function print_special(name, params, op, exp)
 	print("PRINT", name, params, op, exp)
 end
 
-local function concat(...)
-	return table.concat({...}, "..SUBSEP..")
+local function getline_process(exp)
+	print("GETLINE_PROC", exp)
+end
+
+local function getline_file(exp)
+	print("GETLINE_FILE", exp)
+end
+
+local function eval(l, op, r)
+	if l == "getline" and op == "<" then
+		return getline_file(r)
+	end
+	return string.format("(%s%s%s)", l or "", op, r)
 end
 
 -- TODO proper comment and line break handling
@@ -278,6 +284,7 @@ local grammar = {
 		  Cs(V'exp') * sp * P';' * sp *
 		  Cs(V'simple_stmt') * sp * P')' * brksp * Cs(V'stmt'^-1)
 		  / generic_for
+		+ Cs(V'exp') * sp * P'|' * sp * P'getline' * noident / getline_process
 		+ V'simple_stmt'
 		+ V'action'
 		;
@@ -302,8 +309,9 @@ local grammar = {
 	tier08 = Cf(V'tier07' * sp * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier07')^0, eval);
 	-- TODO 'expr expr' (AWK, left-associative) 'expr .. expr' (Lua, right-associative)
 	tier07 = Cf(V'tier06' * sp * Cg(Cc('..') * sp * V'tier06')^0, eval);
+	-- tier07 = Cf(Cg(V'tier06' * sp * Cc('..'))^0 * sp * V'tier06', eval) + V'tier06';
 	tier06 = Cf(V'tier05' * sp * Cg(C(S'+-') * sp * V'tier05')^0, eval);
-	tier05 = Cf(V'tier03' * sp * Cg(C(P'//' + S'*/%') * sp * V'tier03')^0, eval);
+	tier05 = Cf(V'tier03' * sp * Cg(C(S'*/%') * sp * V'tier03')^0, eval);
 	-- binary operators
 	-- TODO !!a
 	-- tier04 = Cf(Cc(nil) * Cg(C(S'!+-') * sp * V'tier04'), eval) + V'tier03';
@@ -322,6 +330,7 @@ local grammar = {
 		+ V'fieldref'
 		+ V'lvalue'
 		+ V'simple'
+		+ P'getline' * noident
 		;
 
 	lvalue =
@@ -338,8 +347,13 @@ local grammar = {
 		;
 
 	output_redirection =
-		  C(P'>>' + S'>|') * sp * Cs(V'exp')
+		  C(P'>>' + S'>|') * sp * Cs(V'exp' - P'getline' * noident)
 		;
+
+	-- input_function =
+	-- 	  Cs(V'exp') * sp * P'|' * sp * P'getline' * noident / getline_process
+	-- 	+ P'getline' * noident * (sp * P'<' * sp * Cs(V'exp'))^-1 / getline_file
+	-- 	;
 
 	simple =
 		  V'number'
