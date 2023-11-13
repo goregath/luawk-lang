@@ -186,6 +186,22 @@ local function getline_file(exp)
 	print("GETLINE_FILE", exp)
 end
 
+local function pre_increment(lvalue)
+	print("PRE_INCREMENT", lvalue)
+end
+
+local function pre_decrement(lvalue)
+	print("PRE_DECREMENT", lvalue)
+end
+
+local function post_increment(lvalue)
+	print("POST_INCREMENT", lvalue)
+end
+
+local function post_decrement(lvalue)
+	print("POST_DECREMENT", lvalue)
+end
+
 local function eval(l, op, r)
 	if l == "getline" and op == "<" then
 		return getline_file(r)
@@ -323,19 +339,23 @@ local grammar = {
 
 	-- TODO awk 'BEGIN{print sqrt (-1)}' --> calls function, no concatenation
 	value =
-		  V'builtin_func' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
-		+ V'builtin_func' * noident / '%0()'
-		+ V'name' * noident * P'(' * sp * V'explist'^0 * sp * P')'
-		+ P'(' * sp * V'exp' * sp * P')'
-		+ V'fieldref'
+		  P'(' * sp * V'exp' * sp * P')'
+		  -- TODO $x++ -> ($x)++
+		+ Cs(V'lvalue') * P'++' / post_increment
+		+ Cs(V'lvalue') * P'--' / post_decrement
+		+ P'++' * Cs(V'lvalue') / pre_increment
+		+ P'--' * Cs(V'lvalue') / pre_decrement
 		+ V'lvalue'
 		+ V'simple'
 		+ P'getline' * noident
+		+ V'builtin_func' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
+		+ V'builtin_func' * noident / '%0()'
+		+ V'name' * noident * P'(' * sp * V'explist'^0 * sp * P')'
 		;
 
 	lvalue =
-		  V'name' * (sp * V'subscript')^-1
-		+ V'fieldref'
+		  V'fieldref'
+		+ V'name' * (sp * V'subscript')^-1
 		;
 
 	subscript =
