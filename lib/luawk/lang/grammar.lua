@@ -210,6 +210,11 @@ local function eval(l, op, r)
 	return string.format("(%s%s%s)", l or "", op, r)
 end
 
+local function eval_unary(op, r)
+	print("EVAL_UNARY", op, r)
+	return string.format("(%s%s)", op, r)
+end
+
 -- TODO proper comment and line break handling
 -- TODO pattern,pattern to range-pattern
 -- TEST awk '$0 ~ /b/ ~ 1 { print }' <<<"a b c" --> "a b c"
@@ -346,7 +351,22 @@ local grammar = {
 		;
 
 	binop_factor =
-		  Cf(V'binop_exp' * sp * Cg(C(S'*/%') * sp * V'binop_exp')^0, eval)
+		  Cf(V'unary_not' * sp * Cg(C(S'*/%') * sp * V'unary_not')^0, eval)
+		;
+
+	-- TODO '-+a'   valid
+	-- TODO '+++a'  invalid
+	-- TODO '+ ++a' valid
+	-- TODO '!+!-a' valid
+	-- TODO '- -a' valid
+	unary_not =
+		  C(P'!') * sp * V'unary_not' / eval_unary
+		+ V'unary_sign'
+		;
+
+	unary_sign =
+		  Cg(C(S'+-') * sp * Cf(V'binop_exp', eval)) / eval_unary
+		+ V'binop_exp'
 		;
 
 	binop_exp =
