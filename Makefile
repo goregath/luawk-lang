@@ -197,13 +197,13 @@ build/$(ARCH)/preload.c:
 build/$(ARCH)/loadall.so: $(call pkgdecode,$(filter-out luawk,$(MODULES)))
 build/$(ARCH)/loadall.so:
 	@echo LD $@
-	$(LD) -shared $^ -o $@
+	$(LD) -shared $^ -lc -o $@
 
 build/$(ARCH)/$(PROGRAM): CFLAGS += -DAPP_OPEN=luaopen_luawk
 build/$(ARCH)/$(PROGRAM): | print-modules
 build/$(ARCH)/$(PROGRAM): src/bootstrap.c $(LUALIB)/liblua.a build/$(ARCH)/preload.o $(call pkgdecode,$(MODULES))
 	@echo CC $@
-	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
+	$(CC) $(INCLUDES) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 .PHONY: all build clean clean-all doc help install test
 .PHONY: print-parameters
