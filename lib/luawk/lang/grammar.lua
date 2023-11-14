@@ -9,8 +9,8 @@ exec lua/src/lua - "$@" <<EOF
 	local function r(o,e)
 		if t(e) ~= "table" then p(f("%-24s%s", o, e))
 		else for k,v in i(e) do r(f("%s[%s]", o, k), v) end end end
-	R.lpeglabel = L("./loadall.so", "luaopen_lpeglabel")
-	R.relabel   = L("./loadall.so", "luaopen_relabel")
+	R.lpeglabel = assert(L("./loadall.so", "luaopen_lpeglabel"))
+	R.relabel   = assert(L("./loadall.so", "luaopen_relabel"))
 	local m = loadfile('/dev/fd/3')()
 	for _, chunk in ipairs(arg) do
 		local program, msg, _, line, col = m.parse(chunk)
