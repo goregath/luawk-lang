@@ -283,6 +283,7 @@ local grammar = {
 		+ C(P'print' * P'f'^-1) * noident * sp * Cs(V'explist'^0) * (sp * V'output_redirection')^-1
 		  / print_special
 		+ V'exp'
+		+ sp * P';'
 		;
 
 	stmt =
@@ -302,12 +303,9 @@ local grammar = {
 		  Cs(V'simple_stmt') * sp * P')' * brksp * Cs(V'stmt'^-1)
 		  / generic_for
 		+ Cs(V'exp') * sp * P'|' * sp * P'getline' * noident / getline_process
-		+ V'simple_stmt'
 		+ V'action'
+		+ V'simple_stmt'
 		;
-
-	-- TODO ++a--
-	-- TODO ++a^1
 
 	exp =
 		  V'lvalue' * sp * S'^%*/+-'^-1 * P'=' * sp * V'tier13'
