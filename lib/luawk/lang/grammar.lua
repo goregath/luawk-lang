@@ -308,33 +308,50 @@ local grammar = {
 		;
 
 	exp =
-		  V'lvalue' * sp * S'^%*/+-'^-1 * P'=' * sp * V'tier13'
-		+ V'tier13'
+		  V'lvalue' * sp * S'^%*/+-'^-1 * P'=' * sp * V'ternary'
+		+ V'ternary'
 		;
 
-	-- tier14 = Cf(C(V'lvalue') * Cg(C(S'^%*/+-'^-1 * P'=') * sp * V'tier13')^0, eval);
-	-- ternary operator / conditional expression
-	tier13 =
-		  Cf(Cf(V'tier12' * sp * Cg(Cs(P'?'/'&&') * sp * V'tier12'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'tier12'), eval)
-		+ V'tier12';
-	tier12 = Cf(V'tier11' * sp * Cg(C(P'||') * brksp * V'tier11')^0, eval);
-	tier11 = Cf(V'tier10' * sp * Cg(C(P'&&') * brksp * V'tier10')^0, eval);
-	tier10 = Cf((P'(' * sp * V'arrayindex' * sp * P')' + V'tier09') * sp * Cg(C(P'in') * sp * Cs(V'name'))^0, eval);
-	tier09 = Cf(V'tier08' * sp * Cg(C(P'!~' + P'~') * sp * (V'regex' + V'tier08'))^0, eval);
-	tier08 = Cf(V'tier07' * sp * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'tier07')^0, eval);
-	-- TODO 'expr expr' (AWK, left-associative) 'expr .. expr' (Lua, right-associative)
-	tier07 = Cf(V'tier06' * sp * Cg(Cc('..') * sp * V'tier06')^0, eval);
-	-- tier07 = Cf(Cg(V'tier06' * sp * Cc('..'))^0 * sp * V'tier06', eval) + V'tier06';
-	tier06 = Cf(V'tier05' * sp * Cg(C(S'+-') * sp * V'tier05')^0, eval);
-	tier05 = Cf(V'tier03' * sp * Cg(C(S'*/%') * sp * V'tier03')^0, eval);
-	-- binary operators
-	-- TODO !!a
-	-- tier04 = Cf(Cc(nil) * Cg(C(S'!+-') * sp * V'tier04'), eval) + V'tier03';
-	tier03 = Cf(Cs(V'tier00') * sp * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval);
+	ternary =
+		  Cf(Cf(V'binop_or' * sp * Cg(Cs(P'?'/'&&') * sp * V'binop_or'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'binop_or'), eval)
+		+ V'binop_or'
+		;
 
-	-- tier02 = Cs((P'++' * sp * V'tier00') / 'eval("%1=%1+1 return %1")') + V'tier00';
-	-- tier01 = Cf(Cs(V'tier00') * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval);
-	-- tier00 = Cg(Cs(V'value') * sp * (C(S'-=' * P'>') * sp * Cs(V'value'))^0);
+	binop_or =
+		  Cf(V'binop_and' * sp * Cg(C(P'||') * brksp * V'binop_and')^0, eval)
+		;
+
+	binop_and =
+		  Cf(V'binop_in' * sp * Cg(C(P'&&') * brksp * V'binop_in')^0, eval)
+		;
+
+	binop_in =
+		  Cf((P'(' * sp * V'arrayindex' * sp * P')' + V'binop_match') * sp * Cg(C(P'in') * sp * Cs(V'name'))^0, eval)
+		;
+
+	binop_match =
+		  Cf(V'binop_comp' * sp * Cg(C(P'!~' + P'~') * sp * (V'regex' + V'binop_comp'))^0, eval)
+		;
+
+	binop_comp =
+		  Cf(V'binop_concat' * sp * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'binop_concat')^0, eval)
+		;
+
+	binop_concat =
+		  Cf(V'binop_term' * sp * Cg(Cc('..') * sp * V'binop_term')^0, eval)
+		;
+
+	binop_term =
+		  Cf(V'binop_factor' * sp * Cg(C(S'+-') * sp * V'binop_factor')^0, eval)
+		;
+
+	binop_factor =
+		  Cf(V'binop_exp' * sp * Cg(C(S'*/%') * sp * V'binop_exp')^0, eval)
+		;
+
+	binop_exp =
+		  Cf(Cs(V'tier00') * sp * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval)
+		;
 
 	tier00 =
 		  P'(' * sp * V'exp' * sp * P')'
