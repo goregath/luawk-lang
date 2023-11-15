@@ -204,6 +204,7 @@ local function post_decrement(lvalue)
 end
 
 local function eval(l, op, r)
+	print("EVAL_BINARY", l, op, r)
 	if l == "getline" and op == "<" then
 		return getline_file(r)
 	end
@@ -371,7 +372,19 @@ local grammar = {
 		;
 
 	binop_exp =
-		  Cf(Cs(V'unary_field') * sp * Cg(C(S'^') * sp * Cs(V'unary_field'))^0, eval)
+		  Cf(Cs(V'unary_pre') * sp * Cg(C(S'^') * sp * Cs(V'unary_pre'))^0, eval)
+		;
+
+	unary_pre =
+		  P'++' * sp * Cs(V'lvalue') / pre_increment
+		+ P'--' * sp * Cs(V'lvalue') / pre_decrement
+		+ V'unary_post'
+		;
+
+	unary_post =
+		  Cs(V'lvalue') * P'++' / post_increment
+		+ Cs(V'lvalue') * P'--' / post_decrement
+		+ V'unary_field'
 		;
 
 	unary_field =
