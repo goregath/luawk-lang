@@ -108,6 +108,41 @@ local eol = (P';' + nl)^1
 local noident = -(locale.alnum + P'_')
 local shebang = P"#" * (P(1) - nl)^0 * nl
 
+local ufmt = {
+	["$"] = "S(R[D(%1)])",
+	["!"] = "D(not(B(%1)))",
+	["+"] = "D(%1)",
+	["-"] = "-D(%1)",
+}
+
+local bfmt = {
+	[".."] = "S(%1,%2)",
+	["^" ] = "(D(%1)^D(%2))",
+	["%" ] = "math.fmod(D(%1,%2))",
+	["*" ] = "(D(%1)*D(%2))",
+	["/" ] = "(D(%1)/D(%2))",
+	["+" ] = "(D(%1)+D(%2))",
+	["-" ] = "(D(%1)-D(%2))",
+	["<" ] = "D(D(%1)<D(%2))",
+	[">" ] = "D(D(%1)>D(%2))",
+	["<="] = "D(D(%1)<=D(%2))",
+	["!="] = "D(D(%1)~=D(%2))",
+	["=="] = "D(D(%1)==D(%2))",
+	[">="] = "D(D(%1)>=D(%2))",
+	["=" ] = "A('%1',%2)", -- TODO arrays
+	["&&"] = "math.min(D(B(%1,%2)))",
+	["||"] = "math.max(D(B(%1,%2)))",
+	["in"] = "D(%1[S(%2)]~=nil)",
+	["~" ] = "match(S(%1,%2))",
+	["!~"] = "D(0==match(%1,%2))",
+	["^="] = "A('%1',math.pow(D(%1,%2)))", -- TODO arrays
+	["%="] = "A('%1',math.fmod(D(%1,%2)))", -- TODO arrays
+	["*="] = "A('%1',D(%1)*D(%2))", -- TODO arrays
+	["/="] = "A('%1',D(%1)/D(%2))", -- TODO arrays
+	["+="] = "A('%1',D(%1)+D(%2))", -- TODO arrays
+	["-="] = "A('%1',D(%1)-D(%2))", -- TODO arrays
+}
+
 local function awkregexunquote(s)
 	return string.format("%q", s):gsub("\\\\", "\\"):gsub("\\/", "/")
 end
@@ -116,35 +151,11 @@ local function concat(...)
 	return table.concat({...}, "..SUBSEP..")
 end
 
-local evalfmt = {
-	-- TODO awk 'BEGIN { print 0.0=="0", ""=="" }' --> 1 1
-	["=" ] = "%1 = ... return (...)",
-	["?" ] = "and",
-	[":" ] = "or",
-	-- TODO awk 'BEGIN { print !"", !"0" }' --> 1 0
-	["!" ] = "%1return ???",
-	["&&"] = "and",
-	["||"] = "or",
-	[ "~"] = "return match(...)+0~=0",
-	["!~"] = "return match(...)+0==0",
-	-- TODO [1] vs. ["1"]
-	["in"] = "(not %2[...])+0",
-	-- ["*"] = "mul",
-	-- ["%"] = "fmod",
-	-- ["/"] = "div",
-	-- ["//"] = "floordiv",
-	-- ["^"]  = "pow",
-}
-
-local convfmt = {
-	-- ["+" ] = "%2",
-}
-
-local function prepare(fmt, ...)
-	local argt = {...}
+local function format(fmt, ...)
+	local a = { ... }
 	return fmt:gsub("%%(%d+)", function(i)
-		return table.remove(argt, tonumber(i)) or ""
-	end), table.concat(argt, ",")
+		return a[tonumber(i)]
+	end)
 end
 
 local function if_else(cond, stmt1, stmt2)
@@ -208,18 +219,17 @@ local function eval_binary(l, op, r)
 	if l == "getline" and op == "<" then
 		return getline_file(r)
 	end
-	return string.format("(%s%s%s)", l or "", op, r)
+	return format(bfmt[op], l, r)
 end
 
 local function eval_unary(op, r)
 	print("EVAL_UNARY", op, r)
-	return string.format("(%s%s)", op, r)
+	return format(ufmt[op], r)
 end
-
 
 local function eval_ternary(cond, exp1, exp2)
 	print("EVAL_TERNARY", cond, exp1, exp2)
-	-- return string.format("(%s%s)", op, r)
+	return string.format("op3(%s,%s,%s)", cond, exp1, exp2)
 end
 
 -- TODO proper comment and line break handling
@@ -320,7 +330,7 @@ local grammar = {
 		;
 
 	exp =
-		  V'lvalue' * sp * S'^%*/+-'^-1 * P'=' * sp * V'ternary'
+		  Cs(V'lvalue') * sp * Cs(S'^%*/+-'^-1 * P'=') * sp * V'ternary' / eval_binary
 		+ V'ternary'
 		;
 
@@ -367,17 +377,18 @@ local grammar = {
 	-- TODO '+ ++a' valid
 	-- TODO '!+!-a' valid
 	-- TODO '- -a' valid
+	-- TODO 'a^!a' valid
 	unary_not =
 		  C(P'!') * sp * V'unary_not' / eval_unary
 		+ V'unary_sign'
 		;
 
 	unary_sign =
-		  Cg(C(S'+-') * sp * Cf(V'binop_exp', eval_binary)) / eval_unary
-		+ V'binop_exp'
+		  Cg(C(S'+-') * sp * Cf(V'unary_pow', eval_binary)) / eval_unary
+		+ V'unary_pow'
 		;
 
-	binop_exp =
+	unary_pow =
 		  Cf(Cs(V'unary_pre') * sp * Cg(C(S'^') * sp * Cs(V'unary_pre'))^0, eval_binary)
 		;
 
