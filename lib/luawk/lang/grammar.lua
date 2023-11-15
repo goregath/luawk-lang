@@ -203,7 +203,7 @@ local function post_decrement(lvalue)
 	print("POST_DECREMENT", lvalue)
 end
 
-local function eval(l, op, r)
+local function eval_binary(l, op, r)
 	print("EVAL_BINARY", l, op, r)
 	if l == "getline" and op == "<" then
 		return getline_file(r)
@@ -214,6 +214,12 @@ end
 local function eval_unary(op, r)
 	print("EVAL_UNARY", op, r)
 	return string.format("(%s%s)", op, r)
+end
+
+
+local function eval_ternary(cond, exp1, exp2)
+	print("EVAL_TERNARY", cond, exp1, exp2)
+	-- return string.format("(%s%s)", op, r)
 end
 
 -- TODO proper comment and line break handling
@@ -319,41 +325,41 @@ local grammar = {
 		;
 
 	ternary =
-		  Cf(Cf(V'binop_or' * sp * Cg(Cs(P'?'/'&&') * sp * V'binop_or'), eval) * sp * Cg(Cs(P':'/'||') * sp * V'binop_or'), eval)
+		  V'binop_or' * sp * P'?' * sp * Cs(V'exp') * sp * P':' * sp * Cs(V'exp') / eval_ternary
 		+ V'binop_or'
 		;
 
 	binop_or =
-		  Cf(V'binop_and' * sp * Cg(C(P'||') * brksp * V'binop_and')^0, eval)
+		  Cf(V'binop_and' * sp * Cg(C(P'||') * brksp * V'binop_and')^0, eval_binary)
 		;
 
 	binop_and =
-		  Cf(V'binop_in' * sp * Cg(C(P'&&') * brksp * V'binop_in')^0, eval)
+		  Cf(V'binop_in' * sp * Cg(C(P'&&') * brksp * V'binop_in')^0, eval_binary)
 		;
 
 	binop_in =
-		  Cf((P'(' * sp * V'arrayindex' * sp * P')' + V'binop_match') * sp * Cg(C(P'in') * sp * Cs(V'name')), eval)
+		  Cf((P'(' * sp * V'arrayindex' * sp * P')' + V'binop_match') * sp * Cg(C(P'in') * sp * Cs(V'name')), eval_binary)
 		+ V'binop_match'
 		;
 
 	binop_match =
-		  Cf(V'binop_comp' * sp * Cg(C(P'!~' + P'~') * sp * (V'regex' + V'binop_comp'))^0, eval)
+		  Cf(V'binop_comp' * sp * Cg(C(P'!~' + P'~') * sp * (V'regex' + V'binop_comp'))^0, eval_binary)
 		;
 
 	binop_comp =
-		  Cf(V'binop_concat' * sp * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'binop_concat')^0, eval)
+		  Cf(V'binop_concat' * sp * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'binop_concat')^0, eval_binary)
 		;
 
 	binop_concat =
-		  Cf(V'binop_term' * sp * Cg(Cc('..') * sp * V'binop_term')^0, eval)
+		  Cf(V'binop_term' * sp * Cg(Cc('..') * sp * V'binop_term')^0, eval_binary)
 		;
 
 	binop_term =
-		  Cf(V'binop_factor' * sp * Cg(C(S'+-') * sp * V'binop_factor')^0, eval)
+		  Cf(V'binop_factor' * sp * Cg(C(S'+-') * sp * V'binop_factor')^0, eval_binary)
 		;
 
 	binop_factor =
-		  Cf(V'unary_not' * sp * Cg(C(S'*/%') * sp * V'unary_not')^0, eval)
+		  Cf(V'unary_not' * sp * Cg(C(S'*/%') * sp * V'unary_not')^0, eval_binary)
 		;
 
 	-- TODO '-+a'   valid
@@ -367,12 +373,12 @@ local grammar = {
 		;
 
 	unary_sign =
-		  Cg(C(S'+-') * sp * Cf(V'binop_exp', eval)) / eval_unary
+		  Cg(C(S'+-') * sp * Cf(V'binop_exp', eval_binary)) / eval_unary
 		+ V'binop_exp'
 		;
 
 	binop_exp =
-		  Cf(Cs(V'unary_pre') * sp * Cg(C(S'^') * sp * Cs(V'unary_pre'))^0, eval)
+		  Cf(Cs(V'unary_pre') * sp * Cg(C(S'^') * sp * Cs(V'unary_pre'))^0, eval_binary)
 		;
 
 	unary_pre =
