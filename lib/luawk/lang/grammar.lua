@@ -331,7 +331,8 @@ local grammar = {
 		;
 
 	binop_in =
-		  Cf((P'(' * sp * V'arrayindex' * sp * P')' + V'binop_match') * sp * Cg(C(P'in') * sp * Cs(V'name'))^0, eval)
+		  Cf((P'(' * sp * V'arrayindex' * sp * P')' + V'binop_match') * sp * Cg(C(P'in') * sp * Cs(V'name')), eval)
+		+ V'binop_match'
 		;
 
 	binop_match =
