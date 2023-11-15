@@ -371,16 +371,26 @@ local grammar = {
 		;
 
 	binop_exp =
-		  Cf(Cs(V'tier00') * sp * Cg(C(S'^') * sp * Cs(V'tier00'))^0, eval)
+		  Cf(Cs(V'unary_field') * sp * Cg(C(S'^') * sp * Cs(V'unary_field'))^0, eval)
+		;
+
+	unary_field =
+		  Cg(C(P'$') * sp * Cs(V'unary_field')) / eval_unary
+		+ V'group'
+		;
+
+	group =
+		  P'(' * sp * Cs(V'exp') * sp * P')' / '(%1)'
+		+ Cs(V'tier00')
 		;
 
 	tier00 =
-		  P'(' * sp * V'exp' * sp * P')'
-		+ Cs(V'lvalue') * P'++' / post_increment
-		+ Cs(V'lvalue') * P'--' / post_decrement
-		+ P'++' * Cs(V'lvalue') / pre_increment
-		+ P'--' * Cs(V'lvalue') / pre_decrement
-		+ V'builtin_func' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
+		--   P'(' * sp * V'exp' * sp * P')'
+		-- + Cs(V'lvalue') * P'++' / post_increment
+		-- + Cs(V'lvalue') * P'--' / post_decrement
+		-- + P'++' * Cs(V'lvalue') / pre_increment
+		-- + P'--' * Cs(V'lvalue') / pre_decrement
+		  V'builtin_func' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
 		+ V'builtin_func' * noident / '%0()'
 		+ V'name' * noident * P'(' * sp * V'explist'^0 * sp * P')'
 		+ V'value'
@@ -393,8 +403,9 @@ local grammar = {
 		;
 
 	lvalue =
-		  V'fieldref'
-		+ V'name' * (sp * V'subscript')^-1
+		  -- TODO rule 'unary_field' may be left recursive
+		  -- V'unary_field'
+		  V'name' * (sp * V'subscript')^-1
 		;
 
 	subscript =
