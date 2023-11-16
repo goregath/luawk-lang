@@ -129,18 +129,18 @@ local bfmt = {
 	["!="] = "D(D(%1)~=D(%2))",
 	["=="] = "D(D(%1)==D(%2))",
 	[">="] = "D(D(%1)>=D(%2))",
-	["=" ] = "A('%1',%2)", -- TODO arrays
-	["&&"] = "math.min(D(B(%1,%2)))",
-	["||"] = "math.max(D(B(%1,%2)))",
+	["=" ] = "V('%1',%2)", -- TODO arrays
+	["&&"] = "A(%1,%2)",
+	["||"] = "O(%1,%2)",
 	["in"] = "D(%1[S(%2)]~=nil)",
 	["~" ] = "match(S(%1,%2))",
 	["!~"] = "D(0==match(S(%1,%2)))",
-	["^="] = "A('%1',math.pow(D(%1,%2)))", -- TODO arrays
-	["%="] = "A('%1',math.fmod(D(%1,%2)))", -- TODO arrays
-	["*="] = "A('%1',D(%1)*D(%2))", -- TODO arrays
-	["/="] = "A('%1',D(%1)/D(%2))", -- TODO arrays
-	["+="] = "A('%1',D(%1)+D(%2))", -- TODO arrays
-	["-="] = "A('%1',D(%1)-D(%2))", -- TODO arrays
+	["^="] = "V('%1',(D(%1)^D(%2)))", -- TODO arrays
+	["%="] = "V('%1',math.fmod(D(%1,%2)))", -- TODO arrays
+	["*="] = "V('%1',D(%1)*D(%2))", -- TODO arrays
+	["/="] = "V('%1',D(%1)/D(%2))", -- TODO arrays
+	["+="] = "V('%1',D(%1)+D(%2))", -- TODO arrays
+	["-="] = "V('%1',D(%1)-D(%2))", -- TODO arrays
 }
 
 local function numconv(s)
@@ -168,6 +168,11 @@ end
 
 local function if_else(cond, stmt1, stmt2)
 	print("IF_ELSE", cond, stmt1, stmt2)
+	if stmt2 then
+		return format("if B(%1) then %2 else %3 end", cond, stmt1, stmt2)
+	else
+		return format("if B(%1) then %2 end", cond, stmt1)
+	end
 end
 
 local function while_do(cond, stmt)
@@ -237,7 +242,7 @@ end
 
 local function eval_ternary(cond, exp1, exp2)
 	print("EVAL_TERNARY", cond, exp1, exp2)
-	return string.format("op3(%s,%s,%s)", cond, exp1, exp2)
+	return string.format("(B(%s) and %s or %s)", cond, exp1, exp2)
 end
 
 -- TODO proper comment and line break handling
@@ -505,7 +510,7 @@ local grammar = {
 		;
 
 	name =
-		  V'luareserved' / '%0_'
+		  (V'luareserved' + S'ABDOSV') / '%0_'
 		+ (locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword'
 		;
 
