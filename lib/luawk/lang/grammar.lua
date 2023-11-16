@@ -109,7 +109,7 @@ local noident = -(locale.alnum + P'_')
 local shebang = P"#" * (P(1) - nl)^0 * nl
 
 local ufmt = {
-	["$"] = "S(R[D(%1)])",
+	["$"] = "R[%1]",
 	["!"] = "D(not(B(%1)))",
 	["+"] = "D(%1)",
 	["-"] = "-D(%1)",
@@ -510,7 +510,7 @@ local grammar = {
 		;
 
 	name =
-		  (V'luareserved' + S'ABDOSV') / '%0_'
+		  (V'luareserved' + R'AZ' * noident) / '%0_'
 		+ (locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword'
 		;
 
