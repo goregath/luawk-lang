@@ -245,6 +245,10 @@ local function eval_ternary(cond, exp1, exp2)
 	return string.format("(B(%s) and %s or %s)", cond, exp1, exp2)
 end
 
+local function eval_concat(...)
+	return string.format("S(%s)", table.concat({...}, ","))
+end
+
 -- TODO proper comment and line break handling
 -- TODO pattern,pattern to range-pattern
 -- TEST awk '$0 ~ /b/ ~ 1 { print }' <<<"a b c" --> "a b c"
@@ -374,7 +378,8 @@ local grammar = {
 		;
 
 	binop_concat =
-		  Cf(V'binop_term' * sp * Cg(Cc('..') * sp * V'binop_term')^0, eval_binary)
+		  V'binop_term' * (sp * V'binop_term')^1 / eval_concat
+		+ V'binop_term'
 		;
 
 	binop_term =
