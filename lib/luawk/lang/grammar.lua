@@ -89,7 +89,7 @@ local lpeg = require 'lpeglabel'
 local re = require 'relabel'
 local locale = lpeg.locale();
 
-local P, S, V = lpeg.P, lpeg.S, lpeg.V
+local P, R, S, V = lpeg.P, lpeg.R, lpeg.S, lpeg.V
 
 local C = lpeg.C
 local Cb = lpeg.Cb
@@ -142,6 +142,14 @@ local bfmt = {
 	["+="] = "A('%1',D(%1)+D(%2))", -- TODO arrays
 	["-="] = "A('%1',D(%1)-D(%2))", -- TODO arrays
 }
+
+local function numconv(s)
+	return string.format("%q",tonumber(s))
+end
+
+local function oct2dec(s)
+	return tonumber(s, 8)
+end
 
 local function awkregexunquote(s)
 	return string.format("%q", s):gsub("\\\\", "\\"):gsub("\\/", "/")
@@ -502,7 +510,16 @@ local grammar = {
 		;
 
 	number =
-		  S'+-'^-1 * locale.digit^1 * (P'.' * locale.digit^1)^-1 * (S'eE' * S'+-'^-1 * locale.digit^1)^-1
+		  S'+-'^-1 * (V'integer' + V'decimal') / numconv
+		;
+
+	integer =
+		  P'0' * S'xX' * locale.xdigit^1
+		+ P'0' * R'07'^1 / oct2dec
+		;
+
+	decimal =
+		  locale.digit^1 * (P'.' * locale.digit^1)^-1 * (S'eE' * S'+-'^-1 * locale.digit^1)^-1
 		;
 
 	string =
