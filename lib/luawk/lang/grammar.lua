@@ -574,6 +574,9 @@ local grammar = {
 		+ P'until'
 		+ P'and'
 		+ P'or'
+		+ lpeg.Cmt(locale.alpha^1 * noident, function(m)
+			return _ENV[m] and true
+		end)
 		;
 
 };
