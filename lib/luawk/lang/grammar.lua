@@ -134,7 +134,7 @@ local bfmt = {
 	["||"] = "math.max(D(B(%1,%2)))",
 	["in"] = "D(%1[S(%2)]~=nil)",
 	["~" ] = "match(S(%1,%2))",
-	["!~"] = "D(0==match(%1,%2))",
+	["!~"] = "D(0==match(S(%1,%2)))",
 	["^="] = "A('%1',math.pow(D(%1,%2)))", -- TODO arrays
 	["%="] = "A('%1',math.fmod(D(%1,%2)))", -- TODO arrays
 	["*="] = "A('%1',D(%1)*D(%2))", -- TODO arrays
