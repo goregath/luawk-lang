@@ -16,6 +16,7 @@ exec lua/src/lua - "$@" <<EOF
 		local program, msg, _, line, col = m.parse(chunk)
 		if program then r("", program)
 		else io.stderr:write("error: ", msg, " at line ", line or "?", " col ", col or "?", "\n") os.exit(1) end
+		print(require"inspect"(program))
 	end
 EOF
 fi; --]] then
@@ -98,6 +99,8 @@ local Cf = lpeg.Cf
 local Cg = lpeg.Cg
 local Cs = lpeg.Cs
 local Ct = lpeg.Ct
+
+local Vt = function(name) return Ct(Cg(Cc(name), 'name') * V(name)) end
 
 local nl = P'\n'
 local brk = P'\\\n'
@@ -262,10 +265,12 @@ local grammar = {
 		main = {}
 	}), 'program');
 
-	shebang^-1 * V'newobj' * (blank + nl)^0 * (
-		  ( ( V'globals' / table.insert * (blank + eol)^0 )^1 )^0
-		* ( ( V'rule' / table.insert * (blank + eol)^0 )^1 )^0 * sp * -1
-	);
+	-- shebang^-1 * V'newobj' * (blank + nl)^0 * (
+	-- 	  ( ( V'globals' / table.insert * (blank + eol)^0 )^1 )^0
+	-- 	* ( ( V'rule' / table.insert * (blank + eol)^0 )^1 )^0 * sp * -1
+	-- );
+
+	Vt'exp';
 
 	globals =
 		  Cb('program') * Cc('BEGIN') / rawget * Cs(V'func_decl')
@@ -347,8 +352,9 @@ local grammar = {
 		;
 
 	exp =
-		  Cs(V'lvalue') * sp * Cs(S'^%*/+-'^-1 * P'=') * sp * V'ternary' / eval_binary
-		+ V'ternary'
+		  Cg(Cc'binop', 'type') *
+		  Vt'value' * sp * Cg(C(S'^%*/+-'^-1 * P'='), 'op') * sp * Vt'value'
+		+ Vt'value'
 		;
 
 	ternary =
@@ -428,7 +434,7 @@ local grammar = {
 		;
 
 	group =
-		  P'(' * sp * Cs(V'exp') * sp * P')' / '(%1)'
+		  P'(' * sp * Cs(V'exp') * sp * P')' -- / '(%1)'
 		+ Cs(V'tier00')
 		;
 
@@ -439,29 +445,30 @@ local grammar = {
 		-- + P'++' * Cs(V'lvalue') / pre_increment
 		-- + P'--' * Cs(V'lvalue') / pre_decrement
 		  V'builtin_func' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
-		+ V'builtin_func' * noident / '%0()'
+		+ V'builtin_func' * noident -- / '%0()'
 		+ V'name' * noident * P'(' * sp * V'explist'^0 * sp * P')'
 		+ V'value'
 		;
 
 	value =
-		  P'getline' * noident
-		+ V'lvalue'
-		+ V'simple'
+		  -- P'getline' * noident
+		  Vt'lvalue'
+		+ Vt'simple'
 		;
 
 	lvalue =
 		  -- TODO rule 'unary_field' may be left recursive
 		  -- V'unary_field'
-		  V'name' * (sp * V'subscript')^-1
+		  Cg('lvalue', 'type') *
+		  Vt'name' * (sp * Vt'subscript')^-1
 		;
 
 	subscript =
-		  P'[' * sp * V'arrayindex' * sp * P']'
+		  P'[' * sp * Vt'arrayindex' * sp * P']'
 		;
 
 	arrayindex =
-		  (Cs(V'exp') * (sp * P',' * brksp * Cs(V'exp'))^0) / concat
+		  Cg(Vt'exp' * (sp * P',' * brksp * Vt'exp')^0)
 		;
 
 	output_redirection =
@@ -469,9 +476,9 @@ local grammar = {
 		;
 
 	simple =
-		  V'number'
-		+ V'string'
-		+ V'name'
+		  V'number' * Cg(Cc'number','type')
+		+ V'string' * Cg(Cc'string','type')
+		+ V'name' * Cg(Cc'number','type')
 		;
 
 	func_decl =
@@ -507,7 +514,7 @@ local grammar = {
 		;
 
 	fieldref =
-		  P'$' * sp * Cs(V'value') / '(_ENV)[%1]'
+		  P'$' * sp * Cs(V'value') -- / '(_ENV)[%1]'
 		;
 
 	regex =
@@ -515,8 +522,8 @@ local grammar = {
 		;
 
 	name =
-		  (V'luareserved' + R'AZ' * noident) / '%0_'
-		+ (locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword'
+		  -- (V'luareserved' + R'AZ' * noident) / '%0_'
+		  Cs((locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword')
 		;
 
 	number =
@@ -535,7 +542,7 @@ local grammar = {
 	string =
 		  P'"' * ('\\' * P(1) + (P(1) - '"'))^0 * P'"'
 		+ P"'" * ("\\" * P(1) + (P(1) - "'"))^0 * P"'"
-		+ V'regex' / 'match(_ENV[0],%1)'
+		+ V'regex' -- / 'match(_ENV[0],%1)'
 		;
 
 	comment =
