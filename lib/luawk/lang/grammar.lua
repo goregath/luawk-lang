@@ -16,7 +16,7 @@ exec lua/src/lua - "$@" <<EOF
 		local program, msg, _, line, col = m.parse(chunk)
 		if program then r("", program)
 		else io.stderr:write("error: ", msg, " at line ", line or "?", " col ", col or "?", "\n") os.exit(1) end
-		print(require"inspect"(program))
+		require 'pl.pretty'.dump(program)
 	end
 EOF
 fi; --]] then
@@ -100,7 +100,7 @@ local Cg = lpeg.Cg
 local Cs = lpeg.Cs
 local Ct = lpeg.Ct
 
-local Vt = function(name) return Ct(Cg(Cc(name), 'name') * V(name)) end
+local Vt = function(name) return Ct(Cg(Cc(name), 'rule') * V(name)) end
 
 local nl = P'\n'
 local brk = P'\\\n'
@@ -352,9 +352,8 @@ local grammar = {
 		;
 
 	exp =
-		  Cg(Cc'binop', 'type') *
-		  Vt'value' * sp * Cg(C(S'^%*/+-'^-1 * P'='), 'op') * sp * Vt'value'
-		+ Vt'value'
+		  Cg(Cc'binop', 'type') * V'value' * sp * Cg(C(S'^%*/+-'^-1 * P'='), 'op') * sp * V'value'
+		+ V'value'
 		;
 
 	ternary =
@@ -452,33 +451,28 @@ local grammar = {
 
 	value =
 		  -- P'getline' * noident
-		  Vt'lvalue'
-		+ Vt'simple'
+		  V'lvalue'
+		+ Vt'number'
+		+ Vt'string'
+		+ Vt'name'
 		;
 
 	lvalue =
 		  -- TODO rule 'unary_field' may be left recursive
 		  -- V'unary_field'
-		  Cg('lvalue', 'type') *
-		  Vt'name' * (sp * Vt'subscript')^-1
+		  Ct(V'name' * (sp * V'subscript')^-1)
 		;
 
 	subscript =
-		  P'[' * sp * Vt'arrayindex' * sp * P']'
+		  P'[' * sp * V'arrayindex' * sp * P']'
 		;
 
 	arrayindex =
-		  Cg(Vt'exp' * (sp * P',' * brksp * Vt'exp')^0)
+		  Cg(V'exp' * (sp * P',' * brksp * V'exp')^0)
 		;
 
 	output_redirection =
 		  C(P'>>' + S'>|') * sp * Cs(V'exp' - P'getline' * noident)
-		;
-
-	simple =
-		  V'number' * Cg(Cc'number','type')
-		+ V'string' * Cg(Cc'string','type')
-		+ V'name' * Cg(Cc'number','type')
 		;
 
 	func_decl =
@@ -522,12 +516,13 @@ local grammar = {
 		;
 
 	name =
-		  -- (V'luareserved' + R'AZ' * noident) / '%0_'
+		  Cg(Cc'ident', 'type') *
 		  Cs((locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword')
 		;
 
 	number =
-		  S'+-'^-1 * (V'integer' + V'decimal') / numconv
+		  Cg(Cc'number', 'type') *
+		  Cs(S'+-'^-1 * (V'integer' + V'decimal') / numconv)
 		;
 
 	integer =
@@ -540,9 +535,10 @@ local grammar = {
 		;
 
 	string =
+		  Cg(Cc'string', 'type') *
 		  P'"' * ('\\' * P(1) + (P(1) - '"'))^0 * P'"'
 		+ P"'" * ("\\" * P(1) + (P(1) - "'"))^0 * P"'"
-		+ V'regex' -- / 'match(_ENV[0],%1)'
+		-- + V'regex' -- / 'match(_ENV[0],%1)'
 		;
 
 	comment =
