@@ -352,21 +352,24 @@ local grammar = {
 		;
 
 	exp =
-		  Cg(Cc'binop', 'type') * V'value' * sp * Cg(C(S'^%*/+-'^-1 * P'='), 'op') * sp * V'value'
-		+ V'value'
+		  Ct(Cg(Cc'binop', 'type') * V'ternary' * sp * Cg(C(S'^%*/+-'^-1 * P'='), 'op') * sp * V'ternary')
+		+ V'ternary'
 		;
 
 	ternary =
-		  V'binop_or' * sp * P'?' * sp * Cs(V'exp') * sp * P':' * sp * Cs(V'exp') / eval_ternary
+		  Ct(Cg(Cc'ternary', 'type') * V'binop_or' * sp * P'?' * sp * Vt'exp' * sp * P':' * sp * Vt'exp')
 		+ V'binop_or'
 		;
 
 	binop_or =
-		  Cf(V'binop_and' * sp * Cg(C(P'||') * brksp * V'binop_and')^0, eval_binary)
+		  Ct(Cg(Cc'binop', 'type') * V'binop_and' * sp * (Cg(C(P'||'), 'op') * brksp * V'binop_or'))
+		+ V'binop_and'
 		;
 
 	binop_and =
-		  Cf(V'binop_in' * sp * Cg(C(P'&&') * brksp * V'binop_in')^0, eval_binary)
+		  Ct(Cg(Cc'binop', 'type') * V'value' * sp * (Cg(C(P'&&'), 'op') * brksp * V'value'))
+		+ V'value'
+		  -- Cf(V'binop_in' * sp * Cg(C(P'&&') * brksp * V'binop_in')^0, eval_binary)
 		;
 
 	binop_in =
