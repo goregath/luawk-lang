@@ -98,7 +98,7 @@ local Cc = lpeg.Cc
 local Cf = lpeg.Cf
 local Cg = lpeg.Cg
 local Cs = lpeg.Cs
-local Ct = function(p) print(p) return lpeg.Ct(Cg(lpeg.Cp(), 'pos') * p) end
+local Ct = function(p) print(p) return lpeg.Ct(p) end
 local Vt = function(name) print(name) return Ct(V(name)) end
 
 local nl = P'\n'
@@ -109,6 +109,10 @@ local brksp = ((blank + nl)^1)^-1
 local eol = (P';' + nl)^1
 local noident = -(locale.alnum + P'_')
 local shebang = P"#" * (P(1) - nl)^0 * nl
+
+local ternary_t = { type = "ternary" }
+local binary_t = { type = "binary" }
+local unary_t = { type = "unary" }
 
 local ufmt = {
 	["$"] = "R[%1]",
@@ -166,6 +170,16 @@ local function format(fmt, ...)
 	return fmt:gsub("%%(%d+)", function(i)
 		return a[tonumber(i)]
 	end)
+end
+
+local function group(meta)
+	return function(c, ...)
+		if ... then
+			return setmetatable({ type = meta.type, c, ... }, { __index = meta })
+		else
+			return c
+		end
+	end
 end
 
 local function if_else(cond, stmt1, stmt2)
@@ -269,7 +283,7 @@ local grammar = {
 	-- 	* ( ( V'rule' / table.insert * (blank + eol)^0 )^1 )^0 * sp * -1
 	-- );
 
-	Vt'exp';
+	V'exp' / group();
 
 	globals =
 		  Cb('program') * Cc('BEGIN') / rawget * Cs(V'func_decl')
@@ -351,44 +365,45 @@ local grammar = {
 		;
 
 	exp =
-		  V'ternary' * (sp * Cg(C(S'^%*/+-'^-1 * P'='), 'op') * brksp * Vt'ternary')^0
+		  V'ternary' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'ternary')^-1 / group(binary_t)
 		;
 
 	ternary =
-		  V'binop_or' * sp * (P'?' * sp * Vt'exp' * sp * P':' * sp * Vt'exp')^-1
+		  V'binop_or' * sp * (P'?' * sp * V'exp' * sp * P':' * sp * V'exp')^-1 / group(ternary_t)
 		;
 
 	binop_or =
-		  V'binop_and' * (sp * Cg(C(P'||'), 'op') * brksp * Vt'binop_and')^0
+		  V'binop_and' * (sp * C(P'||') * brksp * V'binop_and')^0 / group(binary_t)
 		;
 
 	binop_and =
-		  V'binop_in' * (sp * Cg(C(P'&&'), 'op') * brksp * Vt'binop_in')^0
+		  V'binop_in' * (sp * C(P'&&') * brksp * V'binop_in')^0 / group(binary_t)
 		;
 
 	binop_in =
-		  P'(' * sp * Vt'arrayindex' * sp * P')' * sp * Cg(C(P'in' * noident), 'op') * brksp * V'name'
-		+ V'binop_match' * (sp * Cg(C(P'in' * noident), 'op') * brksp * V'name')^-1
+		  P'(' * sp * (V'arrayindex' / group { type = "explist" }) * sp * P')' * sp *
+		  C(P'in' * noident) * brksp * Vt'name' / group(binary_t)
+		+ V'binop_match' * (sp * C(P'in' * noident) * brksp * Vt'name')^-1 / group(binary_t)
 		;
 
 	binop_match =
-		  V'binop_comp' * (sp * Cg(C(P'!~' + P'~'), 'op') * brksp * Vt'binop_comp')^0
+		  V'binop_comp' * (sp * C(P'!~' + P'~') * brksp * V'binop_match')^-1 / group(binary_t)
 		;
 
 	binop_comp =
-		  V'binop_concat' * (sp * Cg(C(S'<>!=' * P'=' + S'<>'), 'op') * brksp * Vt'binop_concat')^0
+		  V'binop_concat' * (sp * C(S'<>!=' * P'=' + S'<>') * brksp * V'binop_comp')^-1 / group(binary_t)
 		;
 
 	binop_concat =
-		  V'binop_term' * (sp * Cg(C'', 'op') * brksp * Vt'binop_term')^0
+		  V'binop_term' * (brksp * V'binop_term')^0 / group { type = "concat" }
 		;
 
 	binop_term =
-		  V'binop_factor' * (sp * Cg(C(S'+-'), 'op') * brksp * Vt'binop_factor')^0
+		  V'binop_factor' * (sp * C(S'+-') * brksp * V'binop_term')^-1 / group(binary_t)
 		;
 
 	binop_factor =
-		  V'value' * (sp * Cg(C(S'*/%'), 'op') * brksp * V'value')^0
+		  V'value' * (sp * C(S'*/%') * brksp * V'value')^0 / group(binary_t)
 		;
 
 	-- TODO '-+a'   valid
@@ -447,16 +462,15 @@ local grammar = {
 
 	value =
 		  -- P'getline' * noident
-		  V'lvalue'
+		  Vt'lvalue'
 		+ Vt'number'
 		+ Vt'string'
-		+ Vt'name'
 		;
 
 	lvalue =
 		  -- TODO rule 'unary_field' may be left recursive
 		  -- V'unary_field'
-		  Ct(V'name' * (sp * V'subscript')^-1)
+		  V'name' * (sp * V'subscript')^-1
 		;
 
 	subscript =
