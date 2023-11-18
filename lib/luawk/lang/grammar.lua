@@ -351,54 +351,44 @@ local grammar = {
 		;
 
 	exp =
-		--  Ct(Cg(Cc'binop', 'type') * V'ternary' * sp * Cg(C(S'^%*/+-'^-1 * P'='), 'op') * sp * V'ternary')
-		-- + V'ternary'
-		  V'ternary'
+		  Ct(V'ternary' * (sp * Cg(C(S'^%*/+-'^-1 * P'='), 'op') * brksp * V'ternary')^0)
 		;
 
 	ternary =
-		  Ct(Cg(Cc'ternary', 'type') * V'binop_or' * sp * P'?' * sp * V'binop_or' * sp * P':' * sp * V'binop_or')
-		+ V'binop_or'
+		  Ct(V'binop_or' * sp * (P'?' * sp * V'exp' * sp * P':' * sp * V'exp')^-1)
 		;
 
 	binop_or =
-		  Ct(Cg(Cc'binop', 'type') * V'binop_and' * sp * Cg(C(P'||'), 'op') * brksp * V'binop_or')
-		+ V'binop_and'
+		  Ct(V'binop_and' * (sp * Cg(C(P'||'), 'op') * brksp * V'binop_and')^0)
 		;
 
 	binop_and =
-		  Ct(Cg(Cc'binop', 'type') * V'binop_in' * sp * Cg(C(P'&&'), 'op') * brksp * V'binop_and')
-		+ V'binop_in'
+		  Ct(V'binop_in' * (sp * Cg(C(P'&&'), 'op') * brksp * V'binop_in')^0)
 		;
 
 	binop_in =
-		  Ct(Cg(Cc'binop', 'type') * (P'(' * sp * Vt'arrayindex' * sp * P')' + Vt'binop_match') * sp * Cg(C(P'in'), 'op') * sp * Vt'name')
-		+ V'binop_match'
+		  Ct(P'(' * sp * Vt'arrayindex' * sp * P')' * sp * Cg(C(P'in' * noident), 'op') * brksp * V'name')
+		+ Ct(V'binop_match' * (sp * Cg(C(P'in' * noident), 'op') * brksp * V'name')^-1)
 		;
 
 	binop_match =
-		  Ct(Cg(Cc'binop', 'type') * V'binop_comp' * sp * Cg(C(P'!~' + P'~'), 'op') * sp * (Vt'regex' + V'binop_match'))
-		+ V'binop_comp'
+		  Ct(V'binop_comp' * (sp * Cg(C(P'!~' + P'~'), 'op') * brksp * V'binop_comp')^0)
 		;
 
 	binop_comp =
-		  Ct(V'binop_concat' * sp * Cg(C(S'<>!=' * P'=' + S'<>'), 'op') * (Cg(Cc'binop', 'type') * sp * V'binop_concat')^1)
-		+ V'binop_concat'
+		  Ct(V'binop_concat' * (sp * Cg(C(S'<>!=' * P'=' + S'<>'), 'op') * brksp * V'binop_concat')^0)
 		;
 
 	binop_concat =
-		  Ct(V'binop_term' * (sp * V'binop_term')^1 * Cg(Cc'binop', 'type') * Cg(Cc'', 'op'))
-		+ V'binop_term'
+		  Ct(V'binop_term' * (sp * Cg(C'', 'op') * brksp * V'binop_term')^0)
 		;
 
 	binop_term =
-		  Ct(V'binop_factor' * sp * Cg(C(S'+-'), 'op') * (Cg(Cc'binop', 'type') * sp * V'binop_factor'^1))
-		+ V'binop_factor'
+		  Ct(V'binop_factor' * (sp * Cg(C(S'+-'), 'op') * brksp * V'binop_factor')^0)
 		;
 
 	binop_factor =
-		  Ct(V'value' * sp * Cg(C(S'*/%'), 'op') * sp * V'value' * Cg(Cc'binop', 'type'))
-		+ V'value'
+		  Ct(V'value' * (sp * Cg(C(S'*/%'), 'op') * brksp * V'value')^0)
 		;
 
 	-- TODO '-+a'   valid
