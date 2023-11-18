@@ -110,10 +110,6 @@ local eol = (P';' + nl)^1
 local noident = -(locale.alnum + P'_')
 local shebang = P"#" * (P(1) - nl)^0 * nl
 
-local ternary_t = { type = "ternary" }
-local binary_t = { type = "binary" }
-local unary_t = { type = "unary" }
-
 local ufmt = {
 	["$"] = "R[%1]",
 	["!"] = "D(not(B(%1)))",
@@ -181,6 +177,9 @@ local function group(meta)
 		end
 	end
 end
+
+local group_unary = group { type = "unary" }
+local group_binary = group { type = "binary" }
 
 local function if_else(cond, stmt1, stmt2)
 	print("IF_ELSE", cond, stmt1, stmt2)
@@ -365,45 +364,45 @@ local grammar = {
 		;
 
 	exp =
-		  V'ternary' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'ternary')^-1 / group(binary_t)
+		  V'ternary' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'ternary')^-1 / group_binary
 		;
 
 	ternary =
-		  V'binop_or' * sp * (P'?' * sp * V'exp' * sp * P':' * sp * V'exp')^-1 / group(ternary_t)
+		  V'binary_or' * sp * (P'?' * sp * V'exp' * sp * P':' * sp * V'exp')^-1 / group { type = "ternary" }
 		;
 
-	binop_or =
-		  V'binop_and' * (sp * C(P'||') * brksp * V'binop_and')^0 / group(binary_t)
+	binary_or =
+		  V'binary_and' * (sp * C(P'||') * brksp * V'binary_and')^0 / group_binary
 		;
 
-	binop_and =
-		  V'binop_in' * (sp * C(P'&&') * brksp * V'binop_in')^0 / group(binary_t)
+	binary_and =
+		  V'binary_in' * (sp * C(P'&&') * brksp * V'binary_in')^0 / group_binary
 		;
 
-	binop_in =
-		  P'(' * sp * (V'arrayindex' / group { type = "explist" }) * sp * P')' * sp *
-		  C(P'in' * noident) * brksp * Vt'name' / group(binary_t)
-		+ V'binop_match' * (sp * C(P'in' * noident) * brksp * Vt'name')^-1 / group(binary_t)
+	binary_in =
+		  P'(' * sp * (V'arrayindex' / group { type = "arrayindex" }) * sp * P')' * sp *
+		  C(P'in' * noident) * brksp * Vt'name' / group_binary
+		+ V'binary_match' * (sp * C(P'in' * noident) * brksp * Vt'name')^-1 / group_binary
 		;
 
-	binop_match =
-		  V'binop_comp' * (sp * C(P'!~' + P'~') * brksp * V'binop_match')^-1 / group(binary_t)
+	binary_match =
+		  V'binary_comp' * (sp * C(P'!~' + P'~') * brksp * V'binary_match')^-1 / group_binary
 		;
 
-	binop_comp =
-		  V'binop_concat' * (sp * C(S'<>!=' * P'=' + S'<>') * brksp * V'binop_comp')^-1 / group(binary_t)
+	binary_comp =
+		  V'binary_concat' * (sp * C(S'<>!=' * P'=' + S'<>') * brksp * V'binary_comp')^-1 / group_binary
 		;
 
-	binop_concat =
-		  V'binop_term' * (brksp * V'binop_term')^0 / group { type = "concat" }
+	binary_concat =
+		  V'binary_term' * (brksp * V'binary_term')^0 / group { type = "concat" }
 		;
 
-	binop_term =
-		  V'binop_factor' * (sp * C(S'+-') * brksp * V'binop_term')^-1 / group(binary_t)
+	binary_term =
+		  V'binary_factor' * (sp * C(S'+-') * brksp * V'binary_term')^-1 / group_binary
 		;
 
-	binop_factor =
-		  V'value' * (sp * C(S'*/%') * brksp * V'value')^0 / group(binary_t)
+	binary_factor =
+		  V'unary_not' * (sp * C(S'*/%') * brksp * V'binary_factor')^0 / group_binary
 		;
 
 	-- TODO '-+a'   valid
@@ -413,29 +412,26 @@ local grammar = {
 	-- TODO '- -a' valid
 	-- TODO 'a^!a' valid
 	unary_not =
-		  C(P'!') * sp * V'unary_not' / eval_unary
+		  C(P'!') * sp * V'exp' / group_unary
 		+ V'unary_sign'
 		;
 
 	unary_sign =
-		  Cg(C(S'+-') * sp * Cf(V'unary_pow', eval_binary)) / eval_unary
-		+ V'unary_pow'
+		  (C(S'+-') * sp)^-1 * V'binary_pow' / group_unary
 		;
 
-	unary_pow =
-		  Cf(Cs(V'unary_pre') * sp * Cg(C(S'^') * sp * Cs(V'unary_pre'))^0, eval_binary)
+	binary_pow =
+		  V'unary_pre' * (sp * C(P'^') * brksp * V'binary_pow')^0 / group_binary
 		;
 
 	unary_pre =
-		  P'++' * sp * Cs(V'lvalue') / pre_increment
-		+ P'--' * sp * Cs(V'lvalue') / pre_decrement
+		  C(P'++' + P'--') * sp * Vt'lvalue' / group_unary
 		+ V'unary_post'
 		;
 
 	unary_post =
-		  Cs(V'lvalue') * P'++' / post_increment
-		+ Cs(V'lvalue') * P'--' / post_decrement
-		+ V'unary_field'
+		  Vt'lvalue' * sp * C(P'++' + P'--') / group { type = "unary_post" }
+		+ V'value'
 		;
 
 	unary_field =
@@ -474,7 +470,7 @@ local grammar = {
 		;
 
 	subscript =
-		  P'[' * sp * V'arrayindex' * sp * P']'
+		  P'[' * sp * (V'arrayindex' / group { type = "arrayindex" }) * sp * P']'
 		;
 
 	arrayindex =
