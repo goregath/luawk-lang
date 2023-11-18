@@ -98,9 +98,8 @@ local Cc = lpeg.Cc
 local Cf = lpeg.Cf
 local Cg = lpeg.Cg
 local Cs = lpeg.Cs
-local Ct = lpeg.Ct
-
-local Vt = function(name) return Ct(Cg(Cc(name), 'rule') * V(name)) end
+local Ct = function(p) print(p) return lpeg.Ct(Cg(lpeg.Cp(), 'pos') * p) end
+local Vt = function(name) print(name) return Ct(V(name)) end
 
 local nl = P'\n'
 local brk = P'\\\n'
@@ -155,7 +154,7 @@ local function oct2dec(s)
 end
 
 local function awkregexunquote(s)
-	return string.format("%q", s):gsub("\\\\", "\\"):gsub("\\/", "/")
+	return s:gsub("\\/", "/")
 end
 
 local function concat(...)
@@ -352,50 +351,54 @@ local grammar = {
 		;
 
 	exp =
-		  Ct(Cg(Cc'binop', 'type') * V'ternary' * sp * Cg(C(S'^%*/+-'^-1 * P'='), 'op') * sp * V'ternary')
-		+ V'ternary'
+		--  Ct(Cg(Cc'binop', 'type') * V'ternary' * sp * Cg(C(S'^%*/+-'^-1 * P'='), 'op') * sp * V'ternary')
+		-- + V'ternary'
+		  V'ternary'
 		;
 
 	ternary =
-		  Ct(Cg(Cc'ternary', 'type') * V'binop_or' * sp * P'?' * sp * Vt'exp' * sp * P':' * sp * Vt'exp')
+		  Ct(Cg(Cc'ternary', 'type') * V'binop_or' * sp * P'?' * sp * V'binop_or' * sp * P':' * sp * V'binop_or')
 		+ V'binop_or'
 		;
 
 	binop_or =
-		  Ct(Cg(Cc'binop', 'type') * V'binop_and' * sp * (Cg(C(P'||'), 'op') * brksp * V'binop_or'))
+		  Ct(Cg(Cc'binop', 'type') * V'binop_and' * sp * Cg(C(P'||'), 'op') * brksp * V'binop_or')
 		+ V'binop_and'
 		;
 
 	binop_and =
-		  Ct(Cg(Cc'binop', 'type') * V'value' * sp * (Cg(C(P'&&'), 'op') * brksp * V'value'))
-		+ V'value'
-		  -- Cf(V'binop_in' * sp * Cg(C(P'&&') * brksp * V'binop_in')^0, eval_binary)
+		  Ct(Cg(Cc'binop', 'type') * V'binop_in' * sp * Cg(C(P'&&'), 'op') * brksp * V'binop_and')
+		+ V'binop_in'
 		;
 
 	binop_in =
-		  Cf((P'(' * sp * V'arrayindex' * sp * P')' + V'binop_match') * sp * Cg(C(P'in') * sp * Cs(V'name')), eval_binary)
+		  Ct(Cg(Cc'binop', 'type') * (P'(' * sp * Vt'arrayindex' * sp * P')' + Vt'binop_match') * sp * Cg(C(P'in'), 'op') * sp * Vt'name')
 		+ V'binop_match'
 		;
 
 	binop_match =
-		  Cf(V'binop_comp' * sp * Cg(C(P'!~' + P'~') * sp * (V'regex' + V'binop_comp'))^0, eval_binary)
+		  Ct(Cg(Cc'binop', 'type') * V'binop_comp' * sp * Cg(C(P'!~' + P'~'), 'op') * sp * (Vt'regex' + V'binop_match'))
+		+ V'binop_comp'
 		;
 
 	binop_comp =
-		  Cf(V'binop_concat' * sp * Cg(C(S'<>!=' * P'=' + S'<>') * sp * V'binop_concat')^0, eval_binary)
+		  Ct(V'binop_concat' * sp * Cg(C(S'<>!=' * P'=' + S'<>'), 'op') * (Cg(Cc'binop', 'type') * sp * V'binop_concat')^1)
+		+ V'binop_concat'
 		;
 
 	binop_concat =
-		  V'binop_term' * (sp * V'binop_term')^1 / eval_concat
+		  Ct(V'binop_term' * (sp * V'binop_term')^1 * Cg(Cc'binop', 'type') * Cg(Cc'', 'op'))
 		+ V'binop_term'
 		;
 
 	binop_term =
-		  Cf(V'binop_factor' * sp * Cg(C(S'+-') * sp * V'binop_factor')^0, eval_binary)
+		  Ct(V'binop_factor' * sp * Cg(C(S'+-'), 'op') * (Cg(Cc'binop', 'type') * sp * V'binop_factor'^1))
+		+ V'binop_factor'
 		;
 
 	binop_factor =
-		  Cf(V'unary_not' * sp * Cg(C(S'*/%') * sp * V'unary_not')^0, eval_binary)
+		  Ct(V'value' * sp * Cg(C(S'*/%'), 'op') * sp * V'value' * Cg(Cc'binop', 'type'))
+		+ V'value'
 		;
 
 	-- TODO '-+a'   valid
@@ -515,7 +518,8 @@ local grammar = {
 		;
 
 	regex =
-		  '/' * Cs((P'\\' * P(1) + (1 - P'/'))^0) * '/' / awkregexunquote
+		  Cg(Cc'string', 'type') *
+		  Cs('/' * Cs((P'\\' * P(1) + (1 - P'/'))^0) * '/' / awkregexunquote)
 		;
 
 	name =
@@ -538,11 +542,10 @@ local grammar = {
 		;
 
 	string =
-		  Cg(Cc'string', 'type') *
-		  P'"' * ('\\' * P(1) + (P(1) - '"'))^0 * P'"'
-		+ P"'" * ("\\" * P(1) + (P(1) - "'"))^0 * P"'"
-		-- + V'regex' -- / 'match(_ENV[0],%1)'
-		;
+		  Cg(Cc'string', 'type') * (
+		  P'"' * C('\\' * P(1) + (P(1) - '"')^0) * P'"'
+		+ P"'" * C("\\" * P(1) + (P(1) - "'")^0) * P"'"
+		);
 
 	comment =
 		  '#' * (P(1) - nl)^0 * (nl + -P(1))
