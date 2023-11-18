@@ -351,44 +351,44 @@ local grammar = {
 		;
 
 	exp =
-		  Ct(V'ternary' * (sp * Cg(C(S'^%*/+-'^-1 * P'='), 'op') * brksp * V'ternary')^0)
+		  V'ternary' * (sp * Cg(C(S'^%*/+-'^-1 * P'='), 'op') * brksp * Vt'ternary')^0
 		;
 
 	ternary =
-		  Ct(V'binop_or' * sp * (P'?' * sp * V'exp' * sp * P':' * sp * V'exp')^-1)
+		  V'binop_or' * sp * (P'?' * sp * Vt'exp' * sp * P':' * sp * Vt'exp')^-1
 		;
 
 	binop_or =
-		  Ct(V'binop_and' * (sp * Cg(C(P'||'), 'op') * brksp * V'binop_and')^0)
+		  V'binop_and' * (sp * Cg(C(P'||'), 'op') * brksp * Vt'binop_and')^0
 		;
 
 	binop_and =
-		  Ct(V'binop_in' * (sp * Cg(C(P'&&'), 'op') * brksp * V'binop_in')^0)
+		  V'binop_in' * (sp * Cg(C(P'&&'), 'op') * brksp * Vt'binop_in')^0
 		;
 
 	binop_in =
-		  Ct(P'(' * sp * Vt'arrayindex' * sp * P')' * sp * Cg(C(P'in' * noident), 'op') * brksp * V'name')
-		+ Ct(V'binop_match' * (sp * Cg(C(P'in' * noident), 'op') * brksp * V'name')^-1)
+		  P'(' * sp * Vt'arrayindex' * sp * P')' * sp * Cg(C(P'in' * noident), 'op') * brksp * V'name'
+		+ V'binop_match' * (sp * Cg(C(P'in' * noident), 'op') * brksp * V'name')^-1
 		;
 
 	binop_match =
-		  Ct(V'binop_comp' * (sp * Cg(C(P'!~' + P'~'), 'op') * brksp * V'binop_comp')^0)
+		  V'binop_comp' * (sp * Cg(C(P'!~' + P'~'), 'op') * brksp * Vt'binop_comp')^0
 		;
 
 	binop_comp =
-		  Ct(V'binop_concat' * (sp * Cg(C(S'<>!=' * P'=' + S'<>'), 'op') * brksp * V'binop_concat')^0)
+		  V'binop_concat' * (sp * Cg(C(S'<>!=' * P'=' + S'<>'), 'op') * brksp * Vt'binop_concat')^0
 		;
 
 	binop_concat =
-		  Ct(V'binop_term' * (sp * Cg(C'', 'op') * brksp * V'binop_term')^0)
+		  V'binop_term' * (sp * Cg(C'', 'op') * brksp * Vt'binop_term')^0
 		;
 
 	binop_term =
-		  Ct(V'binop_factor' * (sp * Cg(C(S'+-'), 'op') * brksp * V'binop_factor')^0)
+		  V'binop_factor' * (sp * Cg(C(S'+-'), 'op') * brksp * Vt'binop_factor')^0
 		;
 
 	binop_factor =
-		  Ct(V'value' * (sp * Cg(C(S'*/%'), 'op') * brksp * V'value')^0)
+		  V'value' * (sp * Cg(C(S'*/%'), 'op') * brksp * V'value')^0
 		;
 
 	-- TODO '-+a'   valid
