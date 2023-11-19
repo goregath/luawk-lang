@@ -402,7 +402,7 @@ local grammar = {
 		;
 
 	binary_factor =
-		  V'unary_not' * (sp * C(S'*/%') * brksp * V'binary_factor')^0 / group_binary
+		  V'unary_sign' * (sp * C(S'*/%') * brksp * V'unary_sign')^0 / group_binary
 		;
 
 	-- TODO '-+a'   valid
@@ -411,13 +411,16 @@ local grammar = {
 	-- TODO '!+!-a' valid
 	-- TODO '- -a' valid
 	-- TODO 'a^!a' valid
-	unary_not =
-		  C(P'!') * sp * V'exp' / group_unary
-		+ V'unary_sign'
-		;
+	-- unary_not =
+	-- 	  C(P'!') * sp * V'unary_not' / group_unary
+	-- 	+ V'unary_sign'
+	-- 	;
 
 	unary_sign =
-		  (C(P'+' * -P'+' + P'-' * -P'-') * sp)^-1 * V'binary_pow' / group_unary
+		  (C(P'!') * sp) * V'unary_sign' / group_unary
+		+ (C(P'+' * -P'+') * sp) * V'unary_sign' / group_unary
+		+ (C(P'-' * -P'-') * sp) * V'unary_sign' / group_unary
+		+ V'binary_pow'
 		;
 
 	binary_pow =
@@ -431,12 +434,14 @@ local grammar = {
 
 	unary_post =
 		  Vt'lvalue' * sp * C(P'++' + P'--') / group { type = "unary_post" }
-		+ V'value'
+		+ V'unary_field'
 		;
 
 	unary_field =
-		  Cg(C(P'$') * sp * Cs(V'unary_field')) / eval_unary
-		+ V'group'
+		  C(P'$') * sp * V'unary_field' / group_unary
+		+ V'value'
+		--   Cg(C(P'$') * sp * Cs(V'unary_field')) / eval_unary
+		-- + V'group'
 		;
 
 	group =
