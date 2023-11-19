@@ -417,7 +417,7 @@ local grammar = {
 		;
 
 	unary_sign =
-		  (C(S'+-') * sp)^-1 * V'binary_pow' / group_unary
+		  (C(P'+' * -P'+' + P'-' * -P'-') * sp)^-1 * V'binary_pow' / group_unary
 		;
 
 	binary_pow =
