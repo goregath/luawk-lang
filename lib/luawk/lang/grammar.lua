@@ -181,6 +181,12 @@ end
 local group_unary = group { type = "unary" }
 local group_binary = group { type = "binary" }
 
+local function fold_binary(...)
+	if select('#', ...) <= 2 then return end
+	local o, r = select(-2, ...)
+	return group_binary(fold_binary(select(2, ...)), o, r)
+end
+
 local function if_else(cond, stmt1, stmt2)
 	print("IF_ELSE", cond, stmt1, stmt2)
 	if stmt2 then
@@ -364,7 +370,7 @@ local grammar = {
 		;
 
 	exp =
-		  V'ternary' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'ternary')^-1 / group_binary
+		  V'ternary' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'exp')^0 / group_binary
 		;
 
 	ternary =
@@ -372,11 +378,11 @@ local grammar = {
 		;
 
 	binary_or =
-		  V'binary_and' * (sp * C(P'||') * brksp * V'binary_and')^0 / group_binary
+		  V'binary_and' * (sp * C(P'||') * brksp * V'binary_or')^0 / group_binary
 		;
 
 	binary_and =
-		  V'binary_in' * (sp * C(P'&&') * brksp * V'binary_in')^0 / group_binary
+		  V'binary_in' * (sp * C(P'&&') * brksp * V'binary_and')^0 / group_binary
 		;
 
 	binary_in =
@@ -398,11 +404,12 @@ local grammar = {
 		;
 
 	binary_term =
-		  V'binary_factor' * (sp * C(S'+-') * brksp * V'binary_term')^-1 / group_binary
+		  -- V'binary_factor' * sp * (C(S'+-') * brksp * V'binary_factor')^1 / fold_binary
+		  V'binary_factor' * sp * (C(S'+-') * brksp * V'binary_factor')^0 / group_binary
 		;
 
 	binary_factor =
-		  V'unary_sign' * (sp * C(S'*/%') * brksp * V'unary_sign')^0 / group_binary
+		  V'binary_pow' * (sp * C(S'*/%') * brksp * V'binary_factor')^0 / group_binary
 		;
 
 	-- TODO '-+a'   valid
@@ -411,42 +418,27 @@ local grammar = {
 	-- TODO '!+!-a' valid
 	-- TODO '- -a' valid
 	-- TODO 'a^!a' valid
-	-- unary_not =
-	-- 	  C(P'!') * sp * V'unary_not' / group_unary
-	-- 	+ V'unary_sign'
-	-- 	;
 
 	unary_sign =
-		  (C(P'!') * sp) * V'unary_sign' / group_unary
-		+ (C(P'+' * -P'+') * sp) * V'unary_sign' / group_unary
-		+ (C(P'-' * -P'-') * sp) * V'unary_sign' / group_unary
-		+ V'binary_pow'
+		  (C(P'!' + (P'+' * -P'+') + (P'-' * -P'-')) * sp) * V'binary_pow' / group_unary
 		;
 
 	binary_pow =
-		  V'unary_pre' * (sp * C(P'^') * brksp * V'binary_pow')^0 / group_binary
+		  (V'unary_sign' + V'unary_terminal') * (sp * C(P'^') * brksp * (V'binary_pow'))^-1 / group_binary
 		;
 
-	unary_pre =
-		  C(P'++' + P'--') * sp * Vt'lvalue' / group_unary
-		+ V'unary_post'
-		;
 
-	unary_post =
-		  Vt'lvalue' * sp * C(P'++' + P'--') / group { type = "unary_post" }
-		+ V'unary_field'
-		;
-
-	unary_field =
-		  C(P'$') * sp * V'unary_field' / group_unary
+	unary_terminal =
+		  C(P'$') * sp * V'unary_terminal' / group_unary
+		+ C(P'++' + P'--') * sp * Vt'lvalue' / group_unary
+		+ Vt'lvalue' * sp * C(P'++' + P'--') / group { type = "unary_post" }
+		+ V'unary_sign'
 		+ V'value'
-		--   Cg(C(P'$') * sp * Cs(V'unary_field')) / eval_unary
-		-- + V'group'
 		;
 
 	group =
-		  P'(' * sp * Cs(V'exp') * sp * P')' -- / '(%1)'
-		+ Cs(V'tier00')
+		  P'(' * sp * V'exp' * sp * P')' -- / '(%1)'
+		+ V'value'
 		;
 
 	tier00 =
