@@ -433,7 +433,7 @@ local grammar = {
 		+ C(P'++' + P'--') * sp * Vt'lvalue' / group_unary
 		+ Vt'lvalue' * sp * C(P'++' + P'--') / group { type = "unary_post" }
 		+ V'unary_sign'
-		+ V'value'
+		+ V'group'
 		;
 
 	group =
