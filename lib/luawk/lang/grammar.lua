@@ -434,16 +434,18 @@ local grammar = {
 		;
 
 	binary_pow =
-		  (V'unary_sign' + V'unary_terminal') * (sp * C(P'^') * brksp * (V'binary_pow'))^-1 / group_binary
+		  (V'unary_sign' + V'unary_pp') * (sp * C(P'^') * brksp * (V'binary_pow'))^-1 / group_binary
 		;
 
-
-	unary_terminal =
-		  C(P'$') * sp * V'unary_terminal' / group_unary
-		+ Vt'lvalue' * sp * C(P'++' + P'--') / group "unary_post"
-		+ C(P'++' + P'--') * sp * Vt'lvalue' / group_unary
+	unary_pp =
+		  C(P'++' + P'--') * sp * V'lvalue' / group_unary
+		+ V'lvalue' * (sp * C(P'++' + P'--'))^-1 / group "unary_post"
 		+ V'unary_sign'
 		+ V'group'
+		;
+
+	unary_field =
+		  C(P'$') * sp * V'group' / group_unary
 		;
 
 	group =
@@ -466,10 +468,7 @@ local grammar = {
 		;
 
 	lvalue =
-		  -- TODO rule 'unary_field' may be left recursive
-		  -- V'unary_field'
-		  -- TODO $NF=1 and $(NF)=1
-		  C(P'$') * sp * V'ternary' / group_unary
+		  V'unary_field'
 		+ Ct(V'name' * (sp * V'subscript')^-1)
 		;
 
