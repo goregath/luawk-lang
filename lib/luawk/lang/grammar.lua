@@ -168,6 +168,20 @@ local function format(fmt, ...)
 	end)
 end
 
+local function _group_binary(a)
+	local r = table.remove(a)
+	local o = table.remove(a)
+	return { type = "binary", #a > 1 and _group_binary(a) or a[1], o, r }
+end
+
+local function group_binary(c, ...)
+	if ... then
+		return _group_binary({ c, ... })
+	elseif c then
+		return c
+	end
+end
+
 local function group(type)
 	return function(c, ...)
 		if ... then
@@ -175,14 +189,6 @@ local function group(type)
 		else
 			return c
 		end
-	end
-end
-
-local function group_binary(c, ...)
-	if ... then
-		return { type = "binary", c, ... }
-	else
-		return c
 	end
 end
 
@@ -334,6 +340,10 @@ local grammar = {
 		  V'value' * (sp * P',' * sp * V'value')^0 / group "valuelist"
 		;
 
+	arrayindex =
+		  V'exp' * (sp * P',' * brksp * V'exp')^0 / group "arrayindex"
+		;
+
 	chunk =
 		  V'stmt' * (sp * eol * sp * V'stmt')^0 * (sp * eol)^0
 		;
@@ -380,25 +390,24 @@ local grammar = {
 		;
 
 	binary_or =
-		  V'binary_and' * (sp * C(P'||') * brksp * V'binary_or')^0 / group_binary
+		  V'binary_and' * (sp * C(P'||') * brksp * V'binary_and')^0 / group_binary
 		;
 
 	binary_and =
-		  V'binary_in' * (sp * C(P'&&') * brksp * V'binary_and')^0 / group_binary
+		  V'binary_in' * (sp * C(P'&&') * brksp * V'binary_in')^0 / group_binary
 		;
 
 	binary_in =
-		  P'(' * sp * (V'arrayindex' / group "arrayindex") * sp * P')' * sp *
-		  C(P'in' * noident) * brksp * Vt'name' / group_binary
-		+ V'binary_match' * (sp * C(P'in' * noident) * brksp * Vt'name')^-1 / group_binary
+		  P'(' * sp * V'arrayindex' * sp * P')' * (sp * C(P'in' * noident) * brksp * Vt'name')^1 / group_binary
+		+ V'binary_match' * (sp * C(P'in' * noident) * brksp * Vt'name')^0 / group_binary
 		;
 
 	binary_match =
-		  V'binary_comp' * (sp * C(P'!~' + P'~') * brksp * V'binary_match')^-1 / group_binary
+		  V'binary_comp' * (sp * C(P'!~' + P'~') * brksp * V'binary_comp')^0 / group_binary
 		;
 
 	binary_comp =
-		  V'binary_concat' * (sp * C(S'<>!=' * P'=' + S'<>') * brksp * V'binary_comp')^-1 / group_binary
+		  V'binary_concat' * (sp * C(S'<>!=' * P'=' + S'<>') * brksp * V'binary_concat')^-1 / group_binary
 		;
 
 	binary_concat =
@@ -406,12 +415,11 @@ local grammar = {
 		;
 
 	binary_term =
-		  -- V'binary_factor' * sp * (C(S'+-') * brksp * V'binary_factor')^1 / fold_binary
 		  V'binary_factor' * sp * (C(S'+-') * brksp * V'binary_factor')^0 / group_binary
 		;
 
 	binary_factor =
-		  V'binary_pow' * (sp * C(S'*/%') * brksp * V'binary_factor')^0 / group_binary
+		  V'binary_pow' * (sp * C(S'*/%') * brksp * V'binary_pow')^0 / group_binary
 		;
 
 	-- TODO '-+a'   valid
@@ -466,11 +474,7 @@ local grammar = {
 		;
 
 	subscript =
-		  P'[' * sp * (V'arrayindex' / group "arrayindex") * sp * P']'
-		;
-
-	arrayindex =
-		  Cg(V'exp' * (sp * P',' * brksp * V'exp')^0)
+		  P'[' * sp * V'arrayindex' * sp * P']'
 		;
 
 	output_redirection =
