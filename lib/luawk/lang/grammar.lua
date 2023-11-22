@@ -168,24 +168,25 @@ local function format(fmt, ...)
 	end)
 end
 
-local function group(meta)
+local function group(type)
 	return function(c, ...)
 		if ... then
-			return setmetatable({ type = meta.type, c, ... }, { __index = meta })
+			return { type = type, c, ... }
 		else
 			return c
 		end
 	end
 end
 
-local group_unary = group { type = "unary" }
-local group_binary = group { type = "binary" }
-
-local function fold_binary(...)
-	if select('#', ...) <= 2 then return end
-	local o, r = select(-2, ...)
-	return group_binary(fold_binary(select(2, ...)), o, r)
+local function group_binary(c, ...)
+	if ... then
+		return { type = "binary", c, ... }
+	else
+		return c
+	end
 end
+
+local group_unary = group "unary"
 
 local function if_else(cond, stmt1, stmt2)
 	print("IF_ELSE", cond, stmt1, stmt2)
@@ -322,15 +323,15 @@ local grammar = {
 		;
 
 	explist =
-		  V'exp' * (sp * P',' * brksp * V'exp')^0 / group { type = "explist" }
+		  V'exp' * (sp * P',' * brksp * V'exp')^0 / group "explist"
 		;
 
 	namelist =
-		  V'name' * (sp * P',' * sp * V'name')^0 / group { type = "namelist" }
+		  V'name' * (sp * P',' * sp * V'name')^0 / group "namelist"
 		;
 
 	valuelist =
-		  V'value' * (sp * P',' * sp * V'value')^0 / group { type = "valuelist" }
+		  V'value' * (sp * P',' * sp * V'value')^0 / group "valuelist"
 		;
 
 	chunk =
@@ -370,12 +371,12 @@ local grammar = {
 		;
 
 	exp =
-		  Vt'lvalue' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'exp')^1 / group_binary
+		  V'lvalue' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'exp') / group_binary
 		+ V'ternary'
 		;
 
 	ternary =
-		  V'binary_or' * sp * (P'?' * sp * V'exp' * sp * P':' * sp * V'exp')^-1 / group { type = "ternary" }
+		  V'binary_or' * sp * (P'?' * sp * V'exp' * sp * P':' * sp * V'exp')^-1 / group "ternary"
 		;
 
 	binary_or =
@@ -387,7 +388,7 @@ local grammar = {
 		;
 
 	binary_in =
-		  P'(' * sp * (V'arrayindex' / group { type = "arrayindex" }) * sp * P')' * sp *
+		  P'(' * sp * (V'arrayindex' / group "arrayindex") * sp * P')' * sp *
 		  C(P'in' * noident) * brksp * Vt'name' / group_binary
 		+ V'binary_match' * (sp * C(P'in' * noident) * brksp * Vt'name')^-1 / group_binary
 		;
@@ -401,7 +402,7 @@ local grammar = {
 		;
 
 	binary_concat =
-		  V'binary_term' * (brksp * V'binary_term')^0 / group { type = "concat" }
+		  V'binary_term' * (brksp * V'binary_term')^0 / group "concat"
 		;
 
 	binary_term =
@@ -431,7 +432,7 @@ local grammar = {
 
 	unary_terminal =
 		  C(P'$') * sp * V'unary_terminal' / group_unary
-		+ Vt'lvalue' * sp * C(P'++' + P'--') / group { type = "unary_post" }
+		+ Vt'lvalue' * sp * C(P'++' + P'--') / group "unary_post"
 		+ C(P'++' + P'--') * sp * Vt'lvalue' / group_unary
 		+ V'unary_sign'
 		+ V'group'
@@ -439,30 +440,33 @@ local grammar = {
 
 	group =
 		  P'(' * sp * V'exp' * sp * P')'
-		+ V'func_calls'
+		+ V'func_call'
 		;
 
-	func_calls =
-		  Vt'builtin_func' * noident * (sp * P'(' * sp * (V'explist')^-1 * sp * P')')^-1 / group { type = "function" }
-		+ Vt'name' * noident * P'(' * sp * V'explist'^-1 * sp * P')' / group { type = "function" }
+	func_call =
+		  Vt'builtin_func' * noident * (sp * P'(' * sp * (V'explist')^-1 * sp * P')')^-1 / group "function"
+		+ Vt'name' * noident * P'(' * sp * V'explist'^-1 * sp * P')' / group "function"
 		+ V'value'
 		;
 
 	value =
 		  -- P'getline' * noident
-		  Vt'lvalue'
+		  V'lvalue'
 		+ Vt'number'
 		+ Vt'string'
+		+ Vt'regex'
 		;
 
 	lvalue =
 		  -- TODO rule 'unary_field' may be left recursive
 		  -- V'unary_field'
-		  V'name' * (sp * V'subscript')^-1
+		  -- TODO $NF=1 and $(NF)=1
+		  C(P'$') * sp * V'ternary' / group_unary
+		+ Ct(V'name' * (sp * V'subscript')^-1)
 		;
 
 	subscript =
-		  P'[' * sp * (V'arrayindex' / group { type = "arrayindex" }) * sp * P']'
+		  P'[' * sp * (V'arrayindex' / group "arrayindex") * sp * P']'
 		;
 
 	arrayindex =
@@ -505,12 +509,8 @@ local grammar = {
 		+ P'printf' * noident
 		;
 
-	fieldref =
-		  P'$' * sp * Cs(V'value') -- / '(_ENV)[%1]'
-		;
-
 	regex =
-		  Cg(Cc'string', 'type') *
+		  Cg(Cc'regex', 'type') *
 		  Cs('/' * Cs((P'\\' * P(1) + (1 - P'/'))^0) * '/' / awkregexunquote)
 		;
 
@@ -581,9 +581,6 @@ local grammar = {
 		+ P'until'
 		+ P'and'
 		+ P'or'
-		+ lpeg.Cmt(locale.alpha^1 * noident, function(m)
-			return _ENV[m] and true
-		end)
 		;
 
 };
