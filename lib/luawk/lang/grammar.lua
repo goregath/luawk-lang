@@ -322,15 +322,15 @@ local grammar = {
 		;
 
 	explist =
-		  V'exp' * (sp * P',' * brksp * V'exp')^0
+		  V'exp' * (sp * P',' * brksp * V'exp')^0 / group { type = "explist" }
 		;
 
 	namelist =
-		  V'name' * (sp * P',' * sp * V'name')^0
+		  V'name' * (sp * P',' * sp * V'name')^0 / group { type = "namelist" }
 		;
 
 	valuelist =
-		  V'value' * (sp * P',' * sp * V'value')^0
+		  V'value' * (sp * P',' * sp * V'value')^0 / group { type = "valuelist" }
 		;
 
 	chunk =
@@ -370,7 +370,8 @@ local grammar = {
 		;
 
 	exp =
-		  V'ternary' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'exp')^0 / group_binary
+		  Vt'lvalue' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'exp')^1 / group_binary
+		+ V'ternary'
 		;
 
 	ternary =
@@ -430,26 +431,20 @@ local grammar = {
 
 	unary_terminal =
 		  C(P'$') * sp * V'unary_terminal' / group_unary
-		+ C(P'++' + P'--') * sp * Vt'lvalue' / group_unary
 		+ Vt'lvalue' * sp * C(P'++' + P'--') / group { type = "unary_post" }
+		+ C(P'++' + P'--') * sp * Vt'lvalue' / group_unary
 		+ V'unary_sign'
 		+ V'group'
 		;
 
 	group =
-		  P'(' * sp * V'exp' * sp * P')' -- / '(%1)'
-		+ V'value'
+		  P'(' * sp * V'exp' * sp * P')'
+		+ V'func_calls'
 		;
 
-	tier00 =
-		--   P'(' * sp * V'exp' * sp * P')'
-		-- + Cs(V'lvalue') * P'++' / post_increment
-		-- + Cs(V'lvalue') * P'--' / post_decrement
-		-- + P'++' * Cs(V'lvalue') / pre_increment
-		-- + P'--' * Cs(V'lvalue') / pre_decrement
-		  V'builtin_func' * noident * sp * P'(' * sp * V'explist'^0 * sp * P')'
-		+ V'builtin_func' * noident -- / '%0()'
-		+ V'name' * noident * P'(' * sp * V'explist'^0 * sp * P')'
+	func_calls =
+		  Vt'builtin_func' * noident * (sp * P'(' * sp * (V'explist')^-1 * sp * P')')^-1 / group { type = "function" }
+		+ Vt'name' * noident * P'(' * sp * V'explist'^-1 * sp * P')' / group { type = "function" }
 		+ V'value'
 		;
 
@@ -549,6 +544,7 @@ local grammar = {
 		;
 
 	builtin_func =
+		  Cg(Cc'builtin', 'type') * C(
 		  P'atan2'
 		+ P'cos'
 		+ P'sin'
@@ -570,7 +566,7 @@ local grammar = {
 		+ P'toupper'
 		+ P'close'
 		+ P'system'
-		;
+		);
 
 	luareserved =
 		  P'elseif'
