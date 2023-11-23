@@ -201,6 +201,12 @@ local function group_binary(c, ...)
 	end
 end
 
+local function wrap(type)
+	return function(...)
+		return { type = type, ... }
+	end
+end
+
 local function group(type)
 	return function(c, ...)
 		if ... then
@@ -340,11 +346,7 @@ local grammar = {
 		;
 
 	action =
-		  V'actionblock'
-		;
-
-	actionblock =
-		  Cg('{' * brksp * Cs(V'chunk'^-1) * sp * '}')
+		  P'{' * brksp * (sp * eol)^0 * (V'chunk' + V'void') * sp * P'}' / wrap "action"
 		;
 
 	explist =
@@ -364,19 +366,17 @@ local grammar = {
 		;
 
 	chunk =
-		  V'stmt' * (sp * eol * sp * V'stmt')^0 * (sp * eol)^0
+		  V'stmt' * (sp * V'stmt')^0
 		;
 
 	simple_stmt =
-		--   Kdelete * sp * Cs(V'name') * (P'[' * sp * Cs(V'arrayindex') * sp * P']')^-1
-		--   / delete
+		  Kdelete * sp * Vt'name'* (P'[' * sp * V'arrayindex' * sp * P']')^-1
+		  / wrap "delete"
 		-- + C(P'print' * P'f'^-1) * noident * sp * P'(' * sp * Cs(V'explist'^0) * sp * P')' * (sp * V'output_redirection')^-1
 		--   / print_special
 		-- + C(P'print' * P'f'^-1) * noident * sp * Cs(V'explist'^0) * (sp * V'output_redirection')^-1
 		--   / print_special
-		-- + V'exp'
-		-- + sp * P';'
-		  V'exp'
+		+ V'exp'
 		;
 
 	stmt =
@@ -387,15 +387,20 @@ local grammar = {
 		+ Kdo * brksp * V'stmt' * sp * Kwhile * sp * P'(' * sp * V'exp' * sp * P')'
 		  / group "do_while"
 		+ Kfor * sp * P'(' * sp * (Vt'name' * sp * C(Kin) * sp * Vt'name') / group_binary * sp * P')' * brksp * V'stmt'
-		  / group "for_in"
-		-- + Kfor * sp * P'(' * sp *
-		--   Cs(V'simple_stmt') * sp * P';' * sp *
-		--   Cs(V'exp') * sp * P';' * sp *
-		--   Cs(V'simple_stmt') * sp * P')' * brksp * Cs(V'stmt'^-1)
-		--   / generic_for
+		  / wrap "for_in"
+		+ Kfor * sp * P'(' * sp *
+		  (V'simple_stmt' + V'void') * sp * P';' * sp *
+		  (V'exp' + V'void') * sp * P';' * sp *
+		  (V'simple_stmt' + V'void') * sp * P')' * brksp * V'stmt'
+		  / group "for"
 		-- + Cs(V'exp') * sp * P'|' * sp * Kgetline / getline_process
-		-- + V'action'
+		+ V'action'
 		+ V'simple_stmt'
+		+ eol * V'void'
+		;
+
+	void =
+		  Cc { type = "void" }
 		;
 
 	exp =
@@ -429,7 +434,7 @@ local grammar = {
 		;
 
 	binary_concat =
-		  V'binary_term' * (brksp * V'binary_term')^0 / group "concat"
+		  V'binary_term' * (sp * V'binary_term')^0 / group "concat"
 		;
 
 	binary_term =
