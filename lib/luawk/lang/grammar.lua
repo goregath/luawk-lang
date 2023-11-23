@@ -110,6 +110,25 @@ local eol = (P';' + nl)^1
 local noident = -(locale.alnum + P'_')
 local shebang = P"#" * (P(1) - nl)^0 * nl
 
+local Kbegin = P'BEGIN' * noident
+local Kbreak = P'break' * noident
+local Kcontinue = P'continue' * noident
+local Kdelete = P'delete' * noident
+local Kdo = P'do' * noident
+local Kelse = P'else' * noident
+local Kend = P'END' * noident
+local Kexit = P'exit' * noident
+local Kfor = P'for' * noident
+local Kfunction = P'function' * noident
+local Kgetline = P'getline' * noident
+local Kif = P'if' * noident
+local Kin = P'in' * noident
+local Knext = P'next' * noident
+local Kprint = P'print' * noident
+local Kprintf = P'printf' * noident
+local Kreturn = P'return' * noident
+local Kwhile = P'while' * noident
+
 local ufmt = {
 	["$"] = "R[%1]",
 	["!"] = "D(not(B(%1)))",
@@ -295,7 +314,7 @@ local grammar = {
 	-- 	* ( ( V'rule' / table.insert * (blank + eol)^0 )^1 )^0 * sp * -1
 	-- );
 
-	V'exp' / group();
+	V'stmt';
 
 	globals =
 		  Cb('program') * Cc('BEGIN') / rawget * Cs(V'func_decl')
@@ -349,34 +368,33 @@ local grammar = {
 		;
 
 	simple_stmt =
-		  P'delete' * noident * sp * Cs(V'name') * (P'[' * sp * Cs(V'arrayindex') * sp * P']')^-1
-		  / delete
-		+ C(P'print' * P'f'^-1) * noident * sp * P'(' * sp * Cs(V'explist'^0) * sp * P')' * (sp * V'output_redirection')^-1
-		  / print_special
-		+ C(P'print' * P'f'^-1) * noident * sp * Cs(V'explist'^0) * (sp * V'output_redirection')^-1
-		  / print_special
-		+ V'exp'
-		+ sp * P';'
+		--   Kdelete * sp * Cs(V'name') * (P'[' * sp * Cs(V'arrayindex') * sp * P']')^-1
+		--   / delete
+		-- + C(P'print' * P'f'^-1) * noident * sp * P'(' * sp * Cs(V'explist'^0) * sp * P')' * (sp * V'output_redirection')^-1
+		--   / print_special
+		-- + C(P'print' * P'f'^-1) * noident * sp * Cs(V'explist'^0) * (sp * V'output_redirection')^-1
+		--   / print_special
+		-- + V'exp'
+		-- + sp * P';'
+		  V'exp'
 		;
 
 	stmt =
-		  P'if' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * brksp * Cs(V'stmt'^-1) * sp *
-		  (P'else' * noident * brksp * Cs(V'stmt'))^-1
-		  / if_else
-		+ P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')' * brksp * Cs(V'stmt'^-1)
-		  / while_do
-		+ P'do' * noident * brksp * Cs(V'stmt'^-1) * sp * P'while' * noident * sp * P'(' * sp * Cs(V'exp') * sp * P')'
-		  / do_while
-		+ P'for' * noident * sp * P'(' * Cs(V'name') * sp *
-		  P'in' * noident * sp * Cs(V'name') * P')' * brksp * Cs(V'stmt'^-1)
-		  / for_in
-		+ P'for' * noident * sp * P'(' * sp *
-		  Cs(V'simple_stmt') * sp * P';' * sp *
-		  Cs(V'exp') * sp * P';' * sp *
-		  Cs(V'simple_stmt') * sp * P')' * brksp * Cs(V'stmt'^-1)
-		  / generic_for
-		+ Cs(V'exp') * sp * P'|' * sp * P'getline' * noident / getline_process
-		+ V'action'
+		  Kif * sp * P'(' * sp * V'exp' * sp * P')' * brksp * V'stmt' * sp * (Kelse * brksp * V'stmt')^-1
+		  / group "if_else"
+		+ Kwhile * sp * P'(' * sp * V'exp' * sp * P')' * brksp * V'stmt'
+		  / group "while"
+		+ Kdo * brksp * V'stmt' * sp * Kwhile * sp * P'(' * sp * V'exp' * sp * P')'
+		  / group "do_while"
+		+ Kfor * sp * P'(' * sp * (Vt'name' * sp * C(Kin) * sp * Vt'name') / group_binary * sp * P')' * brksp * V'stmt'
+		  / group "for_in"
+		-- + Kfor * sp * P'(' * sp *
+		--   Cs(V'simple_stmt') * sp * P';' * sp *
+		--   Cs(V'exp') * sp * P';' * sp *
+		--   Cs(V'simple_stmt') * sp * P')' * brksp * Cs(V'stmt'^-1)
+		--   / generic_for
+		-- + Cs(V'exp') * sp * P'|' * sp * Kgetline / getline_process
+		-- + V'action'
 		+ V'simple_stmt'
 		;
 
@@ -481,7 +499,7 @@ local grammar = {
 		;
 
 	func_decl =
-		  P'function' * noident * blank^1 * Cs(V'name') * sp *
+		  Kfunction * blank^1 * Cs(V'name') * sp *
 		  '(' * sp * Ct(Cs(V'name') * (sp * P',' * sp * Cs(V'name'))^0) * sp * ')' * brksp * Cs(V'action')
 		  / new_function
 		;
@@ -520,6 +538,7 @@ local grammar = {
 	name =
 		  Cg(Cc'ident', 'type') *
 		  Cs((locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword')
+		  -- Cs(((locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword') * -P'(')
 		;
 
 	number =
