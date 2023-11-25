@@ -346,7 +346,7 @@ local grammar = {
 		;
 
 	action =
-		  P'{' * brksp * (sp * eol)^0 * (V'chunk' + V'void') * sp * P'}' / wrap "action"
+		  P'{' * brksp * (sp * eol)^0 * (V'chunk') * sp * P'}' / group "action"
 		;
 
 	explist =
@@ -366,7 +366,8 @@ local grammar = {
 		;
 
 	chunk =
-		  V'stmt' * (sp * V'stmt')^0
+		  V'action' * (sp * eol)^0 * sp * V'chunk'^-1
+		+ V'stmt' * (sp * eol * sp * V'chunk')^-1 * sp * eol^0
 		;
 
 	simple_stmt =
@@ -381,22 +382,23 @@ local grammar = {
 
 	stmt =
 		  Kif * sp * P'(' * sp * V'exp' * sp * P')' * brksp * V'stmt' * sp * (Kelse * brksp * V'stmt')^-1
-		  / group "if_else"
+		  / wrap "if_else"
 		+ Kwhile * sp * P'(' * sp * V'exp' * sp * P')' * brksp * V'stmt'
-		  / group "while"
+		  / wrap "while"
 		+ Kdo * brksp * V'stmt' * sp * Kwhile * sp * P'(' * sp * V'exp' * sp * P')'
-		  / group "do_while"
+		  / wrap "do_while"
 		+ Kfor * sp * P'(' * sp * (Vt'name' * sp * C(Kin) * sp * Vt'name') / group_binary * sp * P')' * brksp * V'stmt'
 		  / wrap "for_in"
 		+ Kfor * sp * P'(' * sp *
 		  (V'simple_stmt' + V'void') * sp * P';' * sp *
 		  (V'exp' + V'void') * sp * P';' * sp *
 		  (V'simple_stmt' + V'void') * sp * P')' * brksp * V'stmt'
-		  / group "for"
+		  / wrap "for"
 		-- + Cs(V'exp') * sp * P'|' * sp * Kgetline / getline_process
 		+ V'action'
 		+ V'simple_stmt'
-		+ eol * V'void'
+		+ V'void'
+		-- + eol * V'void'
 		;
 
 	void =
@@ -477,8 +479,8 @@ local grammar = {
 		;
 
 	func_call =
-		  Vt'builtin_func' * noident * (sp * P'(' * sp * (V'explist')^-1 * sp * P')')^-1 / group "function"
-		+ Vt'name' * noident * P'(' * sp * V'explist'^-1 * sp * P')' / group "function"
+		  Vt'builtin_func' * noident * (sp * P'(' * sp * (V'explist')^-1 * sp * P')')^-1 / wrap "function"
+		+ Vt'name' * P'(' * sp * (V'explist')^-1 * sp * P')' / wrap "function"
 		+ V'value'
 		;
 
@@ -492,7 +494,7 @@ local grammar = {
 
 	lvalue =
 		  V'unary_field'
-		+ Ct(V'name' * (sp * V'subscript')^-1)
+		+ Ct(V'name' * -P'(' * (sp * V'subscript')^-1)
 		;
 
 	subscript =
@@ -542,8 +544,7 @@ local grammar = {
 
 	name =
 		  Cg(Cc'ident', 'type') *
-		  Cs((locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword')
-		  -- Cs(((locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword') * -P'(')
+		  C((locale.alpha + '_') * (locale.alnum + '_')^0 - V'keyword')
 		;
 
 	number =
