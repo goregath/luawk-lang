@@ -207,6 +207,8 @@ local function wrap(type)
 	end
 end
 
+local wrap_keyword = wrap "keyword"
+
 local function group(type)
 	return function(c, ...)
 		if ... then
@@ -394,7 +396,7 @@ local grammar = {
 		  (V'exp' + V'void') * sp * P';' * sp *
 		  (V'simple_stmt' + V'void') * sp * P')' * brksp * V'stmt'
 		  / wrap "for"
-		-- + Cs(V'exp') * sp * P'|' * sp * Kgetline / getline_process
+		-- + Vt'exp' * sp * C(P'|') * sp * (Kgetline / wrap_keyword) / group_binary
 		+ V'action'
 		+ V'simple_stmt'
 		+ V'void'
@@ -407,7 +409,17 @@ local grammar = {
 
 	exp =
 		  V'lvalue' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'exp') / group_binary
-		+ V'ternary'
+		+ V'input_function'
+		;
+
+	input_function =
+		  -- TODO '{ "ls" | getline < getline < "/etc/passwd" }'
+		  V'getline' * sp * C(P'<') * sp * V'exp' / group_binary
+		+ V'ternary' * (sp * C(P'|') * sp * V'getline')^-1 / group_binary
+		;
+
+	getline =
+		  (Kgetline / wrap_keyword) * (sp * V'lvalue')^-1 / group "function"
 		;
 
 	ternary =
@@ -485,8 +497,8 @@ local grammar = {
 		;
 
 	value =
-		  -- P'getline' * noident
-		  V'lvalue'
+		  V'getline'
+		+ V'lvalue'
 		+ Vt'number'
 		+ Vt'string'
 		+ Vt'regex'
