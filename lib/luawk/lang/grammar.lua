@@ -221,6 +221,8 @@ end
 
 local group_unary = group "unary"
 
+local v = function(n) return V(n) * (sp * C(P'|') * sp * V'getline')^0 / group_binary end
+
 local function if_else(cond, stmt1, stmt2)
 	print("IF_ELSE", cond, stmt1, stmt2)
 	if stmt2 then
@@ -409,17 +411,7 @@ local grammar = {
 
 	exp =
 		  V'lvalue' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'exp') / group_binary
-		+ V'input_function'
-		;
-
-	input_function =
-		  -- TODO '{ "ls" | getline < getline < "/etc/passwd" }'
-		  V'getline' * sp * C(P'<') * sp * V'exp' / group_binary
-		+ V'ternary' * (sp * C(P'|') * sp * V'getline')^-1 / group_binary
-		;
-
-	getline =
-		  (Kgetline / wrap_keyword) * (sp * V'lvalue')^-1 / group "function"
+		+ V'ternary'
 		;
 
 	ternary =
@@ -435,6 +427,7 @@ local grammar = {
 		;
 
 	binary_in =
+		  -- TODO BUG a in A == x
 		  P'(' * sp * V'arrayindex' * sp * P')' * (sp * C(P'in' * noident) * brksp * Vt'name')^1 / group_binary
 		+ V'binary_match' * (sp * C(P'in' * noident) * brksp * Vt'name')^0 / group_binary
 		;
@@ -448,15 +441,15 @@ local grammar = {
 		;
 
 	binary_concat =
-		  V'binary_term' * (sp * V'binary_term')^0 / group "concat"
+		  v'binary_term' * (sp * v'binary_term')^0 / group "concat"
 		;
 
 	binary_term =
-		  V'binary_factor' * sp * (C(S'+-') * brksp * V'binary_factor')^0 / group_binary
+		  v'binary_factor' * sp * (C(S'+-') * brksp * v'binary_factor')^0 / group_binary
 		;
 
 	binary_factor =
-		  V'binary_pow' * (sp * C(S'*/%') * brksp * V'binary_pow')^0 / group_binary
+		  v'binary_pow' * (sp * C(S'*/%') * brksp * v'binary_pow')^0 / group_binary
 		;
 
 	-- TODO '-+a'   valid
@@ -467,17 +460,17 @@ local grammar = {
 	-- TODO 'a^!a' valid
 
 	unary_sign =
-		  (C(P'!' + (P'+' * -P'+') + (P'-' * -P'-')) * sp) * V'binary_pow' / group_unary
+		  (C(P'!' + (P'+' * -P'+') + (P'-' * -P'-')) * sp) * v'binary_pow' / group_unary
 		;
 
 	binary_pow =
-		  (V'unary_sign' + V'unary_pp') * (sp * C(P'^') * brksp * (V'binary_pow'))^-1 / group_binary
+		  (v'unary_sign' + v'unary_pp') * (sp * C(P'^') * brksp * (v'binary_pow'))^-1 / group_binary
 		;
 
 	unary_pp =
 		  C(P'++' + P'--') * sp * V'lvalue' / group_unary
 		+ V'lvalue' * (sp * C(P'++' + P'--'))^-1 / group "unary_post"
-		+ V'unary_sign'
+		+ v'unary_sign'
 		+ V'group'
 		;
 
@@ -488,6 +481,16 @@ local grammar = {
 	group =
 		  P'(' * sp * V'exp' * sp * P')'
 		+ V'func_call'
+		;
+
+	-- input_function =
+	-- 	  -- TODO '{ "ls" | getline < getline < "/etc/passwd" }'
+	-- 	  V'getline' * sp * C(P'<') * sp * V'exp' / group_binary
+	-- 	+ V'value' * (sp * C(P'|') * sp * V'getline')^-1 / group_binary
+	-- 	;
+
+	getline =
+		  (Kgetline / wrap_keyword) * (sp * V'lvalue')^-1 / group "function"
 		;
 
 	func_call =
