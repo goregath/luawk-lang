@@ -377,6 +377,8 @@ local grammar = {
 	simple_stmt =
 		  Kdelete * sp * Vt'name'* (P'[' * sp * V'arrayindex' * sp * P']')^-1
 		  / wrap "delete"
+		-- TODO print 1 > "out"
+		+ V'print' * sp * V'output_redirection'^-1 / group_binary
 		-- + C(P'print' * P'f'^-1) * noident * sp * P'(' * sp * Cs(V'explist'^0) * sp * P')' * (sp * V'output_redirection')^-1
 		--   / print_special
 		-- + C(P'print' * P'f'^-1) * noident * sp * Cs(V'explist'^0) * (sp * V'output_redirection')^-1
@@ -398,11 +400,9 @@ local grammar = {
 		  (V'exp' + V'void') * sp * P';' * sp *
 		  (V'simple_stmt' + V'void') * sp * P')' * brksp * V'stmt'
 		  / wrap "for"
-		-- + Vt'exp' * sp * C(P'|') * sp * (Kgetline / wrap_keyword) / group_binary
 		+ V'action'
 		+ V'simple_stmt'
 		+ V'void'
-		-- + eol * V'void'
 		;
 
 	void =
@@ -489,10 +489,6 @@ local grammar = {
 	-- 	+ V'value' * (sp * C(P'|') * sp * V'getline')^-1 / group_binary
 	-- 	;
 
-	getline =
-		  (Kgetline / wrap_keyword) * (sp * V'lvalue')^-1 / group "function"
-		;
-
 	func_call =
 		  Vt'builtin_func' * noident * (sp * P'(' * sp * (V'explist')^-1 * sp * P')')^-1 / wrap "function"
 		+ Vt'name' * P'(' * sp * (V'explist')^-1 * sp * P')' / wrap "function"
@@ -517,13 +513,21 @@ local grammar = {
 		;
 
 	output_redirection =
-		  C(P'>>' + S'>|') * sp * Cs(V'exp' - P'getline' * noident)
+		  C(P'>>' + S'>|') * sp * V'exp'
 		;
 
 	func_decl =
 		  Kfunction * blank^1 * Cs(V'name') * sp *
 		  '(' * sp * Ct(Cs(V'name') * (sp * P',' * sp * Cs(V'name'))^0) * sp * ')' * brksp * Cs(V'action')
 		  / new_function
+		;
+
+	getline =
+		  C(Kgetline) * (sp * V'lvalue')^-1 / wrap_keyword
+		;
+
+	print =
+		  C(Kprintf + Kprint) * noident * sp * (V'explist' + P'(' * sp * V'explist'^-1 * sp * P')')^-1 / wrap_keyword
 		;
 
 	keyword =
