@@ -223,89 +223,6 @@ local group_unary = group "unary"
 
 local v = function(n) return V(n) * (sp * C(P'|') * sp * V'getline')^0 / group_binary end
 
-local function if_else(cond, stmt1, stmt2)
-	print("IF_ELSE", cond, stmt1, stmt2)
-	if stmt2 then
-		return format("if B(%1) then %2 else %3 end", cond, stmt1, stmt2)
-	else
-		return format("if B(%1) then %2 end", cond, stmt1)
-	end
-end
-
-local function while_do(cond, stmt)
-	print("WHILE_DO", cond, stmt)
-end
-
-local function do_while(stmt, cond)
-	print("DO_WHILE", stmt, cond)
-end
-
-local function for_in(var1, var2, stmt)
-	print("FOR_IN", var1, var2, stmt)
-end
-
-local function generic_for(exp1, exp2, exp3, stmt)
-	print("GENERIC_FOR", exp1, exp2, exp3, stmt)
-end
-
-local function delete(var, sub)
-	print("DELETE", var, sub)
-end
-
-local function new_function(name, params, action)
-	print("NEW_FUNCTION", name, table.concat(params, ","), action)
-end
-
-local function print_special(name, params, op, exp)
-	print("PRINT", name, params, op, exp)
-end
-
-local function getline_process(exp)
-	print("GETLINE_PROC", exp)
-end
-
-local function getline_file(exp)
-	print("GETLINE_FILE", exp)
-end
-
-local function pre_increment(lvalue)
-	print("PRE_INCREMENT", lvalue)
-end
-
-local function pre_decrement(lvalue)
-	print("PRE_DECREMENT", lvalue)
-end
-
-local function post_increment(lvalue)
-	print("POST_INCREMENT", lvalue)
-end
-
-local function post_decrement(lvalue)
-	print("POST_DECREMENT", lvalue)
-end
-
-local function eval_binary(l, op, r)
-	print("EVAL_BINARY", l, op, r)
-	if l == "getline" and op == "<" then
-		return getline_file(r)
-	end
-	return format(bfmt[op], l, r)
-end
-
-local function eval_unary(op, r)
-	print("EVAL_UNARY", op, r)
-	return format(ufmt[op], r)
-end
-
-local function eval_ternary(cond, exp1, exp2)
-	print("EVAL_TERNARY", cond, exp1, exp2)
-	return string.format("(B(%s) and %s or %s)", cond, exp1, exp2)
-end
-
-local function eval_concat(...)
-	return string.format("S(%s)", table.concat({...}, ","))
-end
-
 -- TODO proper comment and line break handling
 -- TODO pattern,pattern to range-pattern
 -- TEST awk '$0 ~ /b/ ~ 1 { print }' <<<"a b c" --> "a b c"
@@ -519,7 +436,6 @@ local grammar = {
 	func_decl =
 		  Kfunction * blank^1 * Cs(V'name') * sp *
 		  '(' * sp * Ct(Cs(V'name') * (sp * P',' * sp * Cs(V'name'))^0) * sp * ')' * brksp * Cs(V'action')
-		  / new_function
 		;
 
 	getline =
