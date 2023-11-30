@@ -130,41 +130,6 @@ local Kprintf = P'printf' * noident
 local Kreturn = P'return' * noident
 local Kwhile = P'while' * noident
 
-local ufmt = {
-	["$"] = "R[%1]",
-	["!"] = "D(not(B(%1)))",
-	["+"] = "D(%1)",
-	["-"] = "-D(%1)",
-}
-
-local bfmt = {
-	[".."] = "S(%1,%2)",
-	["^" ] = "(D(%1)^D(%2))",
-	["%" ] = "math.fmod(D(%1,%2))",
-	["*" ] = "(D(%1)*D(%2))",
-	["/" ] = "(D(%1)/D(%2))",
-	["+" ] = "(D(%1)+D(%2))",
-	["-" ] = "(D(%1)-D(%2))",
-	["<" ] = "D(D(%1)<D(%2))",
-	[">" ] = "D(D(%1)>D(%2))",
-	["<="] = "D(D(%1)<=D(%2))",
-	["!="] = "D(D(%1)~=D(%2))",
-	["=="] = "D(D(%1)==D(%2))",
-	[">="] = "D(D(%1)>=D(%2))",
-	["=" ] = "V('%1',%2)", -- TODO arrays
-	["&&"] = "A(%1,%2)",
-	["||"] = "O(%1,%2)",
-	["in"] = "D(%1[S(%2)]~=nil)",
-	["~" ] = "match(S(%1,%2))",
-	["!~"] = "D(0==match(S(%1,%2)))",
-	["^="] = "V('%1',(D(%1)^D(%2)))", -- TODO arrays
-	["%="] = "V('%1',math.fmod(D(%1,%2)))", -- TODO arrays
-	["*="] = "V('%1',D(%1)*D(%2))", -- TODO arrays
-	["/="] = "V('%1',D(%1)/D(%2))", -- TODO arrays
-	["+="] = "V('%1',D(%1)+D(%2))", -- TODO arrays
-	["-="] = "V('%1',D(%1)-D(%2))", -- TODO arrays
-}
-
 local function numconv(s)
 	return string.format("%q",tonumber(s))
 end
@@ -175,17 +140,6 @@ end
 
 local function awkregexunquote(s)
 	return s:gsub("\\/", "/")
-end
-
-local function concat(...)
-	return table.concat({...}, "..SUBSEP..")
-end
-
-local function format(fmt, ...)
-	local a = { ... }
-	return fmt:gsub("%%(%d+)", function(i)
-		return a[tonumber(i)]
-	end)
 end
 
 local function _group_binary(a)
@@ -275,6 +229,10 @@ local grammar = {
 		  V'exp' * (sp * P',' * brksp * V'exp')^0 / group "explist"
 		;
 
+	print_explist =
+		  V'print_exp' * (sp * P',' * brksp * V'print_exp')^0 / group "explist"
+		;
+
 	namelist =
 		  V'name' * (sp * P',' * sp * V'name')^0 / group "namelist"
 		;
@@ -331,21 +289,42 @@ local grammar = {
 		  V'assignment'
 		;
 
+	print_exp =
+		  V'print_assignment'
+		;
+
 	assignment =
 		  V'lvalue' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'assignment') / group_binary
 		+ V'ternary'
+		;
+
+	print_assignment =
+		  V'lvalue' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'print_assignment') / group_binary
+		+ V'print_ternary'
 		;
 
 	ternary =
 		  V'binary_or' * sp * (P'?' * sp * V'assignment' * sp * P':' * sp * V'assignment')^-1 / group "ternary"
 		;
 
+	print_ternary =
+		  V'print_binary_or' * sp * (P'?' * sp * V'print_assignment' * sp * P':' * sp * V'print_assignment')^-1 / group "ternary"
+		;
+
 	binary_or =
 		  V'binary_and' * (sp * C(P'||') * brksp * V'binary_and')^0 / group_binary
 		;
 
+	print_binary_or =
+		  V'print_binary_and' * (sp * C(P'||') * brksp * V'print_binary_and')^0 / group_binary
+		;
+
 	binary_and =
 		  V'binary_in' * (sp * C(P'&&') * brksp * V'binary_in')^0 / group_binary
+		;
+
+	print_binary_and =
+		  V'print_binary_in' * (sp * C(P'&&') * brksp * V'print_binary_in')^0 / group_binary
 		;
 
 	binary_in =
@@ -354,12 +333,26 @@ local grammar = {
 		+ V'binary_match' * (sp * C(P'in' * noident) * brksp * Vt'name')^0 / group_binary
 		;
 
+	print_binary_in =
+		  -- TODO BUG a in A == x
+		  P'(' * sp * V'arrayindex' * sp * P')' * (sp * C(P'in' * noident) * brksp * Vt'name')^1 / group_binary
+		+ V'print_binary_match' * (sp * C(P'in' * noident) * brksp * Vt'name')^0 / group_binary
+		;
+
 	binary_match =
 		  V'binary_comp' * (sp * C(P'!~' + P'~') * brksp * V'binary_comp')^0 / group_binary
 		;
 
+	print_binary_match =
+		  V'print_binary_comp' * (sp * C(P'!~' + P'~') * brksp * V'print_binary_comp')^0 / group_binary
+		;
+
 	binary_comp =
 		  V'binary_concat' * (sp * C(S'<>!=' * P'=' + S'<>') * brksp * V'binary_concat')^-1 / group_binary
+		;
+
+	print_binary_comp =
+		  V'binary_concat' * (sp * C(S'<!=' * P'=' + P'<') * brksp * V'binary_concat')^-1 / group_binary
 		;
 
 	binary_concat =
@@ -448,7 +441,7 @@ local grammar = {
 		;
 
 	print =
-		  C(Kprintf + Kprint) * noident * sp * (V'explist' + P'(' * sp * V'explist'^-1 * sp * P')')^-1 / wrap_keyword
+		  C(Kprintf + Kprint) * noident * sp * (V'print_explist' + P'(' * sp * V'print_explist'^-1 * sp * P')')^-1 / wrap_keyword
 		;
 
 	keyword =
