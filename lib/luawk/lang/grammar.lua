@@ -103,7 +103,8 @@ local Vt = function(name) print(name) return Ct(V(name)) end
 
 local nl = P'\n'
 local brk = P'\\\n'
-local blank = P(locale.space + brk + V'comment' - nl)
+local comment = P'#' * (P(1) - nl)^0 * (nl + -P(1))
+local blank = P(locale.space + brk + comment - nl)
 local sp = (blank^1)^-1
 local brksp = ((blank + nl)^1)^-1
 local eol = (P';' + nl)^1
@@ -327,12 +328,16 @@ local grammar = {
 		;
 
 	exp =
-		  V'lvalue' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'exp') / group_binary
+		  V'assignment'
+		;
+
+	assignment =
+		  V'lvalue' * (sp * C(S'^%*/+-'^-1 * P'=') * brksp * V'assignment') / group_binary
 		+ V'ternary'
 		;
 
 	ternary =
-		  V'binary_or' * sp * (P'?' * sp * V'exp' * sp * P':' * sp * V'exp')^-1 / group "ternary"
+		  V'binary_or' * sp * (P'?' * sp * V'assignment' * sp * P':' * sp * V'assignment')^-1 / group "ternary"
 		;
 
 	binary_or =
@@ -502,9 +507,9 @@ local grammar = {
 		+ P"'" * C("\\" * P(1) + (P(1) - "'")^0) * P"'"
 		);
 
-	comment =
-		  '#' * (P(1) - nl)^0 * (nl + -P(1))
-		;
+	-- comment =
+	-- 	  '#' * (P(1) - nl)^0 * (nl + -P(1))
+	-- 	;
 
 	builtin_func =
 		  Cg(Cc'builtin', 'type') * C(
