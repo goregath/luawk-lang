@@ -112,12 +112,14 @@ local noident = -(locale.alnum + P'_')
 local shebang = P"#" * (P(1) - nl)^0 * nl
 
 local Kbegin = P'BEGIN' * noident
+local Kbeginfile = P'BEGINFILE' * noident
 local Kbreak = P'break' * noident
 local Kcontinue = P'continue' * noident
 local Kdelete = P'delete' * noident
 local Kdo = P'do' * noident
 local Kelse = P'else' * noident
 local Kend = P'END' * noident
+local Kendfile = P'ENDFILE' * noident
 local Kexit = P'exit' * noident
 local Kfor = P'for' * noident
 local Kfunction = P'function' * noident
@@ -182,31 +184,22 @@ local v = function(n) return V(n) * (sp * C(P'|') * sp * V'getline')^0 / group_b
 -- TODO pattern,pattern to range-pattern
 -- TEST awk '$0 ~ /b/ ~ 1 { print }' <<<"a b c" --> "a b c"
 local grammar = {
-	-- TODO FIXME object is preserved between multiple lpeg.match
-	newobj = Cg(Cc({
-		BEGIN = {},
-		END = {},
-		BEGINFILE = {},
-		ENDFILE = {},
-		main = {}
-	}), 'program');
 
-	-- shebang^-1 * V'newobj' * (blank + nl)^0 * (
-	-- 	  ( ( V'globals' / table.insert * (blank + eol)^0 )^1 )^0
-	-- 	* ( ( V'rule' / table.insert * (blank + eol)^0 )^1 )^0 * sp * -1
-	-- );
+	shebang^-1 * (blank + nl)^0 * (
+		  ( ( Vt'globals' * (blank + eol)^0 )^1 )^0
+		* ( ( V'rule' / wrap "rule" * (blank + eol)^0 )^1 )^0 * sp * -1
+	);
 
 	V'stmt';
 
 	globals =
-		  Cb('program') * Cc('BEGIN') / rawget * Cs(V'func_decl')
+		  V'func_decl'
 		;
 
 	rule =
-		  Cb('program') * C(V'specialpattern') / rawget * sp * Cs(V'action')
-		+ Cb('program') * Cc('main') / rawget * Ct( Cs(V'pattern') * (P',' * sp * Cs(V'pattern'))^-1 * sp * Cs(V'action') )
-		+ Cb('program') * Cc('main') / rawget * Ct( Cs(V'pattern') * (P',' * sp * Cs(V'pattern'))^-1 * Cc('print()') )
-		+ Cb('program') * Cc('main') / rawget * Ct( Cc(true) * Cs(V'action') )
+		  Vt'specialpattern' * sp * V'action'
+		+ V'pattern' * (P',' * sp * V'pattern')^-1 * (sp * V'action')^-1
+		+ V'action'
 		;
 
 	pattern =
@@ -215,11 +208,12 @@ local grammar = {
 		;
 
 	specialpattern =
-		  P'BEGINFILE' * noident
-		+ P'ENDFILE' * noident
-		+ P'BEGIN' * noident
-		+ P'END' * noident
-		;
+		Cg(Cc'keyword', "type") * C(
+		  Kbegin
+		+ Kend
+		+ Kbeginfile
+		+ Kendfile
+		);
 
 	action =
 		  P'{' * brksp * (sp * eol)^0 * (V'chunk') * sp * P'}' / group "action"
@@ -253,12 +247,7 @@ local grammar = {
 	simple_stmt =
 		  Kdelete * sp * Vt'name'* (P'[' * sp * V'arrayindex' * sp * P']')^-1
 		  / wrap "delete"
-		-- TODO print 1 > "out"
 		+ V'print' * sp * V'output_redirection'^-1 / group_binary
-		-- + C(P'print' * P'f'^-1) * noident * sp * P'(' * sp * Cs(V'explist'^0) * sp * P')' * (sp * V'output_redirection')^-1
-		--   / print_special
-		-- + C(P'print' * P'f'^-1) * noident * sp * Cs(V'explist'^0) * (sp * V'output_redirection')^-1
-		--   / print_special
 		+ V'exp'
 		;
 
