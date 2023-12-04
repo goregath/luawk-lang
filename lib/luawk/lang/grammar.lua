@@ -127,6 +127,7 @@ local Kgetline = P'getline' * noident
 local Kif = P'if' * noident
 local Kin = P'in' * noident
 local Knext = P'next' * noident
+local Knextfile = P'nextfile' * noident
 local Kprint = P'print' * noident
 local Kprintf = P'printf' * noident
 local Kreturn = P'return' * noident
@@ -252,7 +253,11 @@ local grammar = {
 		;
 
 	stmt =
-		  Kif * sp * P'(' * sp * V'exp' * sp * P')' * brksp * V'stmt' * sp * (Kelse * brksp * V'stmt')^-1
+		  (Kbreak + Kcontinue + Knext + Knextfile)
+		  / wrap_keyword
+		+ C(Kexit + Kreturn) * sp * V'exp'^-1
+		  / wrap_keyword
+		+ Kif * sp * P'(' * sp * V'exp' * sp * P')' * brksp * V'stmt' * sp * (Kelse * brksp * V'stmt')^-1
 		  / wrap "if_else"
 		+ Kwhile * sp * P'(' * sp * V'exp' * sp * P')' * brksp * V'stmt'
 		  / wrap "while"
